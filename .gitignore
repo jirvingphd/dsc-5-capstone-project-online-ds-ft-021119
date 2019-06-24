@@ -1,2 +1,5 @@
 .DS_store
 .ipynb_checkpoints
+*.pyc
+*.pyc
+data/IVE_tickbidask.txt
