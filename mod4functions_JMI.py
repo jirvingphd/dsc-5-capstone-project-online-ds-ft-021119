@@ -172,7 +172,6 @@ def train_test_val_split(X,y,test_size=0.20,val_size=0.1):
 
     return X_train, X_test, X_val, y_train, y_test, y_val
 
-
 def plot_keras_history(history):
     """Plots the history['acc','val','val_acc','val_loss']"""
     import matplotlib.pyplot as plt
@@ -190,6 +189,36 @@ def plot_keras_history(history):
     ax[1].plot(x, val_loss, 'r', label='Validation Loss')
     ax[1].legend()
     plt.show()
+    return fig, ax
+
+
+def plot_keras_history_custom(history,metrics=[('acc','loss'),('val_acc','val_loss')], figsize=(8,6)):
+    """Plots the history['acc','val','val_acc','val_loss']"""
+    plot_dict = {}
+    
+    import matplotlib.pyplot as plt
+    for i,metric_tuple in enumerate(metrics):
+         
+        plot_dict[i] = {}
+        
+        for metric in metric_tuple:
+            plot_dict[i][metric]= history.history[metric]
+                       
+
+    x_len = len(history.history[metrics[0][0]])
+    x = range(1,x_len)
+    
+    fig,ax = plt.subplots(nrows=metrics.shape[0], ncols=1, figsize=figsize)
+    
+    for p in plot_dict.keys():
+        
+        for k,v in plot_dict[p]:
+            ax[p].plot(x, plot_dict[p][v], label=k)
+            ax[p].legend()
+                    
+    plt.tight_layout()
+    plt.show()
+
     return fig, ax
 
 
