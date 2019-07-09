@@ -50,8 +50,9 @@ def open_image_mask(filename):
     import numpy as np
     from PIL import Image
     from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
-
+    mask=[]
     mask = np.array(Image.open(filename))
+    return mask
     
 
 
@@ -508,7 +509,7 @@ def check_df_groups_for_exp(df_full, list_of_exp_to_check, check_col='content_mi
     """Checks `check_col` column of input dataframe for expressions in list_of_exp_to_check and 
     counts the # present for each group, defined by the groupby_col and groupdict. 
     Returns a dataframe of counts."""
-    
+    from bs_ds import list2df
     list_of_results = []      
 
     header_list= ['Term']
@@ -525,7 +526,7 @@ def check_df_groups_for_exp(df_full, list_of_exp_to_check, check_col='content_mi
         
         list_of_results.append(curr_exp_list)
         
-    df_results = bs.list2df(list_of_results, index_col='Term')
+    df_results = list2df(list_of_results, index_col='Term')
     return df_results
 
 

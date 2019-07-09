@@ -1,4 +1,14 @@
 # functions_combined.py
+# from mod4functions_JMI import *
+print('For detailed help as well as source code, use `ihelp(function)`')
+
+def reload(mod):
+    """Reloads the module from file."""
+    from importlib import reload
+    import sys
+    print(f'Reloading...')
+    return  reload(mod)
+
 
 def ihelp(any_function, show_help=True, show_code=True, get_source=True): 
     """Call on any module or functon to display:
@@ -25,7 +35,190 @@ def ihelp(any_function, show_help=True, show_code=True, get_source=True):
         print(source_DF)    
 
 
+################################################### ADDITIONAL NLP #####################################################
+## Adding in stopword removal to the actual dataframe
+def make_stopwords_list(incl_punc=True, incl_nums=True, add_custom= ['http','https','...','…','``','co','“','’','‘','”',"n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]):
+    from nltk.corpus import stopwords
+    import string
 
+    stopwords_list = stopwords.words('english')
+    if incl_punc==True:
+        stopwords_list += list(string.punctuation)
+    stopwords_list += add_custom #['http','https','...','…','``','co','“','’','‘','”',"n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]
+    if incl_nums==True:
+        stopwords_list += [0,1,2,3,4,5,6,7,8,9]
+    
+    return  stopwords_list
+
+
+def apply_stopwords(stopwords_list,  text, tokenize=True,return_tokens=False, pattern = "([a-zA-Z]+(?:'[a-z]+)?)"):
+    """EX: df['text_stopped'] = df['content'].apply(lambda x: apply_stopwords(stopwords_list,x))"""
+    from nltk import regexp_tokenize
+    pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
+    if tokenize==True:
+        from nltk import regexp_tokenize
+        
+        text = regexp_tokenize(text,pattern)
+        
+    stopped = [x.lower() for x in text if x.lower() not in stopwords_list]
+
+    if return_tokens==True:
+        return regexp_tokenize(' '.join(stopped),pattern)
+    else:
+        return ' '.join(stopped)
+
+def empty_lists_to_strings(x):
+    """Takes a series and replaces any empty lists with an empty string instead."""
+    if len(x)==0:
+        return ' '
+    else:
+        return ' '.join(x) #' '.join(tokens)
+
+def load_raw_twitter_file(filename = '../trump_tweets_01202017_06202019.csv', rename_map={'text':'content','created_at':'date'}):
+    import pandas as pd
+
+    df = pd.read_csv(filename, encoding='utf-8')
+    mapper=rename_map
+    df.rename(axis=1,mapper=mapper,inplace=True)
+    df['date']=pd.to_datetime(df['date'])
+    # df.head()
+    return df
+
+def full_twitter_df_processing(df,raw_tweet_col='content', cleaned_tweet_col='content', RT=True, urls=True,
+ hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
+    """Accepts df_full, which contains the raw tweets to process, the raw_col name, the column to fill.
+    If force=False, returns error if the fill_content_col already exists.
+    Processing Workflow:1) Create has_RT, starts_RT columns. 2) Creates [fill_content_col,`content_min_clean`] cols after removing 'RT @mention:' and urls.
+    3) Removes hashtags from fill_content_col and saves hashtags in new col. 4) Removes mentions from fill_content_col and saves to new column."""
+    # Save 'hashtags' column containing all hastags
+    import re
+    from nltk import regexp_tokenize
+    pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
+    track_fill_content_col=0
+
+    fill_content_col = cleaned_tweet_col
+
+    if force==False:
+        if cleaned_tweet_col in df.columns:
+            raise Exception(f'{fill_content_col} already exists. To overwrite, set force=True.')
+
+    # if raw_tweet_col == cleaned_tweet_col:
+    #     raw_tweets = 'content_raw'
+    #     df[raw_tweets] = df[tweet_col].copy()
+
+
+    if RT ==True:
+
+        # Creating columns for tweets that `has_RT` or `starts_RT`
+        df['has_RT']=df[raw_tweet_col].str.contains('RT')
+        df['starts_RT']=df[raw_tweet_col].str.contains('^RT')
+
+        ## FIRST REMOVE THE RT HEADERS
+
+        # Remove `RT @Mentions` FIRST:
+        re_RT = re.compile('RT [@]?\w*:')
+
+        check_content_col = raw_tweet_col
+        fill_content_col = cleaned_tweet_col
+
+        df['content_starts_RT'] = df[check_content_col].apply(lambda x: re_RT.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: re_RT.sub(' ',x))
+        track_fill_content_col+=1
+
+
+    if urls==True:
+        ## SECOND REMOVE URLS
+        # Remove urls with regex
+        urls = re.compile(r"(http[s]?://\w*\.\w*/+\w+)")
+        
+        if track_fill_content_col==0:
+            check_content_col = raw_tweet_col
+        else:
+            check_content_col = fill_content_col
+
+        fill_content_col = fill_content_col
+
+        # df_full['content_urls'] = df_full[check_content_col].apply(lambda x: urls.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: urls.sub(' ',x))
+
+        ## SAVE THIS MINIMALLY CLEANED CONTENT AS 'content_min_clean'
+        df['content_min_clean'] =  df[fill_content_col]
+        track_fill_content_col+=1
+
+    if hashtags==True:
+
+        if track_fill_content_col==0:
+            check_content_col = raw_tweet_col
+        else:
+            check_content_col = fill_content_col
+
+        fill_content_col = fill_content_col
+
+        ## REMOVE AND SAVE HASHTAGS, MENTIONS
+        # Remove and save Hashtags
+        hashtags = re.compile(r'\#\w*')
+
+        df['content_hashtags'] =  df[check_content_col].apply(lambda x: hashtags.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: hashtags.sub(' ',x))
+        track_fill_content_col+=1
+        
+        if str_tags_mentions==True: 
+            df['hashtag_strings'] = df['content_hashtags'].apply(lambda x: empty_lists_to_strings(x))
+        
+
+    if mentions==True:
+
+        if track_fill_content_col==0:
+            check_content_col = raw_tweet_col
+        else:
+            check_content_col = fill_content_col
+
+        fill_content_col = fill_content_col
+
+        # Remove and save mentions (@)'s
+        mentions = re.compile(r'\@\w*')
+
+
+        df['content_mentions'] =  df[check_content_col].apply(lambda x: mentions.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: mentions.sub(' ',x))
+        track_fill_content_col+=1
+
+        if str_tags_mentions==True: 
+            df['mention_strings'] = df['content_mentions'].apply(lambda x: empty_lists_to_strings(x))
+
+
+    # Creating content_stopped columns and then tokens_stopped column
+    stop_col_name = fill_content_col+'_stop'
+    stop_tok_col_name =  fill_content_col+'_stop_tokens'
+
+    if len(stopwords_list)==0:
+        stopwords_list=make_stopwords_list()
+
+    df[stop_col_name] = df[fill_content_col].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=False))
+    df[stop_tok_col_name] = df[stop_col_name].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=True))
+
+    
+    ## New addition
+    
+    return df
+
+
+
+def case_ratio(msg):
+    """Accepts a twitter message (or used with .apply(lambda x:)).
+    Returns the ratio of capitalized characters out of the total number of characters.
+    
+    EX:
+    df['case_ratio'] = df['text'].apply(lambda x: case_ratio(x))"""
+    import numpy as np
+    msg_length = len(msg)
+    test_upper = [1 for x in msg if x.isupper()]
+    test_lower = [1 for x in msg if x.islower()]
+    test_ratio = np.round(sum(test_upper)/msg_length,5)
+    return test_ratio
+
+
+#################################################### STOCK ##############################################################
 def df_column_report(twitter_df, sort_column=None, ascending=True, interactive=True):
     from ipywidgets import interact
     import pandas as pd
@@ -98,6 +291,7 @@ def int_to_ts(int_list, as_datetime=False, as_str=True):
 # Step 1:     
 def bin_df_by_date_intervals(test_df,half_hour_intervals,column='date'):
     """"""
+    import pandas as pd
     # Cut The Date column into interval bins, 
     cut_date = pd.cut(test_df[column], bins=half_hour_intervals)#,labels=list(range(len(half_hour_intervals))), retbins=True)
     test_df['int_times'] = cut_date    
@@ -173,7 +367,7 @@ def collapse_df_by_group_indices(twitter_df,group_indices, new_col_order=None):
     """Loops through the group_indices provided to concatenate each group into
     a single row and combine into one dataframe with the ______ as the index"""
 
-
+    import pandas as pd
     # Create a Panel to temporarily hold the group series and dataframes
     # group_dict_to_df = {}
     # create a dataframe with same columns as twitter_df, and index=group ids from twitter_groups
@@ -206,6 +400,8 @@ def load_stock_price_series(filename='IVE_bidask1min.txt',
                                start_index = '2017-01-23', freq='T'):
     import pandas as pd
     import numpy as np
+    from IPython import display
+
     # Load in the text file and set headers
     fullfilename= folderpath+filename
     headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
@@ -225,7 +421,8 @@ def load_stock_price_series(filename='IVE_bidask1min.txt',
     return stock_price
 
 def load_twitter_df(overwrite=True,set_index='time_index',verbose=2,replace_na=''):
-
+    import pandas as pd
+    from IPython.display import display
     try: twitter_df
     except NameError: twitter_df = None
     if twitter_df is not None:
@@ -307,7 +504,7 @@ def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill'
     
     import pandas as pd
     import numpy as np
-    
+    from IPython.display import display
     
     if verbose>1:
         # print(f"{'Index When:':>{10}}\t{'Freq:':>{20}}\t{'Index Start:':>{40}}\t{'Index End:':>{40}}")
@@ -382,6 +579,7 @@ def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill'
             
     # display header
     if verbose>2:
+        from ipython import display
         display(ive_df.head())
     
     return ive_df
@@ -402,7 +600,9 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min.txt',
                                  clean=False,fill_or_drop_null='drop',fill_method='ffill',
                                  freq='CBH',verbose=2):
     import pandas as pd
-    
+    import numpy as np
+    from IPython.display import display
+
     # Load in the text file and set headers
     fullfilename= folderpath+filename
     headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
@@ -460,7 +660,8 @@ def load_stock_df_from_csv(filename='ive_sp500_min_data_match_twitter_ts.csv',
                           clean=True,freq='T',fill_method='ffill',verbose=2):
     import os
     import pandas as pd
-
+    import numpy as np
+    from IPython.display import display
     #         check_for_google_drive()
         
     # Check if user provided folderpath to append to filename
@@ -569,7 +770,10 @@ def stationarity_check(df, col='BidClose', window=80, freq='BH'):
 ######## SEASONAL DECOMPOSITION    
 def plot_decomposition(TS, decomposition, figsize=(12,8),window_used=None):
     """ Plot the original data and output decomposed components"""
-    
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import numpy as np
+
     # Gather the trend, seasonality and noise of decomposed object
     trend = decomposition.trend
     seasonal = decomposition.seasonal
@@ -638,43 +842,44 @@ def seasonal_decompose_and_plot(ive_df,col='BidClose',freq='H',
 ### WIP FUNCTIONS
 def make_date_range_slider(start_date,end_date,freq='D'):
 
-        from ipywidgets import interact, interactive, interaction, Label, Box, Layout
-        import ipywidgets as iw
-        from datetime import datetime
+    from ipywidgets import interact, interactive, Label, Box, Layout
+    import ipywidgets as iw
+    from datetime import datetime
+    import pandas as pd
+    # specify the date range from user input
+    dates = pd.date_range(start_date, end_date,freq=freq)
 
-        # specify the date range from user input
-        dates = pd.date_range(start_date, end_date,freq=freq)
-
-        # specify formatting based on frequency code
-        date_format_lib={'D':'%m/%d/%Y','H':'%m/%d/%Y: %T'}
-        freq_format = date_format_lib[freq]
+    # specify formatting based on frequency code
+    date_format_lib={'D':'%m/%d/%Y','H':'%m/%d/%Y: %T'}
+    freq_format = date_format_lib[freq]
 
 
-        # creat options list and index for SelectionRangeSlider
-        options = [(date.strftime(date_format_lib[freq]),date) for date in dates]
-        index = (0, len(options)-1)
+    # creat options list and index for SelectionRangeSlider
+    options = [(date.strftime(date_format_lib[freq]),date) for date in dates]
+    index = (0, len(options)-1)
 
-        #     # Create out function to display outputs (not needed?)
-        #     out = iw.Output(layout={'border': '1px solid black'})
-        #     #     @out.capture()
+    #     # Create out function to display outputs (not needed?)
+    #     out = iw.Output(layout={'border': '1px solid black'})
+    #     #     @out.capture()
 
-        # Instantiate the date_range_slider
-        date_range_slider = iw.SelectionRangeSlider(
-            options=options, index=index, description = 'Date Range',
-            orientation = 'horizontal',layout={'width':'500px','grid_area':'main'},#layout=Layout(grid_area='main'),
-            readout=True)
+    # Instantiate the date_range_slider
+    date_range_slider = iw.SelectionRangeSlider(
+        options=options, index=index, description = 'Date Range',
+        orientation = 'horizontal',layout={'width':'500px','grid_area':'main'},#layout=Layout(grid_area='main'),
+        readout=True)
 
-        # Save the labels for the date_range_slider as separate items
-        date_list = [date_range_slider.label[0], date_range_slider.label[-1]]
-        date_label = iw.Label(f'{date_list[0]} -- {date_list[1]}',
-                             layout=Layout(grid_area='header'))
+    # Save the labels for the date_range_slider as separate items
+    date_list = [date_range_slider.label[0], date_range_slider.label[-1]]
+    date_label = iw.Label(f'{date_list[0]} -- {date_list[1]}',
+                            layout=Layout(grid_area='header'))
 
 
 
 
 #### TWITTER_STOCK MATCHING
 def get_B_day_time_index_shift(test_df, verbose=1):
-
+    import pandas as pd
+    import numpy as np
     fmtYMD= '%Y-%m-%d'
 
     test_df['day']= test_df['date'].dt.strftime('%Y-%m-%d')
@@ -712,6 +917,7 @@ def reorder_twitter_df_columns(twitter_df, order=[]):
 def match_stock_price_to_tweets(tweet_timestamp,time_after_tweet= 30,time_freq ='T',stock_price=[]):#stock_price_index=stock_date_data):
     
     import pandas as pd
+    import numpy as np
     from datetime import datetime as dt
     # output={'pre_tweet_price': price_at_tweet,'post_tweet_price':price_after_tweet,'delta_price':delta_price, 'delta_time':delta_time}
     output={}
@@ -784,6 +990,7 @@ def match_stock_price_to_tweets(tweet_timestamp,time_after_tweet= 30,time_freq =
     return output
     
 def unpack_match_stocks(stock_dict):
+    import pandas as pd
     stock_series = pd.Series(stock_dict)
     return stock_series
 
@@ -804,7 +1011,8 @@ def my_rmse(y_true,y_pred):
 
 def get_technical_indicators(dataset,make_price_from='BidClose'):
     
-
+    import pandas as pd
+    import numpy as np
     dataset['price'] = dataset[make_price_from].copy()
     if dataset.index.freq == custom_BH_freq():
         days = get_day_window_size_from_freq(dataset)#,freq='CBH')
@@ -839,6 +1047,8 @@ def get_technical_indicators(dataset,make_price_from='BidClose'):
 
 def plot_technical_indicators(dataset, last_days=90):
    
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
     days = get_day_window_size_from_freq(dataset)
     
     fig, ax = plt.subplots(nrows=2, ncols=1,figsize=(10, 6), dpi=100)
@@ -876,7 +1086,8 @@ def plot_technical_indicators(dataset, last_days=90):
 def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90, num_train_days=180,verbose=1, plot=True):
     """Takes the last num_test_days of the time index to use as testing data, and take shte num_Trian_days prior to that date
     as the training data."""
-    
+    from IPython.display import display
+    import matplotlib.pyplot as plt
     # DETERMINING DAY TO USE TO SPLIT DATA INTO TRAIN AND TEST
     day_freq = periods_per_day
     start_train_day = stock_df.index[-1] - num_train_days*day_freq
@@ -978,6 +1189,8 @@ def inverse_transform_series(series, scaler):
     scaler_lib, df_scaled = make_scaler_library(df, transform = True)
     series_inverse_transformed = inverse_transform_series(df['price_data'],scaler_lib['price'])
     """
+    import pandas as pd
+
     series_tf = scaler.inverse_transform(series.values.reshape(-1,1))
     series_tf = pd.Series(series_tf.ravel(), index = series.index, name=series.name)
     return series_tf
@@ -1048,7 +1261,8 @@ def make_X_y_timeseries_data(data,x_window = 35, verbose=2,as_array=True):
 def make_df_timeseries_bins_by_column(df, x_window = 35, verbose=2,one_or_two_dfs = 1): #target_col='price',
     """ Function will take each column from the dataframe and create a train_data dataset  (with X and Y data), with
     each row in X containing x_window number of observations and y containing the next following observation"""
-
+    import pandas as pd
+    import numpy as np
     col_data  = {}
     time_index_for_df = []
     for col in df.columns:
@@ -1112,7 +1326,7 @@ def predict_model_make_results_dict(model,scaler, X_test_in, y_test,test_index,
     original data. 
     By default (return_as_dfs=False): returns the results as a panel (dictioanry of dataframes), with panel['train'],panl['test']
     Setting return_as_dfs=True will return df_train, df_test"""
-    
+    import pandas as pd 
     # Get predictions from model
     predictions = model.predict(X_test_in)
     
@@ -1157,7 +1371,9 @@ def predict_model_make_results_dict(model,scaler, X_test_in, y_test,test_index,
 def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, figsize=(14,5)):
     
     from sklearn.metrics import mean_squared_error
-
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import numpy as np
     # Check for null values
     train_null = train_price.isna().sum()
     test_null = test_price.isna().sum()
@@ -1219,7 +1435,10 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
     
     plt.annotate(f"RMSE: {RMSE.round(3)}",xycoords='figure fraction', xy=(0.085,0.85),bbox=bbox_props)
     plt.tight_layout()
-    return fig, ax
+    if subplots==True:
+        return fig, ax1,ax2
+    else:
+        return fig, ax1
 
 # fig, ax = plot_price_vs_preds(df_train_price['train_price'],df_test_price['test_price'],df_test_price['pred_price'])
 
@@ -1232,11 +1451,11 @@ def print_array_info(X, name='Array'):
     print(f'X[0] contains:\n\t',Xt[0])
 
     
-def get_true_vs_model_pred_df(model, test_generator, test_index, train_generator, train_index, scaler=None,
+def get_true_vs_model_pred_df(model, n_input, test_generator, test_data_index, df_test,df_train, train_generator, train_data_index, scaler=None,
                               inverse_tf=True, plot=True, verbose=2):
     """Accepts a model, the training and testing data TimeseriesGenerators, the test_index and train_index.
     Returns a dataframe with True and Predicted Values for Both the Training and Test Datasets."""
-    
+    import pandas as pd
     ## GET PREDICTIONS FROM MODEL
     test_predictions = pd.Series(model.predict_generator(test_generator).ravel(), 
                                  index=test_data_index[n_input:], name='Predicted Test Price')
@@ -1278,6 +1497,7 @@ def get_true_vs_model_pred_df(model, test_generator, test_index, train_generator
 
 
 def thiels_U(ys_true, ys_pred):
+    import numpy as np
     sum_list = []
     num_list=[]
     denom_list=[]
@@ -1290,7 +1510,11 @@ def thiels_U(ys_true, ys_pred):
     return U        
 
 
-def get_u_for_shifts(shift_list,plot_all=False,plot_best=True):
+def get_u_for_shifts(df_U, shift_list,plot_all=False,plot_best=True):
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    from bs_ds import list2df
+    import pandas as pd
     results=[['true_data_shift','U']]
     
     if plot_all==True:
@@ -1312,7 +1536,7 @@ def get_u_for_shifts(shift_list,plot_all=False,plot_best=True):
         results.append([shift,U])
     
     
-    df_results = bs.list2df(results, index_col='true_data_shift')
+    df_results = list2df(results, index_col='true_data_shift')
     if plot_best==True:
         shift = df_results.idxmin()[0]
         df_U['preds_from_gen'].plot(label = 'Prediction')
@@ -1321,3 +1545,130 @@ def get_u_for_shifts(shift_list,plot_all=False,plot_best=True):
         plt.title("Best Thiel's U for Shifted Time Series")
 #         plt.show()
     return df_results
+
+
+
+
+## TO CHECK FOR STRINGS IN BOTH DATASETS:
+def check_dfs_for_exp_list(df_controls, df_trolls, list_of_exp_to_check):
+    df_resample = df_trolls
+    for exp in list_of_exp_to_check:
+    #     exp = '[Pp]eggy'
+        print(f'For {exp}:')
+        print(f"\tControl tweets: {len(df_controls.loc[df_controls['content_min_clean'].str.contains(exp)])}")
+        print(f"\tTroll tweets: {len(df_resample.loc[df_resample['content_min_clean'].str.contains(exp)])}\n")
+              
+# list_of_exp_to_check = ['[Pp]eggy','[Mm]exico','nasty','impeachment','[mM]ueller']
+# check_dfs_for_exp_list(df_controls, df_resample, list_of_exp_to_check=list_of_exp_to_check)
+
+
+def get_group_texts_tokens(df_small, groupby_col='troll_tweet', group_dict={0:'controls',1:'trolls'}, column='content_stopped'):
+    from nltk import regexp_tokenize
+    pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
+    text_dict = {}
+    for k,v in group_dict.items():
+        group_text_temp = df_small.groupby(groupby_col).get_group(k)[column]
+        group_text_temp = ' '.join(group_text_temp)
+        group_tokens = regexp_tokenize(group_text_temp, pattern)
+        text_dict[v] = {}
+        text_dict[v]['tokens'] = group_tokens
+        text_dict[v]['text'] =  ' '.join(group_tokens)
+            
+    print(f"{text_dict.keys()}:['tokens']|['text']")
+    return text_dict
+
+
+
+def check_df_groups_for_exp(df_full, list_of_exp_to_check, check_col='content_min_clean', groupby_col='troll_tweet', group_dict={0:'Control',1:'Troll'}):      
+    """Checks `check_col` column of input dataframe for expressions in list_of_exp_to_check and 
+    counts the # present for each group, defined by the groupby_col and groupdict. 
+    Returns a dataframe of counts."""
+    from bs_ds import list2df
+    list_of_results = []      
+
+    header_list= ['Term']
+    [header_list.append(x) for x in group_dict.values()]
+    list_of_results.append(header_list)
+    
+    for exp in list_of_exp_to_check:
+        curr_exp_list = [exp]
+        
+        for k,v in group_dict.items():
+            df_group = df_full.groupby(groupby_col).get_group(k)
+            curr_group_count = len(df_group.loc[df_group[check_col].str.contains(exp)])
+            curr_exp_list.append(curr_group_count)
+        
+        list_of_results.append(curr_exp_list)
+        
+    df_results = list2df(list_of_results, index_col='Term')
+    return df_results
+
+
+###########################################################################
+
+def plot_fit_cloud(troll_cloud,contr_cloud,label1='Troll',label2='Control'):
+    import matplotlib.pyplot as plt
+    fig,ax = plt.subplots(nrows=1,ncols=2,figsize=(18,18))
+
+    ax[0].imshow(troll_cloud, interpolation='gaussian')
+    # ax[0].set_aspect(1.5)
+    ax[0].axis("off")
+    ax[0].set_title(label1, fontsize=40)
+
+    ax[1].imshow(contr_cloud, interpolation='bilinear',)
+    # ax[1].set_aspect(1.5)
+    ax[1].axis("off")
+    ax[1].set_title(label2, fontsize=40)
+    plt.tight_layout()
+    return fig, ax
+
+
+def display_random_tweets(df_tokenize,n=5 ,display_cols=['content','text_for_vectors','tokens'], group_labels=[],verbose=True):
+    """Takes df_tokenize['text_for_vectors']"""
+    import numpy as np
+    import pandas as pd 
+    from IPython.display import display
+    if len(group_labels)==0:
+
+        group_labels = display_cols
+
+    
+    random_tweets={}
+    # Randomly pick n indices to display from specified col
+    idx = np.random.choice(range(len(df_tokenize)), n)
+    
+    for i in range(len(display_cols)):
+        
+        group_name = str(group_labels[i])
+        random_tweets[group_name] ={}
+
+        # Select column data
+        df_col = df_tokenize[display_cols[i]]
+        
+
+        tweet_group = {}
+        tweet_group['index'] = idx
+        
+        chosen_tweets = df_col[idx]
+        tweet_group['text'] = chosen_tweets
+
+        # print(chosen_tweets)
+        if verbose>0:
+            with pd.option_context('max_colwidth',300):
+                df_display = pd.DataFrame.from_dict(tweet_group)
+                display(df_display.style.set_caption(f'Group: {group_name}'))
+
+
+        random_tweets[group_name] = tweet_group
+        
+        # if verbose>0:
+              
+        #     for group,data in random_tweets.items():
+        #         print(f'\n\nRandom Tweet for {group:>.{300}}:\n{"---"*20}')
+
+        #         df = random_tweets[group]
+        #         display(df)
+    if verbose==0:
+        return random_tweets
+    else:
+        return
