@@ -1,5 +1,10 @@
 # functions_combined.py
 # from mod4functions_JMI import *
+import pandas as pd
+import numpy as np 
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import bs_ds as bs
 print('For detailed help as well as source code, use `ihelp(function)`')
 
 def reload(mod):
@@ -74,13 +79,15 @@ def empty_lists_to_strings(x):
     else:
         return ' '.join(x) #' '.join(tokens)
 
-def load_raw_twitter_file(filename = '../trump_tweets_01202017_06202019.csv', rename_map={'text':'content','created_at':'date'}):
+def load_raw_twitter_file(filename = 'data/trump_tweets_01202017_06202019.csv', date_as_index=True,rename_map={'text':'content','created_at':'date'}):
     import pandas as pd
 
     df = pd.read_csv(filename, encoding='utf-8')
     mapper=rename_map
     df.rename(axis=1,mapper=mapper,inplace=True)
     df['date']=pd.to_datetime(df['date'])
+    if date_as_index==True:
+        df.set_index('date',inplace=True,drop=False)
     # df.head()
     return df
 
@@ -1672,3 +1679,92 @@ def display_random_tweets(df_tokenize,n=5 ,display_cols=['content','text_for_vec
         return random_tweets
     else:
         return
+
+
+
+
+
+###################### TWITTER AND STOCK PRICE DATA ######################
+## twitter_df, stock_price = load_twitter_df_stock_price()
+## twitter_df = get_stock_prices_for_twitter_data(twitter_df, stock_prices)
+#  
+def load_twitter_df_stock_price():# del stock_price
+    try: stock_price
+    except NameError: stock_price = None
+    if stock_price is  None:    
+        print('loading stock_price')
+        stock_price = load_stock_price_series()
+    else:
+        print('using pre-existing stock_price')
+
+    # Make sure stock_price is loaded as minute data
+    stock_price = stock_price.asfreq('T')
+    stock_price.dropna(inplace=True)
+    stock_price.sort_index(inplace=True)
+
+    ## LOAD TWEETS, SELECT THE PROPER DATE RANGE AND COLUMNS
+    # twitter_df = load_twitter_df(verbose=0)
+    try: twitter_df
+    except NameError: twitter_df=None
+    if twitter_df is None:
+        print('Loading twitter_df')
+        twitter_df= load_raw_twitter_file()
+        twitter_df = full_twitter_df_processing(twitter_df,cleaned_tweet_col='clean_content')
+
+    stock_price.sort_index(inplace=True)
+    twitter_df.sort_index(inplace=True)
+    
+    display(twitter_df.head())
+    print(stock_price.index[0],stock_price.index[-1])
+    print(twitter_df.index[0],twitter_df.index[-1])
+    
+    return twitter_df, stock_price
+
+def get_stock_prices_for_twitter_data(twitter_df, stock_prices):
+    # Get get the business day index to account for tweets during off-hours
+    twitter_df = get_B_day_time_index_shift(twitter_df,verbose=1)
+
+    # Make temporary B_dt_index var in order to round that column to minute-resolution
+    B_dt_index = twitter_df[['B_dt_index','B_day']]#.asfreq('T')
+    B_dt_index['B_dt_index']= pd.to_datetime(B_dt_index['B_dt_index'])
+    B_dt_index['B_dt_index']= B_dt_index['B_dt_index'].dt.round('T')
+
+    # Get stock_prices for each twitter timestamp
+    twitter_df['B_dt_minutes'] = B_dt_index['B_dt_index'].copy()
+    twitter_df['stock_price_results'] = twitter_df['B_dt_minutes'].apply(lambda x: match_stock_price_to_tweets(x,time_after_tweet=60,stock_price=stock_price))
+    
+    df_to_add = twitter_df['stock_price_results'].apply(lambda x: unpack_match_stocks(x))
+
+    new_twitter_df = pd.concat([twitter_df,df_to_add], axis=1)
+
+
+    twitter_df = new_twitter_df.loc[~new_twitter_df['post_tweet_price'].isna()]
+    # twitter_df.drop(['0'],axis=1,inplace=True)
+    twitter_df['delta_price_class'] = np.where(twitter_df['delta_price'] > 0,'pos','neg')
+
+    twitter_df.drop([0],axis=1, inplace=True)
+    # display(twitter_df.head())
+    print(twitter_df.isna().sum())
+    
+    return twitter_df
+
+
+
+
+def train_test_val_split(X,y,test_size=0.20,val_size=0.1):
+    """Performs 2 successive train_test_splits to produce a training, testing, and validation dataset"""
+    from sklearn.model_selection import train_test_split
+
+    if val_size==0:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+        return X_train, X_test, y_train, y_test
+    else:
+
+        first_split_size = test_size + val_size
+        second_split_size = val_size/(test_size + val_size)
+
+        X_train, X_test_val, y_train, y_test_val = train_test_split(X, y, test_size=first_split_size)
+
+        X_test, X_val, y_test, y_val = train_test_split(X_test_val, y_test_val, test_size=second_split_size)
+
+        return X_train, X_test, X_val, y_train, y_test, y_val
