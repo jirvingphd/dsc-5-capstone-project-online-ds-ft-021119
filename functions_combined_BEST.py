@@ -1,43 +1,158 @@
+def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technical_indicators.csv'):
+    import os
+    import pandas as pd
+    current_files = os.listdir()
+
+    processed_data_filename = filename#'_stock_df_with_technical_indicators.csv'
+
+    # check if csv already exists
+    if processed_data_filename not in current_files:
+
+        stock_df.to_csv(processed_data_filename)
+
+    # Ask the user to overwrite existing file
+    else:
+
+        print('File already exists.')
+        check = input('Overwrite?(y/n):')
+
+        if check.lower() == 'y':
+            stock_df.to_csv(processed_data_filename)
+            print(f'File {processed_data_filename} was saved.')
+    
+        else:
+            print('No file was saved.')
+
+# def import_packages(import_list_of_tuples = None,  display_table=True): #append_to_default_list=True, imports_have_description = True):
+#     """Uses the exec function to load in a list of tuples with:
+#     [('module','md','example generic tuple item')] formatting.
+#     >> Default imports_list:
+#     [('pandas',     'pd',   'High performance data structures and tools'),
+#     ('numpy',       'np',   'scientific computing with Python'),
+#     ('matplotlib',  'mpl',  "Matplotlib's base OOP module with formatting artists"),
+#     ('matplotlib.pyplot',   'plt',  "Matplotlib's matlab-like plotting module"),
+#     ('seaborn',     'sns',  "High-level data visualization library based on matplotlib"),
+#     ('bs_ds','bs','Custom data science bootcamp student package')]
+#     """
+
+
+#     # import_list=[]
+#     from IPython.display import display
+#     import pandas as pd
+#     # if using default import list, create it:
+#     if (import_list_of_tuples is None): #or (append_to_default_list is True):
+#         import_list = [('pandas','pd','High performance data structures and tools'),
+#         ('numpy','np','scientific computing with Python'),
+#         ('matplotlib','mpl',"Matplotlib's base OOP module with formatting artists"),
+#         ('matplotlib.pyplot','plt',"Matplotlib's matlab-like plotting module"),
+#         ('seaborn','sns',"High-level data visualization library based on matplotlib"),
+#         ('bs_ds','bs','Custom data science bootcamp student package')]
+
+#     # if using own list, rename to 'import_list'
+#     else:
+#         import_list = import_list_of_tuples
+#     # if (import_list_of_tuples is not None) and (append_to_default_list is True):
+#     #     [import_list.append(mod) for mod in import_list_of_tuples]
+
+
+#     def global_imports(modulename,shortname = None, asfunction = False):
+#         """from stackoverflow: https://stackoverflow.com/questions/11990556/how-to-make-global-imports-from-a-function,
+#         https://stackoverflow.com/a/46878490"""
+#         from importlib import import_module
+
+
+#         if shortname is None:
+#             shortname = modulename
+
+#         if asfunction is False:
+#             globals()[shortname] = import_module(modulename) #__import__(modulename)
+#         else:
+#             globals()[shortname] = eval(modulename + "." + shortname)
+
+
+#     # Use exec command to create global handle variables and then load in package as that handle
+#     for package_tuple in import_list:
+#         package=package_tuple[0]
+#         handle=package_tuple[1]
+#         # old way: # exec(f'import {package} as {handle}')
+#         global_imports(package,handle)
+
+
+#     # Display summary dataframe
+#     if display_table==True:
+#         ## Create Columns Names List
+#         # if imports_have_description==False:
+#             # columns=['Package','Handle']
+#         # else:
+#             # columns=['Package','Handle','Description']
+
+#         # create and return styled dataframe
+#         columns=['Package','Handle','Description']
+#         df_imported= pd.DataFrame(import_list, columns=columns)
+#         dfs = df_imported.sort_values('Package').style.hide_index().set_caption('Loaded Packages and Handles')
+#         display(dfs)
+
+#     # or just print statement
+#     else:
+#         return print('Modules successfully loaded.')
+
+# import_packages()
+
+
 # functions_combined.py
 # from mod4functions_JMI import *
-import pandas as pd
-import numpy as np 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import bs_ds as bs
-print('For detailed help as well as source code, use `ihelp(function)`')
+# import pandas as pd
+# import numpy as np 
+# import matplotlib.pyplot as plt
+# import matplotlib as mpl
+# import bs_ds as bs
+# print('For detailed help as well as source code, use `ihelp(function)`')
+def global_imports(modulename,shortname = None, asfunction = False):
+    """from stackoverflow: https://stackoverflow.com/questions/11990556/how-to-make-global-imports-from-a-function,
+    https://stackoverflow.com/a/46878490"""
+    from importlib import import_module
+
+    if shortname is None:
+        shortname = modulename
+
+    if asfunction is False:
+        globals()[shortname] = import_module(modulename) #__import__(modulename)
+    else:
+        globals()[shortname] = eval(modulename + "." + shortname)
+
 
 def reload(mod):
     """Reloads the module from file."""
     from importlib import reload
     import sys
-    print(f'Reloading...')
+    print(f'Reloading...\n')
     return  reload(mod)
 
 
-def ihelp(any_function, show_help=True, show_code=True, get_source=True): 
-    """Call on any module or functon to display:
-    - help(any_function)
-    - source_df = inspect.getsource(any_function)
-    inspect.get)"""
+def ihelp(any_function, show_help=False, show_code=True): 
+    """Call on any module or functon to display the object's
+    help command printout AND/OR soruce code displayed as Markdown
+    using Python-syntax"""
+
     import inspect
-    import pprint as pp
+    from IPython.display import display, Markdown
+    
     if show_help:
         
-        print("---"*40)
+        print("---"*35)
         print("---"*3,'\tHELP:\t',"---"*30)
-        print("---"*40)
+        print("---"*35)
         help(any_function)
-#         print('\n\n',"---"*20,'\n')
         
-    if show_code or get_source:
+    if show_code:
         
         import inspect
         source_DF = inspect.getsource(any_function)
-        print("---"*40)
-        print("---"*3,'\tSOURCE:\t',"---"*30)
-        print("---"*40)
-        print(source_DF)    
+
+        display(Markdown('##### SOURCE CODE:\n ____'))
+        output = "```python" +'\n'+source_DF+'\n'+"```\n___"
+        # print(source_DF)    
+        display(Markdown(output))
 
 
 ################################################### ADDITIONAL NLP #####################################################
@@ -91,8 +206,71 @@ def load_raw_twitter_file(filename = 'data/trump_tweets_01202017_06202019.csv', 
     # df.head()
     return df
 
-def full_twitter_df_processing(df,raw_tweet_col='content', cleaned_tweet_col='content', RT=True, urls=True,
- hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
+
+
+
+## NEW 07/11/19 - function for all sentiment analysis
+
+def full_sentiment_analysis(twitter_df, source_column='content_min_clean',separate_cols=True):#, plot_results=True):
+    from nltk.sentiment.vader import SentimentIntensityAnalyzer
+    sid = SentimentIntensityAnalyzer()
+
+    source_column='content_min_clean'
+    twitter_df['sentiment_scores'] = twitter_df[source_column].apply(lambda x: sid.polarity_scores(x))
+    twitter_df['compound_score'] = twitter_df['sentiment_scores'].apply(lambda dict: dict['compound'])
+    twitter_df['sentiment_class'] = twitter_df['compound_score'].apply(lambda score: 'pos' if score >=0 else 'neg')
+    
+    
+    # Separate result dictionary into columns  (optional)
+    if separate_cols==True:
+        # Separate Scores into separate columns in df
+        twitter_df_out = get_group_sentiment_scores(twitter_df)
+    else:
+        twitter_df_out = twitter_df
+        
+    
+#     # plot results (optional)
+#     if plot_results==True:
+        
+#         print("RESULTS OF SENTIMENT ANALYSIS BINARY CLASSIFICATION:\n",'-'*60)
+#         # Normalized % of troll sentiment classes
+#         plot_sent_class = twitter_df_out['sentiment_class'].value_counts()
+#         plot_sent_class_norm = plot_sent_class/(sum(plot_sent_class))
+#         print('\tNormalized Troll Classes:\n',plot_sent_class_norm)
+
+
+#         with plt.style.context('seaborn-notebook'):
+#             boxplot = df_sents.boxplot(column=['neg','neu','pos'],notch=True,figsize=(6,4))
+#             boxplot.set_xticklabels(['Negative','Neutral','Positive']);
+#             boxplot.set_title('Sentiment Scores By Word Type')
+#             boxplot.set_ylabel('Sentiment Score')
+    
+    return twitter_df_out
+        
+        
+
+# Write a function to extract the group scores from the dataframe
+def get_group_sentiment_scores(df, score_col='sentiment_scores'):
+    import pandas as pd
+    series_df = df[score_col]
+    series_neg = series_df.apply(lambda x: x['neg'])
+    series_pos = series_df.apply(lambda x: x['pos'])
+    series_neu = series_df.apply(lambda x: x['neu'])
+    
+    series_neg.name='neg'
+    series_pos.name='pos'
+    series_neu.name='neu'
+    
+    df = pd.concat([df,series_neg,series_neu,series_pos],axis=1)
+    return df
+
+
+
+
+
+
+def full_twitter_df_processing(df,raw_tweet_col='content', cleaned_tweet_col='content', case_ratio_col='content_min_clean', 
+sentiment_analysis_col='content_min_clean', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
     """Accepts df_full, which contains the raw tweets to process, the raw_col name, the column to fill.
     If force=False, returns error if the fill_content_col already exists.
     Processing Workflow:1) Create has_RT, starts_RT columns. 2) Creates [fill_content_col,`content_min_clean`] cols after removing 'RT @mention:' and urls.
@@ -201,12 +379,19 @@ def full_twitter_df_processing(df,raw_tweet_col='content', cleaned_tweet_col='co
     if len(stopwords_list)==0:
         stopwords_list=make_stopwords_list()
 
-    df[stop_col_name] = df[fill_content_col].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=False))
-    df[stop_tok_col_name] = df[stop_col_name].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=True))
+    df[stop_col_name] = df[fill_content_col].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=False, pattern=pattern))
+    df[stop_tok_col_name] = df[stop_col_name].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=True, pattern=pattern))
 
     
-    ## New addition
+    ## Case Ratio Calculation (optional)
+    if case_ratio_col is not None:
+        df['case_ratio'] = df[case_ratio_col].apply(lambda x: case_ratio(x))
+
+    ## Sentiment Analysis (optional)
+    if sentiment_analysis_col is not None:
+        df = full_sentiment_analysis(df,source_column=sentiment_analysis_col,separate_cols=True)
     
+    df.sort_index(inplace=True)
     return df
 
 
@@ -226,7 +411,7 @@ def case_ratio(msg):
 
 
 #################################################### STOCK ##############################################################
-def df_column_report(twitter_df, sort_column=None, ascending=True, interactive=True):
+def twitter_column_report(twitter_df, decision_map=None, sort_column=None, ascending=True, interactive=True):
     from ipywidgets import interact
     import pandas as pd
     df_dtypes=pd.DataFrame()
@@ -235,7 +420,7 @@ def df_column_report(twitter_df, sort_column=None, ascending=True, interactive=T
     
     decision_map = {'object':'join','int64':'sum','bool':'to_list()?','float64':'drop and recalculate'}
     
-    df_dtypes['action'] = df_dtypes['Data Types'].map(decision_map)#column_list
+    df_dtypes['Action'] = df_dtypes['Data Types'].map(decision_map)#column_list
 #     df_dtypes.style.set_caption('DF Columns, Dtypes, and Course of Action')
     
     if sort_column is not None:
@@ -250,23 +435,60 @@ def df_column_report(twitter_df, sort_column=None, ascending=True, interactive=T
 
 
 
-def make_half_hour_range(twitter_df):
-    import pandas as pd
-    # Get timebin before the first timestamp that starts at 30m into the hour
-    ofst_30m_early=pd.offsets.Minute(-30)
-    start_idx = ofst_30m_early(twitter_df['date'].iloc[0].floor('H'))
+# def make_half_hour_range(twitter_df):
+#     """Takes a df, rounds first timestamp down to nearest hour, last timestamp rounded up to hour.
+#     Creates 30 minute intervals based that encompass all data."""
+#     import pandas as pd
+#     # Get timebin before the first timestamp that starts at 30m into the hour
+#     ofst_30m_early=pd.offsets.Minute(-30)
+#     start_idx = ofst_30m_early(twitter_df['date'].iloc[0].floor('H'))
 
-    # Get timbin after last timestamp that starts 30m into the hour.
-    ofst_30m_late =pd.offsets.Minute(30)
-    end_idx= ofst_30m_late(twitter_df['date'].iloc[-1].ceil('H'))
+#     # Get timbin after last timestamp that starts 30m into the hour.
+#     ofst_30m_late =pd.offsets.Minute(30)
+#     end_idx= ofst_30m_late(twitter_df['date'].iloc[-1].ceil('H'))
+
+
+#     # Make time bins using the above start and end points 
+#     half_hour_range = pd.date_range(start =start_idx, end = end_idx, freq='30T')#.to_period()
+#     half_hour_intervals = pd.interval_range(start=start_idx, end=end_idx,freq='30T',name='half_hour_bins',closed='left')
+    
+#     return half_hour_intervals
+def make_time_index_intervals(twitter_df,col ='date', start=None,end=None, freq='CBH',num_offset=1):
+    """Takes a df, rounds first timestamp down to nearest hour, last timestamp rounded up to hour.
+    Creates 30 minute intervals based that encompass all data."""
+    import pandas as pd
+    
+    if freq=='CBH':
+        freq=pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30')
+        ofst = pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
+        ofst_early = pd.offsets.CustomBusinessHour(n=-num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
+    if freq=='T':
+        ofst = pd.offsets.Minute(n=num_offset)
+        ofst_early = pd.offsets.Minute(n=-num_offset)
+        
+    if freq=='H':
+        ofst = pd.offsets.Hour(n=num_offset)
+        ofst_early=pd.offsets.Hour(n=-num_offset)
+
+        
+    if start is None:
+        # Get timebin before the first timestamp that starts     
+        start_idx = ofst.rollback(twitter_df[col].iloc[0])#.floor('H'))
+    else:
+        start_idx = pd.to_datetime(start)
+
+    if end is None:
+        # Get timbin after last timestamp that starts 30m into the hour.
+        end_idx= ofst.rollforward(twitter_df[col].iloc[-1])#.ceil('H'))
+    else:
+        end_idx = pd.to_datetime(end)
 
 
     # Make time bins using the above start and end points 
-    half_hour_range = pd.date_range(start =start_idx, end = end_idx, freq='30T')#.to_period()
-    half_hour_intervals = pd.interval_range(start=start_idx, end=end_idx,freq='30T',name='half_hour_bins',closed='left')
+    time_range = pd.date_range(start =start_idx, end = end_idx, freq=freq)#.to_period()
+    time_intervals = pd.interval_range(start=start_idx, end=end_idx,freq=freq,name='interval_index',closed='left')
     
-    return half_hour_intervals
-
+    return time_intervals
 
 
 #***########### FUNCTIONS FOR RESAMPLING AND BINNING TWITTER DATA
@@ -296,11 +518,15 @@ def int_to_ts(int_list, as_datetime=False, as_str=True):
     
     
 # Step 1:     
-def bin_df_by_date_intervals(test_df,half_hour_intervals,column='date'):
-    """"""
+def bin_df_by_date_intervals(test_df,time_intervals,column='date'):
+    """Uses pd.cut with half_hour_intervals on specified column.
+    Creates a dictionary/map of integer bin codes. 
+    Adds column"int_bins" with int codes.
+    Adds column "left_edge" as datetime object representing the beginning of the time interval. 
+    Returns the updated test_df and a list of bin_codes."""
     import pandas as pd
     # Cut The Date column into interval bins, 
-    cut_date = pd.cut(test_df[column], bins=half_hour_intervals)#,labels=list(range(len(half_hour_intervals))), retbins=True)
+    cut_date = pd.cut(test_df[column], bins=time_intervals)#,labels=list(range(len(half_hour_intervals))), retbins=True)
     test_df['int_times'] = cut_date    
     
     # convert to str to be used as group names/codes
@@ -370,36 +596,76 @@ def concatenate_group_data(group_df_or_series):
 
 
 #***#
-def collapse_df_by_group_indices(twitter_df,group_indices, new_col_order=None):
+# def collapse_df_by_group_indices(twitter_df,group_indices, new_col_order=None):
+#     """Loops through the group_indices provided to concatenate each group into
+#     a single row and combine into one dataframe with the ______ as the index"""
+
+#     import pandas as pd
+#     # Create a Panel to temporarily hold the group series and dataframes
+#     # group_dict_to_df = {}
+#     # create a dataframe with same columns as twitter_df, and index=group ids from twitter_groups
+#     group_df_index = [x[0] for x in group_indices]
+    
+    
+#     twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=group_df_index)
+#     twitter_grouped['TweetFreq'] =0
+
+#     for (idx,group_members) in group_indices:
+
+#         group_df = twitter_df.loc[group_members]
+
+#         combined_series = concatenate_group_data(group_df)
+
+# #         twitter_grouped.loc[idx,:] = combined_series
+#         twitter_grouped.loc[idx] = combined_series#.values
+
+#     if new_col_order==None:
+#         return twitter_grouped
+    
+#     else:
+#         df_out = twitter_grouped[new_col_order].copy()
+#         df_out.index = group_df_index#twitter_grouped.index
+#         return df_out
+def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins', new_col_order=None):
     """Loops through the group_indices provided to concatenate each group into
     a single row and combine into one dataframe with the ______ as the index"""
 
     import pandas as pd
+
+
     # Create a Panel to temporarily hold the group series and dataframes
     # group_dict_to_df = {}
     # create a dataframe with same columns as twitter_df, and index=group ids from twitter_groups
+        
+    group_indices = twitter_df.groupby(group_index_col).groups
+    group_indices = [(k,v) for k,v in group_indices.items()]
     group_df_index = [x[0] for x in group_indices]
     
     
+    # Create empty shell of twitter_grouped dataframe
     twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=group_df_index)
     twitter_grouped['TweetFreq'] =0
 
+    
+    # Loop through each group_indices
     for (idx,group_members) in group_indices:
 
         group_df = twitter_df.loc[group_members]
 
+        # Call on concatenate_group_data to handle the merging of rows
         combined_series = concatenate_group_data(group_df)
 
 #         twitter_grouped.loc[idx,:] = combined_series
         twitter_grouped.loc[idx] = combined_series#.values
 
+    # Update Column order, if requested, otherwise return twitter_grouped
     if new_col_order==None:
         return twitter_grouped
-    
     else:
         df_out = twitter_grouped[new_col_order].copy()
         df_out.index = group_df_index#twitter_grouped.index
         return df_out
+
 
 
 def load_stock_price_series(filename='IVE_bidask1min.txt', 
@@ -478,32 +744,35 @@ def is_var(name):
         return True      
     
 #################### TIMEINDEX FUNCTIONS #####################
-def get_day_window_size_from_freq(dataset):#, freq='CBH'):
+
+def custom_BH_freq():
+    import pandas as pd
+    CBH = pd.tseries.offsets.CustomBusinessHour(start='09:30',end='16:30')
+    return CBH
+
+def get_day_window_size_from_freq(dataset, CBH=custom_BH_freq()):#, freq='CBH'):
     
-    if dataset.index.freq == custom_BH_freq():
-        return 7
+    if dataset.index.freq == CBH: #custom_BH_freq():
+        day_window_size =  7
     
-    if dataset.index.freq=='T':
+    elif dataset.index.freq=='T':
         day_window_size = 60*24
     elif dataset.index.freq=='BH':
         day_window_size = 8
-#     elif dataset.index.freq=='CBH':
-#         day_window_size = 7
+    elif dataset.index.freq=='H':
+        day_window_size =24
+
     elif dataset.index.freq=='B':
         day_window_size=1
     elif dataset.index.freq=='D':
         day_window_size=1
         
     else:
-        raise Exception('dataset freq=None')
+        raise Exception(f'dataset freq={dataset.index.freq}')
         
     return day_window_size
     
 
-def custom_BH_freq():
-    import pandas as pd
-    CBH = pd.tseries.offsets.CustomBusinessHour(start='09:30',end='16:30')
-    return CBH
     
     
 def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill',
@@ -603,8 +872,8 @@ def check_null_times(x):
 ##################### DATASET LOADING FUNCTIONS #####################   
 def load_raw_stock_data_from_txt(filename='IVE_bidask1min.txt', 
                                folderpath='data/',
-                               start_index = '2017-01-23',
-                                 clean=False,fill_or_drop_null='drop',fill_method='ffill',
+                               start_index = '2016-12-31',
+                                 clean=True,fill_or_drop_null='drop',fill_method='ffill',
                                  freq='CBH',verbose=2):
     import pandas as pd
     import numpy as np
@@ -616,45 +885,44 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min.txt',
     stock_df = pd.read_csv(fullfilename, names=headers,parse_dates=True)
     
     # Create datetime index
-    date_time_index = stock_df['Date']+' '+stock_df['Time']
-    date_time_index = pd.to_datetime(date_time_index)
-    stock_df.index=date_time_index
+    date_time_index = (stock_df['Date']+' '+stock_df['Time']).rename('date_time_index')
+    stock_df['date_time_index'] = pd.to_datetime(date_time_index)
+    stock_df.set_index('date_time_index', inplace=True, drop=False)
     
     # Select only the days after start_index
     stock_df = stock_df[start_index:]
+    # print(f'\nRestricting stock_df to index {start_index}-forward')
     
     # Remove 0's from BidClose
     if clean==True:
-        
+        print(f"There are {len(stock_df.loc[stock_df['BidClose']==0])} '0' values for 'BidClose'")
         stock_df.loc[stock_df['BidClose']==0] = np.nan
         num_null = stock_df['BidClose'].isna().sum()
-        print(f'{num_null} null values to address.')
+        print(f'\tReplaced 0 with np.nan. There are {num_null} null values to address.')
         
         if fill_or_drop_null=='drop':
-            print("Since fill_or_drop_null=drop, dropping null values.")
+            print("\tSince fill_or_drop_null=drop, dropping null values from BidClose.")
             stock_df.dropna(subset=['BidClose'],axis=0, inplace=True)
+
         elif fill_or_drop_null=='fill':
-            print(f"Since fill_or_drop_null=fill, using fill_method={fill_method} to fill.")
+            print(f"\tSince fill_or_drop_null=fill, using fill_method={fill_method} to fill BidClose.")
 
             stock_df['BidClose'].fillna(method=fill_method, inplace=True)
         
-        if verbose>0:
-            print(f"Number of 0 values:\n{len(stock_df.loc[stock_df['BidClose']==0])}")
-            print(f"Filling 0 values using method = {fill_method}")
-            
-
-
-                  
+        # if verbose>0:
+            # print(f"Number of 0 values:\n{len(stock_df.loc[stock_df['BidClose']==0])}")
+            # print(f"Filling 0 values using method = {fill_method}")
     # call set_timeindex_freq to specify proper frequency
     if freq!=None:
         # Set the time index .
+        print(f'Setting the timeindex to freq{freq}')
         stock_df = set_timeindex_freq(stock_df, freq=freq, fill_method = fill_method, verbose=verbose)
                   
     # Display feedback
     if verbose>0:
         display(stock_df.head())
     if verbose>1:
-        print(stock_df.index)
+        print(stock_df.index[[0,-1]],stock_df.index.freq)
 
     return stock_df
 
@@ -773,6 +1041,34 @@ def stationarity_check(df, col='BidClose', window=80, freq='BH'):
     
     return None
 
+
+
+def adf_test(series,title=''):
+    """
+    Pass in a time series and an optional title, returns an ADF report
+    # UDEMY COURSE ALTERNATIVE TO STATIONARITY CHECK
+    """
+    from statsmodels.tsa.stattools import adfuller
+    import pandas as pd 
+    print(f'Augmented Dickey-Fuller Test: {title}')
+    result = adfuller(series.dropna(),autolag='AIC') # .dropna() handles differenced data
+    
+    labels = ['ADF test statistic','p-value','# lags used','# observations']
+    out = pd.Series(result[0:4],index=labels)
+
+    for key,val in result[4].items():
+        out[f'critical value ({key})']=val
+        
+    print(out.to_string())          # .to_string() removes the line "dtype: float64"
+    
+    if result[1] <= 0.05:
+        print("Strong evidence against the null hypothesis")
+        print("Reject the null hypothesis")
+        print("Data has no unit root and is stationary")
+    else:
+        print("Weak evidence against the null hypothesis")
+        print("Fail to reject the null hypothesis")
+        print("Data has a unit root and is non-stationary")
 
 ######## SEASONAL DECOMPOSITION    
 def plot_decomposition(TS, decomposition, figsize=(12,8),window_used=None):
@@ -1089,27 +1385,38 @@ def plot_technical_indicators(dataset, last_days=90):
 #     ax[1].legend()
     plt.delaxes(ax[1])
     plt.show()
-    
+    return fig
+
+
+
 def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90, num_train_days=180,verbose=1, plot=True):
     """Takes the last num_test_days of the time index to use as testing data, and take shte num_Trian_days prior to that date
     as the training data."""
     from IPython.display import display
     import matplotlib.pyplot as plt
-    # DETERMINING DAY TO USE TO SPLIT DATA INTO TRAIN AND TEST
-    day_freq = periods_per_day
-    start_train_day = stock_df.index[-1] - num_train_days*day_freq
-    last_day = stock_df.index[-1] - num_test_days*day_freq
-    
-    train_data = stock_df.loc[start_train_day:last_day]#,'price']
-    test_data = stock_df.loc[last_day:]#,'price']
-    
-    if verbose>0:
-        print(f'Data split on index:\t{last_day}.')
 
     if verbose>1:
-        print(f'Train Data Date Range:\t{start_train_day} \t {last_day}.')
-        print(f'Test Data Date Range:\t{last_day} \t {stock_df.index[-1]}.')
-        print(f'\ttrain_data.shape:\t{train_data.shape}, test_data.shape:{test_data.shape}')
+        print(f'Data index (freq={stock_df.index.freq}')
+        print(f'index[0] = {stock_df.index[0]}, index[-1]={stock_df.index[-1]}')
+    
+    # DETERMINING DAY TO USE TO SPLIT DATA INTO TRAIN AND TEST
+    day_freq = periods_per_day
+    start_train_day =  stock_df.index[-1] - (num_train_days+num_test_days )*day_freq
+    last_train_day = stock_df.index[-1] - num_test_days*day_freq
+    # start_train_day = stock_df.index[-1] - num_train_days*day_freq
+    # last_day = stock_df.index[-1] - num_test_days*day_freq
+    
+    train_data = stock_df.loc[start_train_day:last_train_day]#,'price']
+    test_data = stock_df.loc[last_train_day:]#,'price']
+
+    # train_data = stock_df.loc[start_train_day:last_day]#,'price']
+    # test_data = stock_df.loc[last_day:]#,'price']
+    
+    if verbose>0:
+        print(f'Data split on index:\t{last_train_day}:')
+        print(f'training dates:\t{train_data.index[0]} \t {train_data.index[-1]}.')
+        print(f'test dates:\t{test_data.index[0]} \t {test_data.index[-1]}.')
+        # print(f'\ttrain_data.shape:\t{train_data.shape}, test_data.shape:{test_data.shape}')
         
     if verbose>1:
         display(train_data.head(3).style.set_caption('Training Data'))
@@ -1122,16 +1429,17 @@ def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90
         elif 'price_labels' in stock_df.columns:
             plot_col = 'price_labels'
         
+        fig = plt.figure(figsize=(8,4))
         train_data[plot_col].plot(label='Training')
         test_data[plot_col].plot(label='Test')
         plt.title('Training and Test Data for S&P500')
         plt.ylabel('Price')
         plt.xlabel('Trading Date/Hour')
-        plt.legend();
+        plt.legend()
+        plt.show()
     
     return train_data, test_data
 
-# train_data, test_data = train_test_split_by_last_days(stock_df)
 
 
 
@@ -1190,7 +1498,7 @@ def transform_cols_from_library(df,scaler_library,inverse=False,columns=[]):
         df_out[col] = scaled_col.ravel()
     return df_out
 
-def inverse_transform_series(series, scaler):
+def inverse_transform_series(series, scaler, override_range_warning=False):
     """Takes a series of df column and a fit scaler. Intended for use with make_scaler_library's dictionary
     Example Usage:
     scaler_lib, df_scaled = make_scaler_library(df, transform = True)
@@ -1198,6 +1506,28 @@ def inverse_transform_series(series, scaler):
     """
     import pandas as pd
 
+
+    # Extract info on the original dataset to check aginast
+    orig_min = scaler.data_min_
+    orig_max = scaler.data_max_
+    tf_range = scaler.feature_range
+
+    # Extract stats on input series to be tf
+    data_min = series.min()
+    data_max = series.max()
+
+    # Check if the input series' results are an order of magnitude[?] bigger than orig data
+    if (data_max - data_min) > (5*(tf_range[1]-tf_range[0])):
+        message ="Input Series range is more than 5x  scalers' original output feature_range. Verify the series has not already been inverse-tfd."
+
+        if override_range_warning is True:
+            import warnings
+            warnings.warn(message)
+        else:
+            raise Exception(message)
+
+
+    # Inverse TF and Return the data as a series
     series_tf = scaler.inverse_transform(series.values.reshape(-1,1))
     series_tf = pd.Series(series_tf.ravel(), index = series.index, name=series.name)
     return series_tf
@@ -1374,30 +1704,39 @@ def predict_model_make_results_dict(model,scaler, X_test_in, y_test,test_index,
         return df_train_data, df_test_data
 
     
-    
-def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, figsize=(14,5)):
+
+#BOOKMARK    
+def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, verbose=0,figsize=(12,5)):
     
     from sklearn.metrics import mean_squared_error
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     import numpy as np
+    
     # Check for null values
     train_null = train_price.isna().sum()
     test_null = test_price.isna().sum()
     pred_null = pred_price.isna().sum()
+    
     null_test = train_null + test_null+pred_null
+
+
     if null_test>0:
-        print(f'Dropping {null_test} null values.')
+        
         train_price.dropna(inplace=True)
         test_price.dropna(inplace=True)
         pred_price.dropna(inplace=True)
+        
+        if verbose>0:
+            print(f'Dropping {null_test} null values.')
+
 
     ## CREATE FIGURE AND AX(ES)
     if subplots==True:
-        fig = plt.figure(figsize=figsize)#, constrained_layout=True)
-        ax1 = plt.subplot2grid((2, 9), (0, 0), rowspan=2, colspan=5)
-        ax2 = plt.subplot2grid((2, 9),(0,5), rowspan=2, colspan=4)
-#         plt.tight_layout()
+        # fig = plt.figure(figsize=figsize)#, constrained_layout=True)
+        # ax1 = plt.subplot2grid((2, 9), (0, 0), rowspan=2, colspan=4)
+        # ax2 = plt.subplot2grid((2, 9),(0,4), rowspan=2, colspan=5)
+        fig, (ax1,ax2) = plt.subplots(figsize=figsize, nrows=1, ncols=2, sharey=False)
     else:
         fig, ax1 = plt.subplots(figsize=figsize)
 
@@ -1406,12 +1745,11 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
     style_dict = {'train':{},'test':{},'pred':{}}
     style_dict['train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
     style_dict['test']={'lw':1,'color':'orange','ls':'-', 'alpha':1}
-    style_dict['pred']={'lw':2,'color':'green','ls':'-', 'alpha':0.7}
+    style_dict['pred']={'lw':2,'color':'green','ls':'--', 'alpha':0.7}
     
     
     # Plot train_price if it is not empty.
     if len(train_price)>0:
-        
         ax1.plot(train_price, label='price-training',**style_dict['train'])
         
         
@@ -1419,10 +1757,18 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
     ax1.plot(test_price, label='true test price',**style_dict['test'])
     ax1.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
     ax1.legend()
+
     ax1.set_title('S&P500 Price: Forecast by LSTM-Neural-Network')
     ax1.set_xlabel('Business Day-Hour')
     ax1.set_ylabel('Stock Price')
-    
+
+
+    import matplotlib.dates as mdates
+    locator = mdates.AutoDateLocator()
+    ax1.xaxis.set_major_locator(locator)
+    ax1.tick_params(axis='x',rotation=30)
+    # ax2.xaxis.set_major_locator(locator)
+    # ax2.tick_params(axis='x',rotation=30)
     # Plot a subplot with JUST the test and predicted prices
     if subplots==True:
         
@@ -1432,15 +1778,17 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
         plt.title('Predicted vs. Actual Price - Test Data')
         ax2.set_xlabel('Business Day-Hour')
         ax2.set_ylabel('Stock Price')
-        plt.subplots_adjust(wspace=1)#, hspace=None)[source]¶
+        # plt.subplots_adjust(wspace=1)#, hspace=None)[source]¶
+        
+        ax2.xaxis.set_major_locator(locator)
+        ax2.tick_params(axis='x',rotation=30)
 
     
+    # # ANNOTATING RMSE
+    # RMSE = np.sqrt(mean_squared_error(test_price,pred_price))
+    # bbox_props = dict(boxstyle="square,pad=0.5", fc="white", ec="k", lw=0.5)
     
-    # ANNOTATING RMSE
-    RMSE = np.sqrt(mean_squared_error(test_price,pred_price))
-    bbox_props = dict(boxstyle="square,pad=0.5", fc="white", ec="k", lw=0.5)
-    
-    plt.annotate(f"RMSE: {RMSE.round(3)}",xycoords='figure fraction', xy=(0.085,0.85),bbox=bbox_props)
+    # plt.annotate(f"RMSE: {RMSE.round(3)}",xycoords='figure fraction', xy=(0.085,0.85),bbox=bbox_props)
     plt.tight_layout()
     if subplots==True:
         return fig, ax1,ax2
@@ -1457,8 +1805,22 @@ def print_array_info(X, name='Array'):
     print(f'\nX[0].shape = {Xt[0].shape}')
     print(f'X[0] contains:\n\t',Xt[0])
 
+
+def arr2series(array,series_index=[],series_name='predictions'):
+    """Accepts an array, an index, and a name. If series_index is longer than array:
+    the series_index[-len(array):] """
+    if len(series_index)==0:
+        series_index=list(range(len(array)))
+        
+    if len(series_index)>len(array):
+        new_index= series_index[-len(array):]
+        series_index=new_index
+        
+    preds_series = pd.Series(array.ravel(), index=series_index, name=series_name)
+    return preds_series
+
     
-def get_true_vs_model_pred_df(model, n_input, test_generator, test_data_index, df_test,df_train, train_generator, train_data_index, scaler=None,
+def get_true_vs_model_pred_df(model, n_input, test_generator, test_data_index, df_test, train_generator, train_data_index, df_train, scaler=None,
                               inverse_tf=True, plot=True, verbose=2):
     """Accepts a model, the training and testing data TimeseriesGenerators, the test_index and train_index.
     Returns a dataframe with True and Predicted Values for Both the Training and Test Datasets."""
@@ -1503,55 +1865,55 @@ def get_true_vs_model_pred_df(model, n_input, test_generator, test_data_index, d
     return df_show
 
 
-def thiels_U(ys_true, ys_pred):
-    import numpy as np
-    sum_list = []
-    num_list=[]
-    denom_list=[]
-    for t in range(len(ys_true)-1):
-        num_exp = (ys_pred[t+1] - ys_true[t+1])/ys_true[t]
-        num_list.append([num_exp**2])
-        denom_exp = (ys_true[t+1] - ys_true[t])/ys_true[t]
-        denom_list.append([denom_exp**2])
-    U = np.sqrt( np.sum(num_list) / np.sum(denom_list))
-    return U        
+# def thiels_U(ys_true, ys_pred):
+#     import numpy as np
+#     sum_list = []
+#     num_list=[]
+#     denom_list=[]
+#     for t in range(len(ys_true)-1):
+#         num_exp = (ys_pred[t+1] - ys_true[t+1])/ys_true[t]
+#         num_list.append([num_exp**2])
+#         denom_exp = (ys_true[t+1] - ys_true[t])/ys_true[t]
+#         denom_list.append([denom_exp**2])
+#     U = np.sqrt( np.sum(num_list) / np.sum(denom_list))
+#     return U        
 
 
-def get_u_for_shifts(df_U, shift_list,plot_all=False,plot_best=True):
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    from bs_ds import list2df
-    import pandas as pd
-    results=[['true_data_shift','U']]
+# def get_u_for_shifts(df_U, shift_list,plot_all=False,plot_best=True):
+#     import matplotlib.pyplot as plt
+#     import matplotlib as mpl
+#     from bs_ds import list2df
+#     import pandas as pd
+#     results=[['true_data_shift','U']]
     
-    if plot_all==True:
-        df_U['preds_from_gen'].plot(label = 'Prediction')
-        plt.legend()
-        plt.title('Shifted Time Series vs Predicted')
+#     if plot_all==True:
+#         df_U['preds_from_gen'].plot(label = 'Prediction')
+#         plt.legend()
+#         plt.title('Shifted Time Series vs Predicted')
         
         
-    for i,shift in enumerate(shift_list):
-        if plot_all==True:
-            df_U['true_from_gen'].shift(shift).plot(label = f'True + Shift({shift})')
+#     for i,shift in enumerate(shift_list):
+#         if plot_all==True:
+#             df_U['true_from_gen'].shift(shift).plot(label = f'True + Shift({shift})')
 
-        df_shift=pd.DataFrame()
-        df_shift['true'] = df_U['true_from_gen'].shift(shift)
-        df_shift['pred'] =df_U['preds_from_gen']
-        df_shift.dropna(inplace=True)
+#         df_shift=pd.DataFrame()
+#         df_shift['true'] = df_U['true_from_gen'].shift(shift)
+#         df_shift['pred'] =df_U['preds_from_gen']
+#         df_shift.dropna(inplace=True)
 
-        U =thiels_U(df_shift['true'], df_shift['pred'])
-        results.append([shift,U])
+#         U =thiels_U(df_shift['true'], df_shift['pred'])
+#         results.append([shift,U])
     
     
-    df_results = list2df(results, index_col='true_data_shift')
-    if plot_best==True:
-        shift = df_results.idxmin()[0]
-        df_U['preds_from_gen'].plot(label = 'Prediction')
-        df_U['true_from_gen'].shift(shift).plot(ls='--',label = f'True + Shift({shift})')
-        plt.legend()
-        plt.title("Best Thiel's U for Shifted Time Series")
-#         plt.show()
-    return df_results
+#     df_results = list2df(results, index_col='true_data_shift')
+#     if plot_best==True:
+#         shift = df_results.idxmin()[0]
+#         df_U['preds_from_gen'].plot(label = 'Prediction')
+#         df_U['true_from_gen'].shift(shift).plot(ls='--',label = f'True + Shift({shift})')
+#         plt.legend()
+#         plt.title("Best Thiel's U for Shifted Time Series")
+# #         plt.show()
+#     return df_results
 
 
 
@@ -1689,6 +2051,7 @@ def display_random_tweets(df_tokenize,n=5 ,display_cols=['content','text_for_vec
 ## twitter_df = get_stock_prices_for_twitter_data(twitter_df, stock_prices)
 #  
 def load_twitter_df_stock_price():# del stock_price
+    from IPython.display import display
     try: stock_price
     except NameError: stock_price = None
     if stock_price is  None:    
@@ -1731,7 +2094,7 @@ def get_stock_prices_for_twitter_data(twitter_df, stock_prices):
 
     # Get stock_prices for each twitter timestamp
     twitter_df['B_dt_minutes'] = B_dt_index['B_dt_index'].copy()
-    twitter_df['stock_price_results'] = twitter_df['B_dt_minutes'].apply(lambda x: match_stock_price_to_tweets(x,time_after_tweet=60,stock_price=stock_price))
+    twitter_df['stock_price_results'] = twitter_df['B_dt_minutes'].apply(lambda x: match_stock_price_to_tweets(x,time_after_tweet=60,stock_price=stock_prices))
     
     df_to_add = twitter_df['stock_price_results'].apply(lambda x: unpack_match_stocks(x))
 
@@ -1768,3 +2131,248 @@ def train_test_val_split(X,y,test_size=0.20,val_size=0.1):
         X_test, X_val, y_test, y_val = train_test_split(X_test_val, y_test_val, test_size=second_split_size)
 
         return X_train, X_test, X_val, y_train, y_test, y_val
+
+
+
+def plot_keras_history(history):
+    """Plots the history['acc','val','val_acc','val_loss']"""
+    import matplotlib.pyplot as plt
+    acc = history.history['acc']
+    loss = history.history['loss']
+    val_acc = history.history['val_acc']
+    val_loss = history.history['val_loss']
+    x = range(1,len(acc)+1)
+    
+    fig,ax = plt.subplots(nrows=2, ncols=1, figsize=(6,8))
+    ax[0].plot(x, acc,'b',label='Training Acc')
+    ax[0].plot(x, val_acc,'r',label='Validation Acc')
+    ax[0].legend()
+    ax[1].plot(x, loss,'b',label='Training Loss')
+    ax[1].plot(x, val_loss, 'r', label='Validation Loss')
+    ax[1].legend()
+    plt.show()
+    return fig, ax
+
+
+def plot_keras_history_custom(history,metrics=[('acc','loss'),('val_acc','val_loss')], figsize=(8,6)):
+    """Plots the history['acc','val','val_acc','val_loss']"""
+    plot_dict = {}
+    
+    import matplotlib.pyplot as plt
+    for i,metric_tuple in enumerate(metrics):
+         
+        plot_dict[i] = {}
+        
+        for metric in metric_tuple:
+            plot_dict[i][metric]= history.history[metric]
+                       
+
+    x_len = len(history.history[metrics[0][0]])
+    x = range(1,x_len)
+    
+    fig,ax = plt.subplots(nrows=metrics.shape[0], ncols=1, figsize=figsize)
+    
+    for p in plot_dict.keys():
+        
+        for k,v in plot_dict[p]:
+            ax[p].plot(x, plot_dict[p][v], label=k)
+            ax[p].legend()
+                    
+    plt.tight_layout()
+    plt.show()
+
+    return fig, ax
+
+
+def plot_auc_roc_curve(y_test, y_test_pred):
+    """ Takes y_test and y_test_pred from a ML model and plots the AUC-ROC curve."""
+    from sklearn.metrics import confusion_matrix
+    from sklearn.metrics import roc_auc_score, roc_curve
+    import matplotlib.pyplot as plt
+    auc = roc_auc_score(y_test, y_test_pred[:,1])
+
+    FPr, TPr, _  = roc_curve(y_test, y_test_pred[:,1])
+    plt.plot(FPr, TPr,label=f"AUC for CatboostClassifier:\n{round(auc,2)}" )
+
+    plt.plot([0, 1], [0, 1],  lw=2,linestyle='--')
+    plt.xlim([-0.01, 1.0])
+    plt.ylim([0.0, 1.05])
+
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic (ROC) Curve')
+    plt.legend(loc="lower right")
+    plt.show()
+
+
+def compare_word_cloud(text1,label1,text2,label2):
+    """Compares the wordclouds from 2 sets of texts"""
+    from wordcloud import WordCloud
+    import matplotlib.pyplot as plt
+
+    wordcloud1 = WordCloud(max_font_size=80, max_words=200, background_color='white').generate(' '.join(text1))
+    wordcloud2 = WordCloud(max_font_size=80, max_words=200, background_color='white').generate(' '.join(text2))
+
+
+    fig,ax = plt.subplots(nrows=1,ncols=2,figsize=(20,15))
+    ax[0].imshow(wordcloud1, interpolation='bilinear')
+    ax[0].set_aspect(1.5)
+    ax[0].axis("off")
+    ax[0].set_title(label1, fontsize=20)
+
+    ax[1].imshow(wordcloud2, interpolation='bilinear')
+    ax[1].set_aspect(1.5)
+    ax[1].axis("off")
+    ax[1].set_title(label2, fontsize=20)
+
+    fig.tight_layout()
+    return fig,ax
+
+def transform_image_mask_white(val):
+    """Will convert any pixel value of 0 (white) to 255 for wordcloud mask."""
+    if val==0:
+        return 255
+    else:  
+        return val
+
+def open_image_mask(filename):
+    import numpy as np
+    from PIL import Image
+    from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
+    mask=[]
+    mask = np.array(Image.open(filename))
+    return mask
+
+
+def quick_table(tuples, col_names=None, caption =None,display_df=True):
+    """Accepts a bigram output tuple of tuples and makes captioned table."""
+    import pandas as pd
+    from IPython.display import display
+    if col_names == None:
+    
+        df = pd.DataFrame.from_records(tuples)
+        
+    else:
+        
+        df = pd.DataFrame.from_records(tuples,columns=col_names)
+        dfs = df.style.set_caption(caption)
+        
+        if display_df == True:
+            display(dfs)
+            
+    return df
+
+
+def save_model_and_weights(model, filename_str = 'model'):
+    model_json = model.to_json()
+    filename = filename_str+'.json'
+    with open(filename, "w") as json_file:
+        json_file.write(model_json)
+        
+    # serialize weights to HDF5
+    weight_filename = filename_str+'_weights.h5'
+    model.save_weights(weight_filename)
+    print(f"Saved model to disk as: {filename} and {weight_filename}")
+
+def load_model_and_weights(model_filename='model.json',weight_filename='model_weights.h5'):
+    # load json and create model
+    from keras.models import model_from_json
+    
+    json_file = open(model_filename, 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    
+    loaded_model = model_from_json(loaded_model_json)
+    # load weights into new model
+    loaded_model.load_weights(weight_filename)
+    print("Loaded model and model weights from disk")
+    print("Model must be compiled again to be used.")
+    return loaded_model 
+
+
+
+
+def auto_filename(prefix='model',sep='__',timeformat='%m-%d-%Y_%I%M%p'):
+    from datetime import datetime
+    from pytz import timezone
+    from tzlocal import get_localzone
+
+    now_utc = datetime.now(timezone('UTC'))
+    now_local = now_utc.astimezone(get_localzone())
+    
+    timesuffix = now_local.strftime(timeformat)
+    filename = f"{prefix}{sep}{timesuffix}"
+    return filename
+
+
+
+
+
+
+def plotly_time_series(stock_df,title=None,x_col='date_time_index', y_col='price',name='S&P500 Price'):
+    import plotly
+    import plotly.offline as py
+    import plotly.tools as tls
+    import plotly.graph_objs as go
+
+    py.init_notebook_mode(connected=True)
+
+    # %matplotlib inline
+
+    # LEARNING HOW TO CUSTOMIZE SLIDER
+    # ** https://plot.ly/python/range-slider/    
+    fig = go.Figure()
+    
+    # Set title
+    if title is None:
+        title = "Time series with range slider and selectors"
+
+    fig.update_layout(
+        title_text=title
+    )
+
+    fig.add_trace(go.Scatter(x=stock_df[x_col], y=stock_df[y_col], name=name)) #df.Date, y=df['AAPL.Low'], name="AAPL Low",
+    #                          line_color='dimgray'))
+    # Add range slider
+    fig.update_layout(
+        xaxis=go.layout.XAxis(
+
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1,
+                        label="1m",
+                        step="month",
+                        stepmode="backward"),
+                    dict(count=6,
+                        label="6m",
+                        step="month",
+                        stepmode="backward"),
+                    dict(count=1,
+                        label="YTD",
+                        step="year",
+                        stepmode="todate"),
+                    dict(count=1,
+                        label="1y",
+                        step="year",
+                        stepmode="backward"),
+                    dict(step="all")
+                ])
+            ),
+            rangeslider=dict(
+                visible=True
+            ),
+            type="date"
+        ),
+
+        yaxis = go.layout.YAxis(
+                    title=go.layout.yaxis.Title(
+                        text = 'S&P500 Price',
+                        font=dict(
+                            # family="Courier New, monospace",
+                            size=18,
+                            color="#7f7f7f")
+                    )
+            )
+    )
+    fig.show()
+    return fig
