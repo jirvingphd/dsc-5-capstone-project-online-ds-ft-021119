@@ -1,3 +1,5 @@
+from  bs_ds.imports import *
+
 def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technical_indicators.csv'):
     import os
     import pandas as pd
@@ -23,6 +25,10 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
         else:
             print('No file was saved.')
 
+
+
+# if __name__ == '__main__':
+import_packages()
 # def import_packages(import_list_of_tuples = None,  display_table=True): #append_to_default_list=True, imports_have_description = True):
 #     """Uses the exec function to load in a list of tuples with:
 #     [('module','md','example generic tuple item')] formatting.
@@ -122,37 +128,65 @@ def global_imports(modulename,shortname = None, asfunction = False):
 
 
 def reload(mod):
-    """Reloads the module from file."""
+    """Reloads the module from file.
+    Example:
+    import my_functions_from_file as mf
+    # after editing the source file:
+    # mf.reload(mf)"""
     from importlib import reload
     import sys
     print(f'Reloading...\n')
     return  reload(mod)
 
 
-def ihelp(any_function, show_help=False, show_code=True): 
+def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,colab=False,file_location=False): 
     """Call on any module or functon to display the object's
     help command printout AND/OR soruce code displayed as Markdown
     using Python-syntax"""
 
     import inspect
     from IPython.display import display, Markdown
-    
+    page_header = '---'*28
+    footer = '---'*28+'\n'
+    print(page_header)
     if show_help:
-        
-        print("---"*35)
-        print("---"*3,'\tHELP:\t',"---"*30)
-        print("---"*35)
-        help(any_function)
+        banner = ''.join(["---"*2,' HELP ',"---"*24,'\n'])
+        print(banner)
+        help(function_or_mod)
+        # print(footer)
         
     if show_code:
-        
-        import inspect
-        source_DF = inspect.getsource(any_function)
+        print(page_header)
 
-        display(Markdown('##### SOURCE CODE:\n ____'))
-        output = "```python" +'\n'+source_DF+'\n'+"```\n___"
-        # print(source_DF)    
-        display(Markdown(output))
+        banner = ''.join(["---"*2,' SOURCE -',"---"*23])
+        print(banner)
+
+        import inspect
+        source_DF = inspect.getsource(function_or_mod)
+
+        if colab is False:
+            # display(Markdown(f'___\n'))
+            output = "```python" +'\n'+source_DF+'\n'+"```\n"
+            # print(source_DF)    
+            display(Markdown(output))
+        else:
+
+            print(banner)
+            print(source_DF)
+        
+    
+    if file_location:
+        file_loc = inspect.getfile(function_or_mod)
+        banner = ''.join(["---"*2,' FILE LOCATION ',"---"*21])
+        print(page_header)
+        print(banner)
+        print(file_loc)
+
+    if return_code:
+        return source_DF
+    print(footer)
+
+
 
 
 ################################################### ADDITIONAL NLP #####################################################
@@ -1706,7 +1740,7 @@ def predict_model_make_results_dict(model,scaler, X_test_in, y_test,test_index,
     
 
 #BOOKMARK    
-def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, verbose=0,figsize=(12,5)):
+def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, verbose=0,figsize=(14,4)):
     
     from sklearn.metrics import mean_squared_error
     import matplotlib.pyplot as plt
@@ -1763,9 +1797,10 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
     ax1.set_ylabel('Stock Price')
 
 
-    import matplotlib.dates as mdates
-    locator = mdates.AutoDateLocator()
-    ax1.xaxis.set_major_locator(locator)
+    # import matplotlib.dates as mdates
+    # locator = mdates.AutoDateLocator()
+    # ax1.xaxis.set_major_locator(locator)
+    # ax1.xaxis.set_minor_locator(locator)
     ax1.tick_params(axis='x',rotation=30)
     # ax2.xaxis.set_major_locator(locator)
     # ax2.tick_params(axis='x',rotation=30)
@@ -1780,7 +1815,7 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
         ax2.set_ylabel('Stock Price')
         # plt.subplots_adjust(wspace=1)#, hspace=None)[source]¶
         
-        ax2.xaxis.set_major_locator(locator)
+        # ax2.xaxis.set_major_locator(locator)
         ax2.tick_params(axis='x',rotation=30)
 
     
@@ -1809,6 +1844,7 @@ def print_array_info(X, name='Array'):
 def arr2series(array,series_index=[],series_name='predictions'):
     """Accepts an array, an index, and a name. If series_index is longer than array:
     the series_index[-len(array):] """
+    import pandas as pd
     if len(series_index)==0:
         series_index=list(range(len(array)))
         
@@ -1864,6 +1900,26 @@ def get_true_vs_model_pred_df(model, n_input, test_generator, test_data_index, d
         
     return df_show
 
+def evaluate_regression(y_true, y_pred):
+    """Calculates and displays the following evaluation metrics:
+    RMSE, R2_score, """
+    from sklearn.metrics import r2_score, mean_squared_error
+    import numpy as np
+    from bs_ds import list2df
+    results=[['Metric','Value']]
+    
+    r2 = r2_score(y_true, y_pred)
+    results.append(['R_squared',r2])
+    
+    RMSE = np.sqrt(mean_squared_error(y_true,y_pred))
+    results.append(['Root Mean Squared Error',RMSE])
+    
+    U = thiels_U(y_true, y_pred,False,False )
+    results.append(["Thiel's U", U])
+    
+    results_df = list2df(results)#, index_col='Metric')
+    results_df.set_index('Metric', inplace=True)
+    return results_df.round(3)
 
 # def thiels_U(ys_true, ys_pred):
 #     import numpy as np
@@ -2085,6 +2141,7 @@ def load_twitter_df_stock_price():# del stock_price
 
 def get_stock_prices_for_twitter_data(twitter_df, stock_prices):
     # Get get the business day index to account for tweets during off-hours
+    import pandas as pd
     twitter_df = get_B_day_time_index_shift(twitter_df,verbose=1)
 
     # Make temporary B_dt_index var in order to round that column to minute-resolution
@@ -2263,46 +2320,195 @@ def quick_table(tuples, col_names=None, caption =None,display_df=True):
     return df
 
 
-def save_model_and_weights(model, filename_str = 'model'):
-    model_json = model.to_json()
-    filename = filename_str+'.json'
-    with open(filename, "w") as json_file:
-        json_file.write(model_json)
-        
-    # serialize weights to HDF5
-    weight_filename = filename_str+'_weights.h5'
-    model.save_weights(weight_filename)
-    print(f"Saved model to disk as: {filename} and {weight_filename}")
-
-def load_model_and_weights(model_filename='model.json',weight_filename='model_weights.h5'):
-    # load json and create model
-    from keras.models import model_from_json
-    
-    json_file = open(model_filename, 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    
-    loaded_model = model_from_json(loaded_model_json)
-    # load weights into new model
-    loaded_model.load_weights(weight_filename)
-    print("Loaded model and model weights from disk")
-    print("Model must be compiled again to be used.")
-    return loaded_model 
-
-
-
-
-def auto_filename(prefix='model',sep='__',timeformat='%m-%d-%Y_%I%M%p'):
+def get_time(timeformat='%m-%d-%y_%T%p',raw=False,filename_friendly= False,replacement_seperator='-'):
+    """Gets current time in local time zone. 
+    if raw: True then raw datetime object returned without formatting.
+    if filename_friendly: replace ':' with replacement_separator """
     from datetime import datetime
     from pytz import timezone
     from tzlocal import get_localzone
 
     now_utc = datetime.now(timezone('UTC'))
     now_local = now_utc.astimezone(get_localzone())
+
+    if raw is True:
+        return now_local
     
-    timesuffix = now_local.strftime(timeformat)
+    else:
+        now = now_local.strftime(timeformat)
+
+    if filename_friendly==True:
+        return now.replace(':',replacement_seperator).lower()
+    else:
+        return now
+
+
+def auto_filename_time(prefix='model',sep='_',timeformat='%m-%d-%Y_%I%M%p'):
+    """Generates a filename with a  base string + sep+ the current datetime formatted as timeformat."""
+    if prefix is None:
+        prefix=''
+    timesuffix=get_time(timeformat=timeformat, filename_friendly=True)
     filename = f"{prefix}{sep}{timesuffix}"
     return filename
+
+
+def save_model_weights_params(model,model_params=None, filename_prefix = 'models/model', check_if_exists = True,
+ auto_increment_name=True, auto_filename_suffix=True,  sep='_', suffix_time_format = '%m-%d-%Y_%I%M%p'):
+    """Saves a fit Keras model and its weights as a .json file and a .h5 file, respectively.
+    auto_filename_suffix will use the date and time to give the model a unique name (avoiding overwrites).
+    Returns the model_filename and weight_filename"""
+    import json
+    import pickle
+    # create base model filename 
+    if auto_filename_suffix:
+        filename = auto_filename_time(prefix=filename_prefix, sep=sep,timeformat=suffix_time_format )
+    
+    full_filename = filename+'.json'
+
+
+    ## check if file exists
+    if check_if_exists:
+        import os
+        import pandas as pd
+        current_files = os.listdir()
+
+        # check if file already exists
+        if full_filename in current_files and auto_increment_name==False:
+            raise Exception('Filename already exists')
+        
+        elif full_filename in current_files and auto_increment_name==True:
+        
+            # check if filename ends in version #
+            import re
+            num_ending = re.compile(r'[vV].?(\d+).json')
+            
+            curr_file_num = num_ending.findall(full_filename)
+            if len(curr_file_num)==0:
+                v_num = '_v01'
+            else:
+                v_num = f"_{int(curr_file_num)+1}"
+
+            full_filename = filename + v_num + '.json'
+
+            print(f'{filename} already exists... incrementing filename to {full_filename}.')
+    
+
+    # convert model to json
+    model_json = model.to_json()
+
+    # save json model to json file
+    with open(full_filename, "w") as json_file:
+        json.dump(model_json,json_file)
+    print(f'Model saved as {full_filename}')
+
+    if model_params is not None:
+        # import json
+        import inspect
+        import pickle# as pickle
+        def replace_function(function):
+            import inspect
+            return inspect.getsource(function)
+
+        # replace any functions with their source code before saving params
+        for k,v in model_params.items():
+
+            if inspect.isfunction(v):
+                model_params[k] = replace_function(v)
+
+            elif isinstance(v,dict):
+
+                for k2,v2 in v.items():
+                    if inspect.isfunction(v2):
+                        model_params[k][k2]=replace_function(v2)
+
+                    elif isinstance(v2,dict):
+
+                        for k3,v3 in v2.items():
+                            
+                            if inspect.isfunction(v3):
+                                model_params[k][k2][k3]=replace_function(v3)
+                            
+
+
+        # get filename without extension
+        file_ext=full_filename.split('.')[-1]
+        param_filename = full_filename.replace(f'.{file_ext}','')
+        param_filename+='_params.pkl'
+        with open(param_filename,'wb') as param_file:
+            pickle.dump(model_params, param_file) #sort_keys=True,indent=4)
+
+        
+    # serialize weights to HDF5
+    weight_filename = full_filename+'_weights.h5'
+    model.save_weights(weight_filename)
+    print(f'Weights saved as {weight_filename}')
+    return filename, weight_filename
+
+
+def load_model_weights_params(base_filename = 'models/model_',load_params=True, model_filename=None,weight_filename=None, trainable=False,verbose=1):
+    """Loads in Keras model from json file and loads weights from .h5 file.
+    optional set model layer trainability to False"""
+    from IPython.display import display
+    from keras.models import model_from_json
+    import json
+    
+    ## Set model and weight filenames from base_filename if None:
+    if model_filename is None:
+        model_filename = base_filename+'.json'
+    if weight_filename is None:
+        weight_filename = base_filename+'_weights.h5'
+
+    model_params_filename = base_filename+'_params.json'
+
+    # Load json and create model
+    with open(model_filename, 'r') as json_file:
+        loaded_model_json = json_file.read()    
+    loaded_model = model_from_json(loaded_model_json)
+
+    # Load weights into new model
+    loaded_model.load_weights(weight_filename)
+    print(f"Loaded {model_filename} and loaded weights from {weight_filename}.")
+
+    # set layer trainability
+    if trainable is False:
+        for i, model_layer in enumerate(loaded_model.layers):
+            loaded_model.get_layer(index=i).trainable=False
+        if verbose>0:
+            print('All model.layers.trainable set to False.')
+        if verbose>1:
+            print(model_layer,loaded_model.get_layer(index=i).trainable)
+    
+    # display summary if verbose
+    if verbose>0:
+        display(loaded_model.summary())
+        print("Note: Model must be compiled again to be used.")
+
+    if load_params:
+        with open(model_params_filename,'r') as params_file:
+            model_params = json.load(params_file)
+        
+        return loaded_model, model_params
+    else:
+        return loaded_model 
+
+
+def display_dict_dropdown(dict_to_display ):
+    """Display the model_params dictionary as a dropdown menu."""
+    from ipywidgets import interact
+    from IPython.display import display
+    from pprint import pprint 
+
+    dash='---'
+    print(f'{dash*4} Dictionary Contents {dash*4}')
+    
+    @interact(dict_to_display=dict_to_display)
+    def display_params(dict_to_display):
+        # print(dash)
+        pprint(dict_to_display)
+        return #params.values();
+
+# dictionary_dropdown = model_params_menu
+
 
 
 
@@ -2376,3 +2582,243 @@ def plotly_time_series(stock_df,title=None,x_col='date_time_index', y_col='price
     )
     fig.show()
     return fig
+
+
+def evaluate_model_plot_history(model, train_generator, test_generator, plot=True):
+    """Takes a keras model fit using fit_generator(), a train_generator and test generator.
+    Extracts and plots Keras model.history's metrics."""
+    from IPython.display import display
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    # # EVALUATE MODEL PREDICTIONS FROM GENERATOR 
+    model_metrics_train = model.evaluate_generator(train_generator)
+    model_metrics_test = model.evaluate_generator(test_generator)
+    print('\n')
+    print('---'*40)
+    print('\tEVALUATE MODEL:')
+    print('---'*40)
+    eval_gen_dict = {}
+    eval_gen_dict['Training Data'] = dict(zip(model.metrics_names,model_metrics_train))
+    eval_gen_dict['Test Data'] = dict(zip(model.metrics_names,model_metrics_test))
+
+    display(pd.DataFrame(eval_gen_dict))
+
+    # duration = print(clock._lap_duration_)
+    model_results = model.history.history
+    
+    if plot==True:
+        fig = plt.figure(figsize=(6,3))
+        for k,v in model_results.items():
+            plt.plot(range(len(v)),v, label=k);
+        plt.legend()
+        return fig
+
+def thiels_U(ys_true, ys_pred,display_equation=True,display_explanation=True):
+    """Calculate's Thiel's U metric for forecasting accuracy.
+    Accepts true values and predicted values.
+    Returns Thiel's U"""
+    from IPython.display import Markdown, Latex, display
+    import numpy as np
+
+    eqn=" $$U = \\sqrt{\\frac{ \\sum_{t=1 }^{n-1}\\left(\\frac{\\bar{Y}_{t+1} - Y_{t+1}}{Y_t}\\right)^2}{\\sum_{t=1 }^{n-1}\\left(\\frac{Y_{t+1} - Y_{t}}{Y_t}\\right)^2}}$$"
+
+    url="['Explanation'](https://docs.oracle.com/cd/E57185_01/CBREG/ch06s02s03s04.html)"
+    markdown_explanation ="|Thiel's U Value | Interpretation |\n\
+    | --- | --- |\n\
+    | <1 | Forecasting is better than guessing| \n\
+    | 1 | Forecasting is about as good as guessing| \n\
+    |>1 | Forecasting is worse than guessing| \n"
+    if display_equation and display_explanation:
+        display(Latex(eqn),Markdown(markdown_explanation))#, Latex(eqn))
+    elif display_equation:
+        display(Latex(eqn))
+    elif display_explanation:
+        display(Markdown(markdown_explanation))
+
+    sum_list = []
+    num_list=[]
+    denom_list=[]
+    for t in range(len(ys_true)-1):
+        num_exp = (ys_pred[t+1] - ys_true[t+1])/ys_true[t]
+        num_list.append([num_exp**2])
+        denom_exp = (ys_true[t+1] - ys_true[t])/ys_true[t]
+        denom_list.append([denom_exp**2])
+    U = np.sqrt( np.sum(num_list) / np.sum(denom_list))
+    return U
+
+def compare_eval_metrics_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],plot_all=False,plot_best=True):
+    ## SHIFT THE TRUE VALUES, PLOT, AND CALC THIEL's U
+    from bs_ds import list2df
+    df = pd.concat([true_series, pred_series],axis=1)
+    
+    true_colname = 'true'
+    pred_colname = 'pred'
+    
+    df.columns=[true_colname, pred_colname]#.dropna(axis=0,subset=[[true_colname,pred_colname]])
+
+    results=[['Bins Shifted','Metric','Value']]
+    combined_results = pd.DataFrame(columns=results[0])
+    
+    for shift in shift_list:
+
+        df_shift=pd.DataFrame()
+        df_shift[pred_colname] = df[pred_colname].shift(shift)
+        df_shift[true_colname] = df[true_colname]
+        df_shift.dropna(inplace=True)      
+        
+        shift_results = evaluate_regression(df_shift[true_colname],df_shift[pred_colname]).reset_index()
+        shift_results.insert(0,'Bins Shifted',shift)
+        
+        combined_results = pd.concat([combined_results,shift_results], axis=0)
+#     combined_results.set_index(['Bins Shifted','Metric'], inplace=True)
+    return combined_results
+
+
+
+def compare_time_shifted_model(df_model,true_colname='True Test Price',pred_colname='Predicted Test Price',
+                               shift_list=[-4,-3,-2,-1,0,1,2,3,4],show_results=True):
+
+    # GET EVALUATION METRICS FROM PREDICTIONS
+    true_test_series = df_model[true_colname].dropna()
+    pred_test_series = df_model[pred_colname].dropna()
+
+    # Comparing Shifted Timebins
+    res_df = compare_eval_metrics_for_shifts(true_test_series, pred_test_series,shift_list=np.arange(-4,4,1))
+    res_df = res_df.pivot(index='Bins Shifted', columns='Metric',values='Value')
+    res_df.columns.rename(None, inplace=True)
+    
+    
+    if show_results:
+        
+        res_dfs = res_df.copy().style
+        res_dfs = color_cols(res_df,subset=["Thiel's U"],rev=True) #OLD
+        display(res_dfs)
+        
+#         metric_best_crit = {'R_squared':'max', "Thiel's U":'min','Root Mean Squared Error':'min'}    
+#         for k,v in metric_best_crit.items():
+#             res_dfs = res_dfs.apply(lambda x: highlight_best(x,v),axis=0)        
+#         display(res_dfs)
+    return res_df
+
+
+
+
+def color_cols(df, subset=None, matplotlib_cmap='Greens', rev=False):
+    from IPython.display import display
+    import seaborn as sns
+    
+    if rev==True:
+        cm = matplotlib_cmap+'_r'
+    else:
+        cm = matplotlib_cmap
+    
+    if subset is None:
+        return  df.style.background_gradient(cmap=cm)
+    else:
+        return df.style.background_gradient(cmap=cm,subset=subset)
+    
+    
+def highlight_best(s, criteria='min',color='green',font_weight='bold'):
+    import numpy as np 
+    import pandas as pd
+    
+    if criteria == 'min':
+        is_best = s == s.min()
+    if criteria == 'max':
+        is_best = s == s.max() 
+    
+    css_color = f'background-color: {color}'
+    css_font_weight = f'font-weight: {font_weight}'
+    
+    output = [css_color if v else '' for v in is_best]
+    
+#     output2 = [css_font_weight if v else ''for v in is_best]
+    
+    return output#,output2
+
+
+
+def get_true_vs_model_preds_df(model, train_generator, test_generator, train_data_index, test_data_index, x_window,true_test_data = None, true_train_data=None):
+
+
+    if true_test_data is None:
+        raise Exception("true_test_data = df_test['price']")
+
+    if true_train_data is None:        
+        raise Exception("true_train_data=df_train['price']")
+
+    
+    # GET PREDICTIONS FOR TRAINING DATA AND TEST DATA
+    test_predictions = arr2series( model.predict_generator(test_generator),
+                                  test_data_index[x_window:], 'Predicted Test Price')
+    
+    train_predictions = arr2series( model.predict_generator(train_generator),
+                                   train_data_index[x_window:], 'Predicted Train Price')
+
+    # GET TRUE TEST AND TRAIN DATA AS SERIES
+    true_test_price = pd.Series( true_test_data.iloc[x_window:],
+                                index= test_data_index[x_window:], name='True Test Price')
+    
+    true_train_price = pd.Series(true_train_data.iloc[x_window:],
+                                 index = train_data_index[x_window:], name='True Train Price')
+
+    
+    # COMBINE TRAINING DATA AND TESTING DATA INTO 2 DFS (with correct date axis)
+    df_true_v_preds_train = pd.concat([true_train_price, train_predictions],axis=1)
+    df_true_v_preds_test= pd.concat([true_test_price, test_predictions],axis=1)
+    
+    return df_true_v_preds_train, df_true_v_preds_test
+
+
+    
+    
+def get_predictions_df_and_evaluate_model(model, train_generator, test_generator,
+                                          train_data_index, test_data_index, x_window,
+                                          true_test_data = None,true_train_data=None,
+                                          inverse_scale =True, scaler=None,
+                                         return_separate=True, plot_results = True):
+    
+    if true_test_data is None:
+        raise Exception("true_test_data = df_test['price']")
+
+    if true_test_data is None:        
+        raise Exception("true_train_data=df_train['price']")
+
+    if scaler is None:
+        raise Exception("scaler=scaler_library['price']")
+
+    # Call helper to get predictions and return as dataframes 
+    df_true_v_preds_train, df_true_v_preds_test = get_true_vs_model_preds_df(\
+        model, train_generator, test_generator,
+        train_data_index, test_data_index, x_window,
+        true_test_data, true_train_data)
+    
+    ## Concatenate into one dataframe
+    df_model_preds = pd.concat([df_true_v_preds_train, df_true_v_preds_test],axis=1)
+    
+    ## CONVERT BACK TO DOLLARS AND PLOT
+    if inverse_scale==True:
+        df_model = pd.DataFrame()
+        for col in df_model_preds.columns:
+            df_model[col] = ji.inverse_transform_series(df_model_preds[col],scaler_library['price']) 
+    else:
+        df_model = df_model_preds
+
+        
+    if plot_results:
+        # PLOTTING TRAINING + TRUE/PRED TEST DATA
+        ji.plot_true_vs_preds_subplots(df_model['True Train Price'],df_model['True Test Price'], 
+                                    df_model['Predicted Test Price'], subplots=True);
+
+
+    # GET EVALUATION METRICS FROM PREDICTIONS
+    true_test_series = df_model['True Test Price'].dropna()
+    pred_test_series = df_model['Predicted Test Price'].dropna()
+    
+    # Get and display regression statistics
+    results_tf = evaluate_regression(true_test_series, pred_test_series)
+    display(results_tf)
+
+    return df_model
+
+
