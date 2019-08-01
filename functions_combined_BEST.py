@@ -1,4 +1,80 @@
-from  bs_ds.imports import *
+from my_keras_functions import *
+from function_widgets import *
+# def import_packages(import_list_of_tuples = None,  display_table=True): #append_to_default_list=True, imports_have_description = True):
+#     """Uses the exec function to load in a list of tuples with:
+#     [('module','md','example generic tuple item')] formatting.
+#     >> Default imports_list:
+#     [('pandas',     'pd',   'High performance data structures and tools'),
+#     ('numpy',       'np',   'scientific computing with Python'),
+#     ('matplotlib',  'mpl',  "Matplotlib's base OOP module with formatting artists"),
+#     ('matplotlib.pyplot',   'plt',  "Matplotlib's matlab-like plotting module"),
+#     ('seaborn',     'sns',  "High-level data visualization library based on matplotlib"),
+#     ('bs_ds','bs','Custom data science bootcamp student package')]
+#     """
+
+
+#     # import_list=[]
+#     from IPython.display import display
+#     import pandas as pd
+#     # if using default import list, create it:
+#     if (import_list_of_tuples is None): #or (append_to_default_list is True):
+#         import_list = [('pandas','pd','High performance data structures and tools'),
+#         ('numpy','np','scientific computing with Python'),
+#         ('matplotlib','mpl',"Matplotlib's base OOP module with formatting artists"),
+#         ('matplotlib.pyplot','plt',"Matplotlib's matlab-like plotting module"),
+#         ('seaborn','sns',"High-level data visualization library based on matplotlib"),
+#         ('bs_ds','bs','Custom data science bootcamp student package')]
+
+#     # if using own list, rename to 'import_list'
+#     else:
+#         import_list = import_list_of_tuples
+#     # if (import_list_of_tuples is not None) and (append_to_default_list is True):
+#     #     [import_list.append(mod) for mod in import_list_of_tuples]
+
+
+#     def global_imports(modulename,shortname = None, asfunction = False):
+#         """from stackoverflow: https://stackoverflow.com/questions/11990556/how-to-make-global-imports-from-a-function,
+#         https://stackoverflow.com/a/46878490"""
+#         from importlib import import_module
+
+
+#         if shortname is None:
+#             shortname = modulename
+
+#         if asfunction is False:
+#             globals()[shortname] = import_module(modulename) #__import__(modulename)
+#         else:
+#             globals()[shortname] = eval(modulename + "." + shortname)
+
+
+#     # Use exec command to create global handle variables and then load in package as that handle
+#     for package_tuple in import_list:
+#         package=package_tuple[0]
+#         handle=package_tuple[1]
+#         # old way: # exec(f'import {package} as {handle}')
+#         global_imports(package,handle)
+
+
+#     # Display summary dataframe
+#     if display_table==True:
+#         ## Create Columns Names List
+#         # if imports_have_description==False:
+#             # columns=['Package','Handle']
+#         # else:
+#             # columns=['Package','Handle','Description']
+
+#         # create and return styled dataframe
+#         columns=['Package','Handle','Description']
+#         df_imported= pd.DataFrame(import_list, columns=columns)
+#         dfs = df_imported.sort_values('Package').style.hide_index().set_caption('Loaded Packages and Handles')
+#         display(dfs)
+
+#     # or just print statement
+#     else:
+#         return print('Modules successfully loaded.')
+
+# import_packages(display_table=False)
+# from my_imports import *
 
 def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technical_indicators.csv'):
     import os
@@ -28,7 +104,7 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
 
 
 # if __name__ == '__main__':
-import_packages()
+# import_packages()
 # def import_packages(import_list_of_tuples = None,  display_table=True): #append_to_default_list=True, imports_have_description = True):
 #     """Uses the exec function to load in a list of tuples with:
 #     [('module','md','example generic tuple item')] formatting.
@@ -113,18 +189,19 @@ import_packages()
 # import matplotlib as mpl
 # import bs_ds as bs
 # print('For detailed help as well as source code, use `ihelp(function)`')
-def global_imports(modulename,shortname = None, asfunction = False):
-    """from stackoverflow: https://stackoverflow.com/questions/11990556/how-to-make-global-imports-from-a-function,
-    https://stackoverflow.com/a/46878490"""
-    from importlib import import_module
 
-    if shortname is None:
-        shortname = modulename
+# def global_imports(modulename,shortname = None, asfunction = False):
+#     """from stackoverflow: https://stackoverflow.com/questions/11990556/how-to-make-global-imports-from-a-function,
+#     https://stackoverflow.com/a/46878490"""
+#     from importlib import import_module
 
-    if asfunction is False:
-        globals()[shortname] = import_module(modulename) #__import__(modulename)
-    else:
-        globals()[shortname] = eval(modulename + "." + shortname)
+#     if shortname is None:
+#         shortname = modulename
+
+#     if asfunction is False:
+#         globals()[shortname] = import_module(modulename) #__import__(modulename)
+#     else:
+#         globals()[shortname] = eval(modulename + "." + shortname)
 
 
 def reload(mod):
@@ -135,7 +212,7 @@ def reload(mod):
     # mf.reload(mf)"""
     from importlib import reload
     import sys
-    print(f'Reloading...\n')
+    # print(f'Reloading...\n')
     return  reload(mod)
 
 
@@ -164,7 +241,7 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
         import inspect
         source_DF = inspect.getsource(function_or_mod)
 
-        if colab is False:
+        if colab == False:
             # display(Markdown(f'___\n'))
             output = "```python" +'\n'+source_DF+'\n'+"```\n"
             # print(source_DF)    
@@ -1382,74 +1459,45 @@ def get_technical_indicators(dataset,make_price_from='BidClose'):
     return dataset
 
 
-def plot_technical_indicators(dataset, last_days=90):
-   
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    days = get_day_window_size_from_freq(dataset)
-    
-    fig, ax = plt.subplots(nrows=2, ncols=1,figsize=(10, 6), dpi=100)
-#     shape_0 = dataset.shape[0]
-#     xmacd_ = shape_0-(days*last_days)
-    
-    dataset = dataset.iloc[-(days*last_days):, :]
-    x_ = range(3, dataset.shape[0])
-    x_ =list(dataset.index)
-    
-    # Plot first subplot
-    ax[0].plot(dataset['ma7'],label='MA 7', color='g',linestyle='--')
-    ax[0].plot(dataset['price'],label='Closing Price', color='b')
-    ax[0].plot(dataset['ma21'],label='MA 21', color='r',linestyle='--')
-    ax[0].plot(dataset['upper_band'],label='Upper Band', color='c')
-    ax[0].plot(dataset['lower_band'],label='Lower Band', color='c')
-    ax[0].fill_between(x_, dataset['lower_band'], dataset['upper_band'], alpha=0.35)
-    ax[0].set_title('Technical indicators for Goldman Sachs - last {} days.'.format(last_days))
-    ax[0].set_ylabel('USD')
-    ax[0].legend()
-
-#     shape_0 = dataset.shape[0]
-#     xmacd_ = shape_0-(days*last_days)
-#     # Plot second subplot
-#     ax[1].set_title('MACD')
-#     ax[1].plot(dataset['MACD'],label='MACD', linestyle='-.')
-#     ax[1].hlines(15, xmacd_, shape_0, colors='g', linestyles='--')
-#     ax[1].hlines(-15, xmacd_, shape_0, colors='g', linestyles='--')
-#     ax[1].plot(dataset['momentum'],label='Momentum', color='b',linestyle='-')
-
-#     ax[1].legend()
-    plt.delaxes(ax[1])
-    plt.show()
-    return fig
 
 
 
-def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90, num_train_days=180,verbose=1, plot=True):
+def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90, num_train_days=180,verbose=1, plot=False,iplot=True):
     """Takes the last num_test_days of the time index to use as testing data, and take shte num_Trian_days prior to that date
     as the training data."""
     from IPython.display import display
     import matplotlib.pyplot as plt
+    import pandas as pd
 
     if verbose>1:
         print(f'Data index (freq={stock_df.index.freq}')
         print(f'index[0] = {stock_df.index[0]}, index[-1]={stock_df.index[-1]}')
     
     # DETERMINING DAY TO USE TO SPLIT DATA INTO TRAIN AND TEST
-    day_freq = periods_per_day
-    start_train_day =  stock_df.index[-1] - (num_train_days+num_test_days )*day_freq
-    last_train_day = stock_df.index[-1] - num_test_days*day_freq
-    # start_train_day = stock_df.index[-1] - num_train_days*day_freq
-    # last_day = stock_df.index[-1] - num_test_days*day_freq
-    
-    train_data = stock_df.loc[start_train_day:last_train_day]#,'price']
-    test_data = stock_df.loc[last_train_day:]#,'price']
 
-    # train_data = stock_df.loc[start_train_day:last_day]#,'price']
-    # test_data = stock_df.loc[last_day:]#,'price']
+    # first get integer indices for the days to select
+    idx_start_train = -((num_train_days+num_test_days )*periods_per_day) 
+    idx_stop_train = idx_start_train +(num_train_days*periods_per_day)
+
+    idx_start_test = idx_stop_train-1 
+    idx_stop_test = idx_start_test+(num_test_days*periods_per_day)
+
+    # select train dates and corresponding rows from stock_df
+    train_days = stock_df.index[idx_start_train:idx_stop_train]
+    train_data = stock_df.loc[train_days]
+
+    # select test_dates and corresponding rows from stock_df
+    if idx_stop_test == 0:
+        test_days = stock_df.index[idx_start_test:]
+    else:
+        test_days = stock_df.index[idx_start_test:idx_stop_test]
+    test_data = stock_df.loc[test_days]
+
     
     if verbose>0:
-        print(f'Data split on index:\t{last_train_day}:')
-        print(f'training dates:\t{train_data.index[0]} \t {train_data.index[-1]}.')
-        print(f'test dates:\t{test_data.index[0]} \t {test_data.index[-1]}.')
+        # print(f'Data split on index:\t{last_train_day}:')
+        print(f'training dates:\t{train_data.index[0]} \t {train_data.index[-1]} = {len(train_data)} rows')
+        print(f'test dates:\t{test_data.index[0]} \t {test_data.index[-1]} = {len(test_data)} rows')
         # print(f'\ttrain_data.shape:\t{train_data.shape}, test_data.shape:{test_data.shape}')
         
     if verbose>1:
@@ -1471,68 +1519,126 @@ def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90
         plt.xlabel('Trading Date/Hour')
         plt.legend()
         plt.show()
-    
+    if iplot==True:
+        df_plot=pd.concat([train_data['price'].rename('train price'),test_data['price'].rename('test_price')],axis=1)
+        fig = plotly_time_series(df_plot)
+
     return train_data, test_data
 
 
 
 
-def make_scaler_library(df,transform=False,columns=[]):
+# def make_scaler_library(df,transform=True,columns=None,model_params=None,verbose=1):
+#     """Takes a df and fits a MinMax scaler to the columns specified (default is to use all columns).
+#     Returns a dictionary (scaler_library) with keys = columns, and values = its corresponding fit's MinMax Scaler
+    
+#     Example Usage: 
+#     scale_lib, df_scaled = make_scaler_library(df, transform=True)
+    
+#     # to get the inverse_transform of a column with a different name:
+#     # use `inverse_transform_series`
+#     scaler = scale_lib['price'] # get scaler fit to original column  of interest
+#     price_column =  inverse_transform_series(df['price_labels'], scaler) #get the inverse_transformed series back
+#     """
+#     from sklearn.preprocessing import MinMaxScaler
+#     df_out = df.copy()
+#     if columns is None:
+#         columns = df.columns
+        
+#     # select only compatible columns
+    
+#     columns_filtered = df[columns].select_dtypes(exclude=['datetime','object','bool']).columns
+#     if len(columns) != len(columns_filtered):
+#         removed = [x for x in columns if x not in columns_filtered]
+#         if verbose>0:
+#             print(f'These columns were excluded due to incompatible dtypes.\n{removed}\n')
+
+#     # Loop throught columns and fit a scaler to each
+#     scaler_dict = {}
+#     # scaler_dict['index'] = df.index
+
+#     for col in columns_filtered:
+#         scaler = MinMaxScaler()
+#         scaler.fit(df[col].values.reshape(-1,1))
+#         scaler_dict[col] = scaler 
+
+#         if transform == True:
+#             df_out[col] = scaler.transform(df[col].values.reshape(-1,1))
+#         #df, col_list=columns, scaler_library=scaler_dict)
+
+#     # Add the scaler dictionary to return_list
+#     # return_list = [scaler_dict]
+
+#     # # transform and return outputs
+#     # if transform is True:
+#     #     df_out = transform_cols_from_library(df, col_list=columns, scaler_library=scaler_dict)
+#         # return_list.append(df_out)
+
+#     # add scaler to model_params
+#     if model_params is not None:
+#         model_params['scaler_library']=scaler_dict
+#         return scaler_dict, df_out, model_params
+#     else:        
+#         return scaler_dict, df_out
+
+def make_scaler_library(df,transform=True,columns=None,model_params=None,verbose=1):
     """Takes a df and fits a MinMax scaler to the columns specified (default is to use all columns).
     Returns a dictionary (scaler_library) with keys = columns, and values = its corresponding fit's MinMax Scaler
-    
+     
     Example Usage: 
     scale_lib, df_scaled = make_scaler_library(df, transform=True)
-    
+     
     # to get the inverse_transform of a column with a different name:
     # use `inverse_transform_series`
     scaler = scale_lib['price'] # get scaler fit to original column  of interest
     price_column =  inverse_transform_series(df['price_labels'], scaler) #get the inverse_transformed series back
     """
     from sklearn.preprocessing import MinMaxScaler
-    scaler_dict = {}
-    scaler_dict['index'] = df.index
-    if len(columns)==0:
-        user_cols = []
+ 
+    if columns is None:
         columns = df.columns
-    for col in columns:
-        user_cols=columns
+         
+    # select only compatible columns
+     
+    columns_filtered = df[columns].select_dtypes(exclude=['datetime','object','bool']).columns
+ 
+    if len(columns) != len(columns_filtered):
+        removed = [x for x in columns if x not in columns_filtered]
+        if verbose>0:
+            print(f'These columns were excluded due to incompatible dtypes.\n{removed}\n')
+ 
+    # Loop throught columns and fit a scaler to each
+    scaler_dict = {}
+    # scaler_dict['index'] = df.index
+ 
+    for col in columns_filtered:
         scaler = MinMaxScaler()
         scaler.fit(df[col].values.reshape(-1,1))
         scaler_dict[col] = scaler 
-        
-    if transform==False:
-        return scaler_dict
-    
-    elif transform==True:
-        df_out = transform_cols_from_library(df, scaler_dict,columns=user_cols)
-        return scaler_dict, df_out
+ 
+    # Add the scaler dictionary to return_list
+    return_list = [scaler_dict]
+ 
+    # # transform and return outputs
+    if transform == True:
+        df_out = transform_cols_from_library(df, col_list=columns_filtered, scaler_library=scaler_dict)
+        return_list.append(df_out)
+ 
+    # add scaler to model_params
+    if model_params is not None:
+        model_params['scaler_library']=scaler_dict
+        return_list.append(model_params)
+ 
+    return return_list[:]
+ 
 
-    
-def transform_cols_from_library(df,scaler_library,inverse=False,columns=[]):
-    """Accepts a df and a scaler_library that was transformed using make_scaler_library.
-    Inverse tansforms listed columns (if columns =[] then all columns)
-    Returns a dataframe with all columns of original df."""
-    df_out = df.copy()
-    
-    if len(columns)==0:
-        columns = df.columns
-        
-    for col in columns:
-        
-        scaler = scaler_library[col]
-        if hasattr(scaler, 'data_range_')==False:
-            raise Exception(f'The scaler for {col} is not fitted.')
-            
-            
-        if inverse==False:
-            scaled_col = scaler.transform(df[col].values.reshape(-1,1))
-        elif inverse==True:
-            scaled_col = scaler.inverse_transform(df[col].values.reshape(-1,1))
-        df_out[col] = scaled_col.ravel()
-    return df_out
 
-def inverse_transform_series(series, scaler, override_range_warning=False):
+# def inverse_transform_series(series, scaler,check_result=True, override_range_warning=False):
+#     inverse_transform_series = transform_series(series, scaler,check_result=True, override_range_warning=False,inverse=True)
+#     print('Replace inverse_transform_series with transform_series(inverse=True')
+#     return inverse_transform_series
+
+def transform_series(series, scaler,check_fit=True, check_results=True, override_range_warning=False,inverse=False):
     """Takes a series of df column and a fit scaler. Intended for use with make_scaler_library's dictionary
     Example Usage:
     scaler_lib, df_scaled = make_scaler_library(df, transform = True)
@@ -1540,31 +1646,173 @@ def inverse_transform_series(series, scaler, override_range_warning=False):
     """
     import pandas as pd
 
-
-    # Extract info on the original dataset to check aginast
-    orig_min = scaler.data_min_
-    orig_max = scaler.data_max_
-    tf_range = scaler.feature_range
-
     # Extract stats on input series to be tf
-    data_min = series.min()
-    data_max = series.max()
 
-    # Check if the input series' results are an order of magnitude[?] bigger than orig data
-    if (data_max - data_min) > (5*(tf_range[1]-tf_range[0])):
-        message ="Input Series range is more than 5x  scalers' original output feature_range. Verify the series has not already been inverse-tfd."
-
-        if override_range_warning is True:
-            import warnings
-            warnings.warn(message)
+    def test_if_fit(scaler):
+        """Checks if scaler is fit by looking for scaler.data_range_"""
+        # check if scaler is fit
+        if hasattr(scaler, 'data_range_'): 
+            return True 
         else:
-            raise Exception(message)
+            print('scaler not fit...')
+            return False
+
+    def test_data_range(series=series,scaler=scaler, inverse=inverse,override_range_warning=False):
+        """"Checks the data range from scaler if inverse=True or checks series min/max if inverse=False;
+        if invserse: checks that the range of the sereies is not more than 5 x that of the original data's range (from scaler)
+        if inverse=False: checks that the data max-min is less than or equal to 1.
+            returns false """
+        data_min = series.min()
+        data_max = series.max()
+        res = series.describe()
+
+        if test_if_fit(scaler)==False:
+            raise Exception('scaler failed fit-check.')
+        else:
+
+            tf_range = scaler.data_range_[0]
+            fit_data_min = scaler.data_min_
+            fit_data_max = scaler.data_max_
+            ft_range = scaler.feature_range
+            fit_min,fit_max = scaler.feature_range
 
 
-    # Inverse TF and Return the data as a series
-    series_tf = scaler.inverse_transform(series.values.reshape(-1,1))
-    series_tf = pd.Series(series_tf.ravel(), index = series.index, name=series.name)
+        warn_user=False
+        if inverse==True:
+            # Check if the input series' results are an order of magnitude[?] bigger than orig data
+            if (data_max - data_min) > (5*(tf_range)): #tf_range[1]-tf_range[0])):
+                message ="Input Series range is more than 5x  scalers' original output feature_range. Verify the series has not already been inverse-tfd."
+                print(message)
+                warn_user=True
+            else:
+                warn_user=False
+
+        else:
+
+            
+            idx=['25%','50%','75%']
+            check_vars = [1 for x in res[idx] if  fit_min < x < fit_max]
+
+
+            if sum(check_vars)<2:
+                warn_user = True
+                message="More than 2 of the input series quartiles (25%,50%,75%) are within scaler's feature range. Verify the series has not already been transformed"
+                print(message)
+            else:
+                warn_user=False
+
+        if warn_user==True:
+            # print(message)
+            if override_range_warning == True:
+                import warnings
+                warnings.warn(message)
+            else:
+                print(f'PROBLEM WITH {series.name}')
+                # raise Exception(message)
+        return not warn_user    
+
+
+    def scale_series(series=series,scaler=scaler, inverse=inverse):     
+        """Accepts a series and a scaler to transform it. 
+        reshapes data for scaler.transform/inverse_transform,
+        then transforms and reshapes the data back to original form"""
+
+        column_data = series.values.reshape(-1,1)
+
+        if inverse == False:
+            scaled_col = scaler.transform(column_data)
+        elif inverse == True:
+            scaled_col = scaler.inverse_transform(column_data)
+
+        return  pd.Series(scaled_col.ravel(), index = series.index, name=series.name)
+
+    series_tf=series
+    ## CHECK IF CHECK IS DESIRED
+    if check_results == False:
+        series_tf = scale_series(series=series, scaler=scaler, inverse=inverse)
+    
+    # Check data ranges to prevent unwated transform
+    else:
+        if test_data_range(series=series, scaler=scaler, inverse=inverse)==True:
+            series_tf = scale_series(series=series, scaler=scaler, inverse=inverse)
+        else:
+                #     print('Failed ')
+            raise Exception('Failed test_data_range check')
+    
     return series_tf
+
+    # return series_tf
+        
+
+def transform_cols_from_library(df,col_list=None,col_scaler_dict=None, scaler_library=None,single_scaler=None, inverse=False, verbose=1):
+    """Accepts a df and:
+    1. col_list: a list of column names to transform (that are also the keys in scaler_library)
+        --OR-- 
+        col_scaler_dict: a dictionary with keys:
+         column names to transform and values: scaler_library key for that column.
+
+    2. A fit scaler_library (from make_scaler_library) with names matching col_list or the values in col_scaler_dict
+    --OR-- 
+    a fit single_scaler (whose name does  not matter) and will be applied to all columns in col_list
+
+    3. inverse: if True, columns will be inverse_transformed.
+
+    Returns a dataframe with all columns of original df.
+    Can pyob"""
+    import functions_combined_BEST as ji
+    # replace_df_column = ji.inverse_transform_series
+
+    # def test_if_fit(scaler):
+    #     """Checks if scaler is fit by looking for scaler.data_range_"""
+    #     # check if scaler is fit
+    #     if hasattr(scaler, 'data_range_'): 
+    #         return True 
+    #     else:
+    #         print('scaler not fit...')
+    #         return False
+
+
+    # MAKE SURE SCALER PROVIDED
+    if (scaler_library is None) and (single_scaler is None):
+        raise Exception('Must provide a scaler_library with or single_scaler')
+
+    # MAKE COL_LIST FROM DICT OR COLUMNS
+    if (col_list is None) and (col_scaler_dict is None):
+        print('Using all columns...')
+        col_list = df.columns
+
+    if col_scaler_dict is not None:
+        col_list = [k for k in col_scaler_dict.keys()]
+        # print('Using col_scaler_')
+
+
+    ## copy df to replace columns
+    df_out = df.copy()
+    
+    # Filter out incompatible data types
+    # columns_filtered = df[col_list].select_dtypes(exclude=['datetime','object','bool']).columns
+    # print('columns_filtered:\n',columns_filtered)
+    # i=0,/
+    # while i 
+    for col in col_list:
+        # print(col)
+        # if single_scaler, use it in tuple with col
+        if single_scaler is not None:
+            scaler = single_scaler
+
+        elif scaler_library is not None:
+            # get the column from scaler_librray
+            if col in scaler_library.keys():
+                scaler = scaler_library[col]
+
+            else:
+                print(f'[!] Key: scaler_library["{col}"] does not exist. Skipping column...')
+                continue
+        # send series to transform_series to be checked and transform
+        series = df[col]
+        df_out[col] = transform_series(series=series, scaler=scaler,check_fit=True, check_results=False, inverse = inverse)
+
+    return df_out
 
 
 def make_X_y_timeseries_data(data,x_window = 35, verbose=2,as_array=True):
@@ -1654,17 +1902,17 @@ def make_df_timeseries_bins_by_column(df, x_window = 35, verbose=2,one_or_two_df
 #     df_timeseries_bins.index=time_index_for_df
 #     print(time_index_for_df)
     # for each original column
-    for colname,data_dict in col_data.items():
+    for col_name,data_dict in col_data.items():
         
         #for column's new data bins,labels
-        for data_col, X in col_data[colname].items():
+        for data_col, X in col_data[col_name].items():
             
             # new column title
-            new_colname = colname+'_'+data_col
-#             print(new_colname)
+            new_col_name = col_name+'_'+data_col
+#             print(new_col_name)
             make_col = []
             if data_col=='labels':
-                df_timeseries_bins[new_colname] = col_data[colname][data_col]
+                df_timeseries_bins[new_col_name] = col_data[col_name][data_col]
             else:
                 # turn array of lists into list of arrays
                 for x in range(X.shape[0]):
@@ -1672,7 +1920,7 @@ def make_df_timeseries_bins_by_column(df, x_window = 35, verbose=2,one_or_two_df
 #                     x_data = X[x]
                     make_col.append(x_data)
                 # fill in column's data
-                df_timeseries_bins[new_colname] = make_col
+                df_timeseries_bins[new_col_name] = make_col
                 
 #     print(df_timeseries_bins.index)
 #     print(time_index_for_df)
@@ -1703,11 +1951,11 @@ def predict_model_make_results_dict(model,scaler, X_test_in, y_test,test_index,
     
     # Get predicted price series (scaled and inverse_transformed)
     pred_price_scaled = pd.Series(predictions.ravel(),name='scaled_pred_price',index=test_index)
-    pred_price = inverse_transform_series(pred_price_scaled, scaler).rename('pred_price')
+    pred_price = transform_series(pred_price_scaled, scaler,inverse=True).rename('pred_price')
 
     # Get true price series (scaled and inverse_transformed)
     true_price_scaled =  pd.Series(y_test,name='scaled_test_price',index=test_index)
-    true_price = inverse_transform_series(true_price_scaled,scaler).rename('test_price')
+    true_price = transform_series(true_price_scaled,scaler,inverse=True).rename('test_price')
 
     # combine all test data series into 1 dataframe
     df_test_data = pd.concat([true_price, pred_price,  true_price_scaled, pred_price_scaled],axis=1)#, columns=['predicted_price','true_price'], index=index_test)
@@ -1719,11 +1967,11 @@ def predict_model_make_results_dict(model,scaler, X_test_in, y_test,test_index,
 
     # Get predicted price series (scaled and inverse_transformed)
     train_pred_price_scaled = pd.Series(train_predictions.ravel(),name='scaled_pred_train_price',index=train_index)
-    train_pred_price = inverse_transform_series(train_pred_price_scaled, scaler).rename('pred_train_price')
+    train_pred_price = transform_series(train_pred_price_scaled, scaler,inverse=True).rename('pred_train_price')
         
     # Get training data scaled and inverse transformed into its own dataframe 
     train_price_scaled = pd.Series(y_train,name='scaled_train_price',index= train_index) 
-    train_price =inverse_transform_series(train_price_scaled,scaler).rename('train_price')
+    train_price =transform_series(train_price_scaled,scaler,inverse=True).rename('train_price')
     
     df_train_data = pd.concat([train_price, train_pred_price, train_price_scaled, train_pred_price_scaled],axis=1)
     
@@ -1739,96 +1987,6 @@ def predict_model_make_results_dict(model,scaler, X_test_in, y_test,test_index,
 
     
 
-#BOOKMARK    
-def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, verbose=0,figsize=(14,4)):
-    
-    from sklearn.metrics import mean_squared_error
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    import numpy as np
-    
-    # Check for null values
-    train_null = train_price.isna().sum()
-    test_null = test_price.isna().sum()
-    pred_null = pred_price.isna().sum()
-    
-    null_test = train_null + test_null+pred_null
-
-
-    if null_test>0:
-        
-        train_price.dropna(inplace=True)
-        test_price.dropna(inplace=True)
-        pred_price.dropna(inplace=True)
-        
-        if verbose>0:
-            print(f'Dropping {null_test} null values.')
-
-
-    ## CREATE FIGURE AND AX(ES)
-    if subplots==True:
-        # fig = plt.figure(figsize=figsize)#, constrained_layout=True)
-        # ax1 = plt.subplot2grid((2, 9), (0, 0), rowspan=2, colspan=4)
-        # ax2 = plt.subplot2grid((2, 9),(0,4), rowspan=2, colspan=5)
-        fig, (ax1,ax2) = plt.subplots(figsize=figsize, nrows=1, ncols=2, sharey=False)
-    else:
-        fig, ax1 = plt.subplots(figsize=figsize)
-
-        
-    ## Define plot styles by train/test/pred data type
-    style_dict = {'train':{},'test':{},'pred':{}}
-    style_dict['train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
-    style_dict['test']={'lw':1,'color':'orange','ls':'-', 'alpha':1}
-    style_dict['pred']={'lw':2,'color':'green','ls':'--', 'alpha':0.7}
-    
-    
-    # Plot train_price if it is not empty.
-    if len(train_price)>0:
-        ax1.plot(train_price, label='price-training',**style_dict['train'])
-        
-        
-    # Plot test and predicted price
-    ax1.plot(test_price, label='true test price',**style_dict['test'])
-    ax1.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
-    ax1.legend()
-
-    ax1.set_title('S&P500 Price: Forecast by LSTM-Neural-Network')
-    ax1.set_xlabel('Business Day-Hour')
-    ax1.set_ylabel('Stock Price')
-
-
-    # import matplotlib.dates as mdates
-    # locator = mdates.AutoDateLocator()
-    # ax1.xaxis.set_major_locator(locator)
-    # ax1.xaxis.set_minor_locator(locator)
-    ax1.tick_params(axis='x',rotation=30)
-    # ax2.xaxis.set_major_locator(locator)
-    # ax2.tick_params(axis='x',rotation=30)
-    # Plot a subplot with JUST the test and predicted prices
-    if subplots==True:
-        
-        ax2.plot(test_price, label='true test price',**style_dict['test'])
-        ax2.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
-        ax2.legend()
-        plt.title('Predicted vs. Actual Price - Test Data')
-        ax2.set_xlabel('Business Day-Hour')
-        ax2.set_ylabel('Stock Price')
-        # plt.subplots_adjust(wspace=1)#, hspace=None)[source]¶
-        
-        # ax2.xaxis.set_major_locator(locator)
-        ax2.tick_params(axis='x',rotation=30)
-
-    
-    # # ANNOTATING RMSE
-    # RMSE = np.sqrt(mean_squared_error(test_price,pred_price))
-    # bbox_props = dict(boxstyle="square,pad=0.5", fc="white", ec="k", lw=0.5)
-    
-    # plt.annotate(f"RMSE: {RMSE.round(3)}",xycoords='figure fraction', xy=(0.085,0.85),bbox=bbox_props)
-    plt.tight_layout()
-    if subplots==True:
-        return fig, ax1,ax2
-    else:
-        return fig, ax1
 
 # fig, ax = plot_price_vs_preds(df_train_price['train_price'],df_test_price['test_price'],df_test_price['pred_price'])
 
@@ -1856,70 +2014,52 @@ def arr2series(array,series_index=[],series_name='predictions'):
     return preds_series
 
     
-def get_true_vs_model_pred_df(model, n_input, test_generator, test_data_index, df_test, train_generator, train_data_index, df_train, scaler=None,
-                              inverse_tf=True, plot=True, verbose=2):
-    """Accepts a model, the training and testing data TimeseriesGenerators, the test_index and train_index.
-    Returns a dataframe with True and Predicted Values for Both the Training and Test Datasets."""
-    import pandas as pd
-    ## GET PREDICTIONS FROM MODEL
-    test_predictions = pd.Series(model.predict_generator(test_generator).ravel(), 
-                                 index=test_data_index[n_input:], name='Predicted Test Price')
+# def get_true_vs_model_pred_df(model, n_input, test_generator, test_data_index, df_test, train_generator, train_data_index, df_train, scaler=None,
+#                               inverse_tf=True, plot=True, verbose=2):
+#     """Accepts a model, the training and testing data TimeseriesGenerators, the test_index and train_index.
+#     Returns a dataframe with True and Predicted Values for Both the Training and Test Datasets."""
+#     import pandas as pd
+#     ## GET PREDICTIONS FROM MODEL
+#     test_predictions = pd.Series(model.predict_generator(test_generator).ravel(), 
+#                                  index=test_data_index[n_input:], name='Predicted Test Price')
 
-    train_predictions = pd.Series(model.predict_generator(train_generator).ravel(), 
-                                  index=train_data_index[n_input:], name='Predicted Training Price')
+#     train_predictions = pd.Series(model.predict_generator(train_generator).ravel(), 
+#                                   index=train_data_index[n_input:], name='Predicted Training Price')
 
-    # Make a series for true price to plot
-    test_true_price = pd.Series( df_test['price'].rename('True Test Price').iloc[n_input:],
-                                index= test_data_index[n_input:], name='True Test Price')
+#     # Make a series for true price to plot
+#     test_true_price = pd.Series( df_test['price'].rename('True Test Price').iloc[n_input:],
+#                                 index= test_data_index[n_input:], name='True Test Price')
 
-    train_true_price = pd.Series(df_train['price'].rename('True Training Price').iloc[n_input:],
-                                 index = train_data_index[n_input:], name='True Train Price')
+#     train_true_price = pd.Series(df_train['price'].rename('True Training Price').iloc[n_input:],
+#                                  index = train_data_index[n_input:], name='True Train Price')
     
-    # Combine all 4 into one dataframe
-    df_show = pd.concat([train_true_price,train_predictions,test_true_price,test_predictions], axis=1)
+#     # Combine all 4 into one dataframe
+#     df_show = pd.concat([train_true_price,train_predictions,test_true_price,test_predictions], axis=1)
     
     
-    # CONVERT BACK TO ORIGINAL UNIT SCALE 
-    if inverse_tf==True:
+#     # CONVERT BACK TO ORIGINAL UNIT SCALE 
+#     if inverse_tf==True:
         
-        if scaler:
-            for col in df_show.columns:
-                df_show[col] = inverse_transform_series(df_show[col],scaler)
+#         if scaler:
+#             for col in df_show.columns:
+#                 df_show[col] = inverse_transform_series(df_show[col],scaler)
             
-        else:
-            raise Exception('Must pass a fit scaler to inverse_tf the units.')
+#         else:
+#             raise Exception('Must pass a fit scaler to inverse_tf the units.')
             
 
-    # PREVIEW DATA
-    if verbose>1:
-        df_show.head()
+#     # PREVIEW DATA
+#     if verbose>1:
+#         df_show.head()
         
-    if plot==True:
-        plot_true_vs_preds_subplots(df_show['True Train Price'],df_show['True Test Price'], 
-                                    df_show['Predicted Test Price'], subplots=True)
+#     if plot==True:
+#         plot_true_vs_preds_subplots(df_show['True Train Price'],df_show['True Test Price'], 
+#                                     df_show['Predicted Test Price'], subplots=True)
         
-    return df_show
+#     return df_show
 
-def evaluate_regression(y_true, y_pred):
-    """Calculates and displays the following evaluation metrics:
-    RMSE, R2_score, """
-    from sklearn.metrics import r2_score, mean_squared_error
-    import numpy as np
-    from bs_ds import list2df
-    results=[['Metric','Value']]
-    
-    r2 = r2_score(y_true, y_pred)
-    results.append(['R_squared',r2])
-    
-    RMSE = np.sqrt(mean_squared_error(y_true,y_pred))
-    results.append(['Root Mean Squared Error',RMSE])
-    
-    U = thiels_U(y_true, y_pred,False,False )
-    results.append(["Thiel's U", U])
-    
-    results_df = list2df(results)#, index_col='Metric')
-    results_df.set_index('Metric', inplace=True)
-    return results_df.round(3)
+
+
 
 # def thiels_U(ys_true, ys_pred):
 #     import numpy as np
@@ -2139,7 +2279,9 @@ def load_twitter_df_stock_price():# del stock_price
     
     return twitter_df, stock_price
 
+
 def get_stock_prices_for_twitter_data(twitter_df, stock_prices):
+    import numpy as np
     # Get get the business day index to account for tweets during off-hours
     import pandas as pd
     twitter_df = get_B_day_time_index_shift(twitter_df,verbose=1)
@@ -2331,7 +2473,7 @@ def get_time(timeformat='%m-%d-%y_%T%p',raw=False,filename_friendly= False,repla
     now_utc = datetime.now(timezone('UTC'))
     now_local = now_utc.astimezone(get_localzone())
 
-    if raw is True:
+    if raw == True:
         return now_local
     
     else:
@@ -2352,353 +2494,109 @@ def auto_filename_time(prefix='model',sep='_',timeformat='%m-%d-%Y_%I%M%p'):
     return filename
 
 
-def save_model_weights_params(model,model_params=None, filename_prefix = 'models/model', check_if_exists = True,
- auto_increment_name=True, auto_filename_suffix=True,  sep='_', suffix_time_format = '%m-%d-%Y_%I%M%p'):
-    """Saves a fit Keras model and its weights as a .json file and a .h5 file, respectively.
-    auto_filename_suffix will use the date and time to give the model a unique name (avoiding overwrites).
-    Returns the model_filename and weight_filename"""
-    import json
-    import pickle
-    # create base model filename 
-    if auto_filename_suffix:
-        filename = auto_filename_time(prefix=filename_prefix, sep=sep,timeformat=suffix_time_format )
-    
-    full_filename = filename+'.json'
 
 
-    ## check if file exists
-    if check_if_exists:
-        import os
-        import pandas as pd
-        current_files = os.listdir()
-
-        # check if file already exists
-        if full_filename in current_files and auto_increment_name==False:
-            raise Exception('Filename already exists')
-        
-        elif full_filename in current_files and auto_increment_name==True:
-        
-            # check if filename ends in version #
-            import re
-            num_ending = re.compile(r'[vV].?(\d+).json')
-            
-            curr_file_num = num_ending.findall(full_filename)
-            if len(curr_file_num)==0:
-                v_num = '_v01'
-            else:
-                v_num = f"_{int(curr_file_num)+1}"
-
-            full_filename = filename + v_num + '.json'
-
-            print(f'{filename} already exists... incrementing filename to {full_filename}.')
-    
-
-    # convert model to json
-    model_json = model.to_json()
-
-    # save json model to json file
-    with open(full_filename, "w") as json_file:
-        json.dump(model_json,json_file)
-    print(f'Model saved as {full_filename}')
-
-    if model_params is not None:
-        # import json
-        import inspect
-        import pickle# as pickle
-        def replace_function(function):
-            import inspect
-            return inspect.getsource(function)
-
-        # replace any functions with their source code before saving params
-        for k,v in model_params.items():
-
-            if inspect.isfunction(v):
-                model_params[k] = replace_function(v)
-
-            elif isinstance(v,dict):
-
-                for k2,v2 in v.items():
-                    if inspect.isfunction(v2):
-                        model_params[k][k2]=replace_function(v2)
-
-                    elif isinstance(v2,dict):
-
-                        for k3,v3 in v2.items():
-                            
-                            if inspect.isfunction(v3):
-                                model_params[k][k2][k3]=replace_function(v3)
-                            
-
-
-        # get filename without extension
-        file_ext=full_filename.split('.')[-1]
-        param_filename = full_filename.replace(f'.{file_ext}','')
-        param_filename+='_params.pkl'
-        with open(param_filename,'wb') as param_file:
-            pickle.dump(model_params, param_file) #sort_keys=True,indent=4)
-
-        
-    # serialize weights to HDF5
-    weight_filename = full_filename+'_weights.h5'
-    model.save_weights(weight_filename)
-    print(f'Weights saved as {weight_filename}')
-    return filename, weight_filename
-
-
-def load_model_weights_params(base_filename = 'models/model_',load_params=True, model_filename=None,weight_filename=None, trainable=False,verbose=1):
-    """Loads in Keras model from json file and loads weights from .h5 file.
-    optional set model layer trainability to False"""
-    from IPython.display import display
-    from keras.models import model_from_json
-    import json
-    
-    ## Set model and weight filenames from base_filename if None:
-    if model_filename is None:
-        model_filename = base_filename+'.json'
-    if weight_filename is None:
-        weight_filename = base_filename+'_weights.h5'
-
-    model_params_filename = base_filename+'_params.json'
-
-    # Load json and create model
-    with open(model_filename, 'r') as json_file:
-        loaded_model_json = json_file.read()    
-    loaded_model = model_from_json(loaded_model_json)
-
-    # Load weights into new model
-    loaded_model.load_weights(weight_filename)
-    print(f"Loaded {model_filename} and loaded weights from {weight_filename}.")
-
-    # set layer trainability
-    if trainable is False:
-        for i, model_layer in enumerate(loaded_model.layers):
-            loaded_model.get_layer(index=i).trainable=False
-        if verbose>0:
-            print('All model.layers.trainable set to False.')
-        if verbose>1:
-            print(model_layer,loaded_model.get_layer(index=i).trainable)
-    
-    # display summary if verbose
-    if verbose>0:
-        display(loaded_model.summary())
-        print("Note: Model must be compiled again to be used.")
-
-    if load_params:
-        with open(model_params_filename,'r') as params_file:
-            model_params = json.load(params_file)
-        
-        return loaded_model, model_params
-    else:
-        return loaded_model 
-
-
-def display_dict_dropdown(dict_to_display ):
+def display_dict_dropdown(dict_to_display,title='Dictionary Contents' ):
     """Display the model_params dictionary as a dropdown menu."""
     from ipywidgets import interact
     from IPython.display import display
     from pprint import pprint 
 
     dash='---'
-    print(f'{dash*4} Dictionary Contents {dash*4}')
+    print(f'{dash*4} {title} {dash*4}')
     
     @interact(dict_to_display=dict_to_display)
-    def display_params(dict_to_display):
-        # print(dash)
-        pprint(dict_to_display)
+    def display_params(dict_to_display=dict_to_display):
+        
+        # # if the contents of the first level of keys is dicts:, display another dropdown
+        # if dict_to_display.values()
+        display(pprint(dict_to_display))
         return #params.values();
-
+    # return display_params   
 # dictionary_dropdown = model_params_menu
 
-
-
-
-
-
-
-def plotly_time_series(stock_df,title=None,x_col='date_time_index', y_col='price',name='S&P500 Price'):
-    import plotly
-    import plotly.offline as py
-    import plotly.tools as tls
-    import plotly.graph_objs as go
-
-    py.init_notebook_mode(connected=True)
-
-    # %matplotlib inline
-
-    # LEARNING HOW TO CUSTOMIZE SLIDER
-    # ** https://plot.ly/python/range-slider/    
-    fig = go.Figure()
-    
-    # Set title
-    if title is None:
-        title = "Time series with range slider and selectors"
-
-    fig.update_layout(
-        title_text=title
-    )
-
-    fig.add_trace(go.Scatter(x=stock_df[x_col], y=stock_df[y_col], name=name)) #df.Date, y=df['AAPL.Low'], name="AAPL Low",
-    #                          line_color='dimgray'))
-    # Add range slider
-    fig.update_layout(
-        xaxis=go.layout.XAxis(
-
-            rangeselector=dict(
-                buttons=list([
-                    dict(count=1,
-                        label="1m",
-                        step="month",
-                        stepmode="backward"),
-                    dict(count=6,
-                        label="6m",
-                        step="month",
-                        stepmode="backward"),
-                    dict(count=1,
-                        label="YTD",
-                        step="year",
-                        stepmode="todate"),
-                    dict(count=1,
-                        label="1y",
-                        step="year",
-                        stepmode="backward"),
-                    dict(step="all")
-                ])
-            ),
-            rangeslider=dict(
-                visible=True
-            ),
-            type="date"
-        ),
-
-        yaxis = go.layout.YAxis(
-                    title=go.layout.yaxis.Title(
-                        text = 'S&P500 Price',
-                        font=dict(
-                            # family="Courier New, monospace",
-                            size=18,
-                            color="#7f7f7f")
-                    )
-            )
-    )
-    fig.show()
-    return fig
-
-
-def evaluate_model_plot_history(model, train_generator, test_generator, plot=True):
-    """Takes a keras model fit using fit_generator(), a train_generator and test generator.
-    Extracts and plots Keras model.history's metrics."""
+def display_df_dict_dropdown(dict_to_display, selected_key=None):
+    import ipywidgets as widgets
     from IPython.display import display
+    from ipywidgets import interact, interactive
     import pandas as pd
-    import matplotlib.pyplot as plt
-    # # EVALUATE MODEL PREDICTIONS FROM GENERATOR 
-    model_metrics_train = model.evaluate_generator(train_generator)
-    model_metrics_test = model.evaluate_generator(test_generator)
-    print('\n')
-    print('---'*40)
-    print('\tEVALUATE MODEL:')
-    print('---'*40)
-    eval_gen_dict = {}
-    eval_gen_dict['Training Data'] = dict(zip(model.metrics_names,model_metrics_train))
-    eval_gen_dict['Test Data'] = dict(zip(model.metrics_names,model_metrics_test))
 
-    display(pd.DataFrame(eval_gen_dict))
+    key_list = list(dict_to_display.keys())
+    key_list.append('_All_')
 
-    # duration = print(clock._lap_duration_)
-    model_results = model.history.history
+    if selected_key is not None:
+        selected_key = selected_key
+
+    def view(eval_dict=dict_to_display,selected_key=''):
+
+        from IPython.display import display
+        from pprint import pprint
+
+        if selected_key=='_All_':
+
+            key_list = list(eval_dict.keys())
+            outputs=[]
+
+            for k in key_list:
+
+                if type(eval_dict[k]) == pd.DataFrame:
+                    outputs.append(eval_dict[k])
+                    display(eval_dict[k].style.set_caption(k).hide_index())
+                else:
+                    outputs.append(f"{k}:\n{eval_dict[k]}\n\n")
+                    pprint('\n',eval_dict[k])
+
+            return outputs#pprint(outputs)
+
+        else:
+                k = selected_key
+#                 if type(eval_dict(k)) == pd.DataFrame:
+                if type(eval_dict[k]) == pd.DataFrame:
+                     display(eval_dict[k].style.set_caption(k))
+                else:
+                    pprint(eval_dict[k])
+                return [eval_dict[k]]
+
+    w= widgets.Dropdown(options=key_list,value='_All_', description='Key Word')
+
+    # old, simple
+    out = widgets.interactive_output(view, {'selected_key':w})
+
+
+    # new, flashier
+    output = widgets.Output(layout={'border': '1px solid black'})
+    if type(out)==list:
+        output.append_display_data(out)
+#         out =widgets.HBox([x for x in out])
+    else:
+        output = out
+#     widgets.HBox([])
+    final_out =  widgets.VBox([widgets.HBox([w]),output])
+    display(final_out)
+    return final_out#widgets.VBox([widgets.HBox([w]),output])#out])
+
+# def display_model_config_dict(modeL_config_dict,title='Model Config Contents' ):
+#     """Display the model_params dictionary as a dropdown menu."""
+#     from ipywidgets import interact
+#     from IPython.display import display
+#     from pprint import pprint 
+
+#     dash='---'
+#     print(f'{dash*4} {title} {dash*4}')
     
-    if plot==True:
-        fig = plt.figure(figsize=(6,3))
-        for k,v in model_results.items():
-            plt.plot(range(len(v)),v, label=k);
-        plt.legend()
-        return fig
 
-def thiels_U(ys_true, ys_pred,display_equation=True,display_explanation=True):
-    """Calculate's Thiel's U metric for forecasting accuracy.
-    Accepts true values and predicted values.
-    Returns Thiel's U"""
-    from IPython.display import Markdown, Latex, display
-    import numpy as np
 
-    eqn=" $$U = \\sqrt{\\frac{ \\sum_{t=1 }^{n-1}\\left(\\frac{\\bar{Y}_{t+1} - Y_{t+1}}{Y_t}\\right)^2}{\\sum_{t=1 }^{n-1}\\left(\\frac{Y_{t+1} - Y_{t}}{Y_t}\\right)^2}}$$"
-
-    url="['Explanation'](https://docs.oracle.com/cd/E57185_01/CBREG/ch06s02s03s04.html)"
-    markdown_explanation ="|Thiel's U Value | Interpretation |\n\
-    | --- | --- |\n\
-    | <1 | Forecasting is better than guessing| \n\
-    | 1 | Forecasting is about as good as guessing| \n\
-    |>1 | Forecasting is worse than guessing| \n"
-    if display_equation and display_explanation:
-        display(Latex(eqn),Markdown(markdown_explanation))#, Latex(eqn))
-    elif display_equation:
-        display(Latex(eqn))
-    elif display_explanation:
-        display(Markdown(markdown_explanation))
-
-    sum_list = []
-    num_list=[]
-    denom_list=[]
-    for t in range(len(ys_true)-1):
-        num_exp = (ys_pred[t+1] - ys_true[t+1])/ys_true[t]
-        num_list.append([num_exp**2])
-        denom_exp = (ys_true[t+1] - ys_true[t])/ys_true[t]
-        denom_list.append([denom_exp**2])
-    U = np.sqrt( np.sum(num_list) / np.sum(denom_list))
-    return U
-
-def compare_eval_metrics_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],plot_all=False,plot_best=True):
-    ## SHIFT THE TRUE VALUES, PLOT, AND CALC THIEL's U
-    from bs_ds import list2df
-    df = pd.concat([true_series, pred_series],axis=1)
-    
-    true_colname = 'true'
-    pred_colname = 'pred'
-    
-    df.columns=[true_colname, pred_colname]#.dropna(axis=0,subset=[[true_colname,pred_colname]])
-
-    results=[['Bins Shifted','Metric','Value']]
-    combined_results = pd.DataFrame(columns=results[0])
-    
-    for shift in shift_list:
-
-        df_shift=pd.DataFrame()
-        df_shift[pred_colname] = df[pred_colname].shift(shift)
-        df_shift[true_colname] = df[true_colname]
-        df_shift.dropna(inplace=True)      
-        
-        shift_results = evaluate_regression(df_shift[true_colname],df_shift[pred_colname]).reset_index()
-        shift_results.insert(0,'Bins Shifted',shift)
-        
-        combined_results = pd.concat([combined_results,shift_results], axis=0)
-#     combined_results.set_index(['Bins Shifted','Metric'], inplace=True)
-    return combined_results
+#     @interact(dict_to_display=dict_to_display)
+#     def display_params(dict_to_display=dict_to_display):  
+#         from pprint import pprint      
+#         # # if the contents of the first level of keys is dicts:, display another dropdown
+#         # if dict_to_display.values()
+#         pprint(dict_to_display)
+#         return #params.values();
 
 
 
-def compare_time_shifted_model(df_model,true_colname='True Test Price',pred_colname='Predicted Test Price',
-                               shift_list=[-4,-3,-2,-1,0,1,2,3,4],show_results=True):
 
-    # GET EVALUATION METRICS FROM PREDICTIONS
-    true_test_series = df_model[true_colname].dropna()
-    pred_test_series = df_model[pred_colname].dropna()
-
-    # Comparing Shifted Timebins
-    res_df = compare_eval_metrics_for_shifts(true_test_series, pred_test_series,shift_list=np.arange(-4,4,1))
-    res_df = res_df.pivot(index='Bins Shifted', columns='Metric',values='Value')
-    res_df.columns.rename(None, inplace=True)
-    
-    
-    if show_results:
-        
-        res_dfs = res_df.copy().style
-        res_dfs = color_cols(res_df,subset=["Thiel's U"],rev=True) #OLD
-        display(res_dfs)
-        
-#         metric_best_crit = {'R_squared':'max', "Thiel's U":'min','Root Mean Squared Error':'min'}    
-#         for k,v in metric_best_crit.items():
-#             res_dfs = res_dfs.apply(lambda x: highlight_best(x,v),axis=0)        
-#         display(res_dfs)
-    return res_df
 
 
 
@@ -2738,87 +2636,587 @@ def highlight_best(s, criteria='min',color='green',font_weight='bold'):
 
 
 
-def get_true_vs_model_preds_df(model, train_generator, test_generator, train_data_index, test_data_index, x_window,true_test_data = None, true_train_data=None):
 
 
-    if true_test_data is None:
-        raise Exception("true_test_data = df_test['price']")
-
-    if true_train_data is None:        
-        raise Exception("true_train_data=df_train['price']")
-
+# define plotly range selector, slider, and layout
+def def_range_selector():
     
-    # GET PREDICTIONS FOR TRAINING DATA AND TEST DATA
-    test_predictions = arr2series( model.predict_generator(test_generator),
-                                  test_data_index[x_window:], 'Predicted Test Price')
-    
-    train_predictions = arr2series( model.predict_generator(train_generator),
-                                   train_data_index[x_window:], 'Predicted Train Price')
-
-    # GET TRUE TEST AND TRAIN DATA AS SERIES
-    true_test_price = pd.Series( true_test_data.iloc[x_window:],
-                                index= test_data_index[x_window:], name='True Test Price')
-    
-    true_train_price = pd.Series(true_train_data.iloc[x_window:],
-                                 index = train_data_index[x_window:], name='True Train Price')
-
-    
-    # COMBINE TRAINING DATA AND TESTING DATA INTO 2 DFS (with correct date axis)
-    df_true_v_preds_train = pd.concat([true_train_price, train_predictions],axis=1)
-    df_true_v_preds_test= pd.concat([true_test_price, test_predictions],axis=1)
-    
-    return df_true_v_preds_train, df_true_v_preds_test
+    my_rangeselector={'bgcolor': 'lightgray', #rgba(150, 200, 250, 1)',
+                          'buttons': [{'count': 1, 'label': '1m', 'step': 'month', 'stepmode': 'backward'},
+                                      {'count':3,'label':'3m','step':'month','stepmode':'backward'},
+                                      {'count':6,'label':'6m','step':'month','stepmode':'backward'},
+                                      {'count': 1, 'label': '1y', 'step': 'year', 'stepmode': 'backward'},
+                                      {'step':'all'}, {'count':1,'step':'year', 'stepmode':'todate'}
+                                      ],
+                      'visible': True}
+    return my_rangeselector
 
 
-    
-    
-def get_predictions_df_and_evaluate_model(model, train_generator, test_generator,
-                                          train_data_index, test_data_index, x_window,
-                                          true_test_data = None,true_train_data=None,
-                                          inverse_scale =True, scaler=None,
-                                         return_separate=True, plot_results = True):
-    
-    if true_test_data is None:
-        raise Exception("true_test_data = df_test['price']")
+def def_my_plotly_stock_layout(my_rangeselector=None):
+    if my_rangeselector is None:
+        my_rangeselector=def_range_selector()
+        
+    my_layout = {'title': 
+                 {'font': {'color': '#4D5663'}, 'text': 'S&P500 Hourly Price'},
+                 'xaxis':{'title':{'text':'Date'} ,
+                          'rangeselector': my_rangeselector,
+                           'rangeslider':{'visible':True},
+                         'type':'date'},
+                'yaxis':{'title':{'text':'Closing Price'}}
+                }
+    return my_layout
 
-    if true_test_data is None:        
-        raise Exception("true_train_data=df_train['price']")
+def cufflinks_solar_theme():
+    theme_dict = {'annotations': {'arrowcolor': 'grey11', 'fontcolor': 'beige'},
+     'bargap': 0.01,
+     'colorscale': 'original',
+     'layout': {'legend': {'bgcolor': 'black', 'font': {'color': 'beige'}},
+                'paper_bgcolor': 'black',
+                'plot_bgcolor': 'black',
+                'titlefont': {'color': 'beige'},
+                'xaxis': {'gridcolor': 'lightgray',
+                          'showgrid': True,
+                          'tickfont': {'color': 'darkgray'},
+                          'titlefont': {'color': 'beige'},
+                          'zerolinecolor': 'gray'},
+                'yaxis': {'gridcolor': 'lightgrey',
+                          'showgrid': True,
+                          'tickfont': {'color': 'darkgray'},
+                          'titlefont': {'color': 'beige'},
+                          'zerolinecolor': 'grey'}},
+     'linewidth': 1.3}
+    return theme_dict
 
-    if scaler is None:
-        raise Exception("scaler=scaler_library['price']")
 
-    # Call helper to get predictions and return as dataframes 
-    df_true_v_preds_train, df_true_v_preds_test = get_true_vs_model_preds_df(\
-        model, train_generator, test_generator,
-        train_data_index, test_data_index, x_window,
-        true_test_data, true_train_data)
+
+
+# DEFINE FUNCITON TO JOIN MY LAYOUT AND SOLAR THEME:
+def merge_dicts_by_keys(dict1, dict2, only_join_shared=False):
+    keys1=set(dict1.keys())
+    keys2=set(dict2.keys())
     
-    ## Concatenate into one dataframe
-    df_model_preds = pd.concat([df_true_v_preds_train, df_true_v_preds_test],axis=1)
+    mutual_keys = list(keys1.intersection(keys2))
+    combined_keys = list(keys1.union(keys2))
+    unique1 = [x for x in list(keys1) if x not in list(keys2)]
+    unique2 = [x for x in list(keys2) if x not in list(keys1)]
+
+    mutual_dict = {}
+    # combined the values for all shared keys
+    for key in mutual_keys:
+        d1i = dict1[key]
+        d2i = dict2[key]
+        mutual_dict[key] = {**d1i,**d2i}
     
-    ## CONVERT BACK TO DOLLARS AND PLOT
-    if inverse_scale==True:
-        df_model = pd.DataFrame()
-        for col in df_model_preds.columns:
-            df_model[col] = ji.inverse_transform_series(df_model_preds[col],scaler_library['price']) 
+    if only_join_shared:
+        return mutual_dict
+    
     else:
-        df_model = df_model_preds
+        combined_dict = mutual_dict
+        for key in unique1:
+            combined_dict[key] = dict1[key]
+        for key in unique2:
+            combined_dict[key] = dict2[key]
+        return combined_dict
+        
+def replace_keys(orig_dict,new_dict):
+    for k,v in orig_dict.items():
+        if k in new_dict:
+            orig_dict[k]=new_dict[k]
+    return orig_dict
+
+
+def def_my_layout_solar_theme():
+    ## using code above
+    solar_theme = cufflinks_solar_theme()#['layout']
+    my_layout = def_my_plotly_stock_layout()
+    new_layout = merge_dicts_by_keys(solar_theme['layout'],my_layout)    
+    return new_layout
+
+
+
+
+def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Price',theme='solar'): #,name='S&P500 Price'):
+    import plotly
+        
+    # else:
+    import plotly.offline as py
+    import plotly.tools as tls
+    import plotly.graph_objs as go
+    import cufflinks as cf
+    cf.go_offline()
+
+    py.init_notebook_mode(connected=True)
+    # Set title
+    if title is None:
+        title = "Time series with range slider and selector"
+
+    # %matplotlib inline
+    if plotly.__version__<'4.0':
+        if theme=='solar':
+            my_layout = def_my_layout_solar_theme()
+        else:
+            my_rangeselector={'bgcolor': 'rgba(150, 200, 250, 1)',
+                        'buttons': [{'count': 1, 'label': '1m', 'step': 'month', 'stepmode': 'backward'},
+                                    {'count':3,'label':'3m','step':'month','stepmode':'backward'},
+                                    {'count':6,'label':'6m','step':'month','stepmode':'backward'},
+                                    {'count': 1, 'label': '1y', 'step': 'year', 'stepmode': 'backward'}
+                                    ],
+                        'visible': True}
+
+            my_layout = {'title': 
+                        {'font': {'color': '#4D5663'}, 'text': title},
+                        'xaxis':{'title':{'text':'Date'} ,
+                                'rangeselector': my_rangeselector,
+                                'rangeslider':{'visible':True},
+                                'type':'date'},
+                        'yaxis':{'title':{'text':'Closing Price'}}
+                        }
+
+
+        if (y_col is None) and (x_col is None):
+            fig = stock_df.iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True)
+
+        elif (y_col is not None) and (x_col is None):
+            fig = stock_df[y_col].iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True)
+        else:
+            fig = stock_df.iplot(x=x_col,y=y_col, asDates=True, layout=my_layout,world_readable=True,asFigure=True)
+
+    else:
+        # LEARNING HOW TO CUSTOMIZE SLIDER
+        # ** https://plot.ly/python/range-slider/    
+        fig = go.Figure()
+
+        fig.update_layout(
+            title_text=title
+        )
+
+        fig.add_trace(go.Scatter(x=stock_df[x_col], y=stock_df[y_col]))#, name=name)) #df.Date, y=df['AAPL.Low'], name="AAPL Low",
+        #                          line_color='dimgray'))
+        # Add range slider
+        fig.update_layout(
+            xaxis=go.layout.XAxis(
+
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=1,
+                            label="1m",
+                            step="month",
+                            stepmode="backward"),
+                        dict(count=6,
+                            label="6m",
+                            step="month",
+                            stepmode="backward"),
+                        dict(count=1,
+                            label="YTD",
+                            step="year",
+                            stepmode="todate"),
+                        dict(count=1,
+                            label="1y",
+                            step="year",
+                            stepmode="backward"),
+                        dict(step="all")
+                    ])
+                ),
+                rangeslider=dict(
+                    visible=True
+                ),
+                type="date"
+            ),
+
+            yaxis = go.layout.YAxis(
+                        title=go.layout.yaxis.Title(
+                            text = 'S&P500 Price',
+                            font=dict(
+                                # family="Courier New, monospace",
+                                size=18,
+                                color="#7f7f7f")
+                        )
+                )
+            )
+        
+    fig.show()
+    return fig
+
+def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):
+   
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    days = get_day_window_size_from_freq(dataset)
+    
+    fig, ax = plt.subplots(nrows=2, ncols=1,figsize=figsize)#, dpi=100)
+    shape_0 = dataset.shape[0]
+    xmacd_ = shape_0-(days*last_days)
+    
+    dataset = dataset.iloc[-(days*last_days):, :]
+    x_ = range(3, dataset.shape[0])
+    x_ =list(dataset.index)
+    
+    # Plot first subplot
+    plot_dict ={'ma7':{'label':'MA 7','color':'g','linestyle':'--'},
+    'price':{'label':'Closing Price','color':'b','linestyle':'-'},
+    'ma21':{'label':'MA 21','color':'r','linestyle':'--'},
+    'upper_band':{'label':'Upper Band','color':'c','linestyle':'-'},
+    'lower_band':{'label':'Lower Band','color':'c','linestyle':'-'},
+    }
+    for k,v in plot_dict.items():
+        col=k
+        params = v
+        ax[0].plot(dataset[col],label=params['label'], color=params['color'],linestyle=params['linestyle']) 
+    # ax[0].plot(dataset['ma7'],label='MA 7', color='g',linestyle='--')
+    # ax[0].plot(dataset['price'],label='Closing Price', color='b')
+    # ax[0].plot(dataset['ma21'],label='MA 21', color='r',linestyle='--')
+    # ax[0].plot(dataset['upper_band'],label='Upper Band', color='c')
+    # ax[0].plot(dataset['lower_band'],label='Lower Band', color='c')
+    ax[0].fill_between(x_, dataset['lower_band'], dataset['upper_band'], alpha=0.35)
+    ax[0].set_title('Technical indicators for Goldman Sachs - last {} days.'.format(last_days))
+    ax[0].set_ylabel('USD')
+    ax[0].legend()
+
+    import matplotlib.dates as mdates
+    months = mdates.MonthLocator()#interval=2)  # every month
+
+    # Set locators (since using for both location and formatter)
+    # auto_major_loc = mdates.AutoDateLocator(minticks=5)
+    # auto_minor_loc = mdates.AutoDateLocator(minticks=5)
+
+    # Set Major X Axis Ticks
+    ax[0].xaxis.set_major_locator(months)
+    ax[0].xaxis.set_major_formatter(mdates.AutoDateFormatter(months))
+
+    # Set Minor X Axis Ticks
+    ax[0].xaxis.set_minor_locator(mdates.DayLocator(interval=5))
+    ax[0].xaxis.set_major_formatter(mdates.AutoDateFormatter(mdates.DayLocator(interval=5)))
+
+
+    ax[0].tick_params(axis='x',which='both',rotation=30)
+    # ax1.tick_params(axis='x',which='major',pad=15)
+    ax[0].grid(axis='x',which='major')
+
+#     shape_0 = dataset.shape[0]
+#     xmacd_ = shape_0-(days*last_days)
+#     # Plot second subplot
+#     ax[1].set_title('MACD')
+#     ax[1].plot(dataset['MACD'],label='MACD', linestyle='-.')
+#     ax[1].hlines(15, xmacd_, shape_0, colors='g', linestyles='--')
+#     ax[1].hlines(-15, xmacd_, shape_0, colors='g', linestyles='--')
+#     ax[1].plot(dataset['momentum'],label='Momentum', color='b',linestyle='-')
+
+#     ax[1].legend()
+    plt.delaxes(ax[1])
+    plt.tight_layout
+    plt.show()
+    return fig
+
+def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21', '26ema', '12ema', 
+'upper_band', 'lower_band', 'ema', 'momentum'],x_col=None, subplots=False,theme='solar', verbose=0,figsize=(14,4)):
+    if theme=='solar':
+        my_layout = def_my_layout_solar_theme()
+    else:
+        my_layout = def_my_plotly_stock_layout()
+    
+    # Plot train_price if it is not empty.
+    # if len(train_price)>0:
+    df=stock_df
+    fig = plotly_time_series(df,x_col=x_col,y_col=plot_indicators)
+
+#BOOKMARK    
+def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, verbose=0,figsize=(14,4)):
+    
+    from sklearn.metrics import mean_squared_error
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import numpy as np
+    
+    # Check for null values
+    train_null = train_price.isna().sum()
+    test_null = test_price.isna().sum()
+    pred_null = pred_price.isna().sum()
+    
+    null_test = train_null + test_null+pred_null
+
+
+    if null_test>0:
+        
+        train_price.dropna(inplace=True)
+        test_price.dropna(inplace=True)
+        pred_price.dropna(inplace=True)
+        
+        if verbose>0:
+            print(f'Dropping {null_test} null values.')
+
+
+    ## CREATE FIGURE AND AX(ES)
+    if subplots==True:
+        # fig = plt.figure(figsize=figsize)#, constrained_layout=True)
+        # ax1 = plt.subplot2grid((2, 9), (0, 0), rowspan=2, colspan=4)
+        # ax2 = plt.subplot2grid((2, 9),(0,4), rowspan=2, colspan=5)
+        fig, (ax1,ax2) = plt.subplots(figsize=figsize, nrows=1, ncols=2, sharey=False)
+    else:
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         
-    if plot_results:
-        # PLOTTING TRAINING + TRUE/PRED TEST DATA
-        ji.plot_true_vs_preds_subplots(df_model['True Train Price'],df_model['True Test Price'], 
-                                    df_model['Predicted Test Price'], subplots=True);
-
-
-    # GET EVALUATION METRICS FROM PREDICTIONS
-    true_test_series = df_model['True Test Price'].dropna()
-    pred_test_series = df_model['Predicted Test Price'].dropna()
+    ## Define plot styles by train/test/pred data type
+    style_dict = {'train':{},'test':{},'pred':{}}
+    style_dict['train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
+    style_dict['test']={'lw':1,'color':'orange','ls':'-', 'alpha':1}
+    style_dict['pred']={'lw':2,'color':'green','ls':'--', 'alpha':0.7}
     
-    # Get and display regression statistics
-    results_tf = evaluate_regression(true_test_series, pred_test_series)
-    display(results_tf)
+    
+    # Plot train_price if it is not empty.
+    if len(train_price)>0:
+        ax1.plot(train_price, label='price-training',**style_dict['train'])
+        
+        
+    # Plot test and predicted price
+    ax1.plot(test_price, label='true test price',**style_dict['test'])
+    ax1.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
+    ax1.legend()
 
-    return df_model
+    ax1.set_title('S&P500 Price: Forecast by LSTM-Neural-Network')
+    ax1.set_xlabel('Business Day-Hour')
+    ax1.set_ylabel('Stock Price')
+
+    import matplotlib.dates as mdates
+    import datetime
+
+    # Instantiate Locators to be used
+    years = mdates.YearLocator()   # every year
+    months = mdates.MonthLocator()#interval=2)  # every month
+    quarters = mdates.MonthLocator(interval=3)#interval=2)  # every month
+
+    # Define various date formatting to be used
+    monthsFmt = mdates.DateFormatter('%Y-%b')
+    yearsFmt = mdates.DateFormatter('%Y') #'%Y')
+    yr_mo_day_fmt = mdates.DateFormatter('%Y-%m')
+    monthDayFmt = mdates.DateFormatter('%m-%d-%y')
 
 
+    ## AX2 SET TICK LOCATIONS AND FORMATTING
+
+    # Set locators (since using for both location and formatter)
+    auto_major_loc = mdates.AutoDateLocator(minticks=5)
+    auto_minor_loc = mdates.AutoDateLocator(minticks=10)
+
+    # Set Major X Axis Ticks
+    ax1.xaxis.set_major_locator(auto_major_loc)
+    ax1.xaxis.set_major_formatter(mdates.AutoDateFormatter(auto_major_loc))
+
+    # Set Minor X Axis Ticks
+    ax1.xaxis.set_minor_locator(auto_minor_loc)
+    ax1.xaxis.set_major_formatter(mdates.AutoDateFormatter(auto_minor_loc))
+
+
+    ax1.tick_params(axis='x',which='both',rotation=30)
+    ax1.grid(axis='x',which='major')
+
+    # Plot a subplot with JUST the test and predicted prices
+    if subplots==True:
+        
+        ax2.plot(test_price, label='true test price',**style_dict['test'])
+        ax2.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
+        ax2.legend()
+        plt.title('Predicted vs. Actual Price - Test Data')
+        ax2.set_xlabel('Business Day-Hour')
+        ax2.set_ylabel('Stock Price')
+        # plt.subplots_adjust(wspace=1)#, hspace=None)[source]¶
+        
+        ## AX2 SET TICK LOCATIONS AND FORMATTING
+
+        # Major X-Axis Ticks
+        ax2.xaxis.set_major_locator(months) #mdates.DayLocator(interval=5))
+        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%b-%Y')) #monthsFmt) #mdates.DateFormatter('%m-%Y')) #AutoDateFormatter(locator=locator))#yearsFmt)
+
+        # Minor X-Axis Ticks
+        ax2.xaxis.set_minor_locator(mdates.DayLocator(interval=5))#,interval=5))
+        ax2.xaxis.set_minor_formatter(mdates.DateFormatter('%d')) #, fontDict={'weight':'bold'})
+
+        # Changing Tick spacing and rotation.
+        ax2.tick_params(axis='x',which='major',rotation=90, direction='inout',length=10, pad=5)
+        ax2.tick_params(axis='x',which='minor',length=4,pad=2, direction='in') #,horizontalalignment='right')#,ha='left')
+        ax2.grid(axis='x',which='major')
+    
+    # # ANNOTATING RMSE
+    # RMSE = np.sqrt(mean_squared_error(test_price,pred_price))
+    # bbox_props = dict(boxstyle="square,pad=0.5", fc="white", ec="k", lw=0.5)
+    
+    # plt.annotate(f"RMSE: {RMSE.round(3)}",xycoords='figure fraction', xy=(0.085,0.85),bbox=bbox_props)
+    plt.tight_layout()
+    if subplots==True:
+        return fig, ax1,ax2
+    else:
+        return fig, ax1
+
+
+def plotly_true_vs_preds_subplots(true_vs_preds_df, true_train_col ,pred_train_col,true_test_col, pred_test_col, 
+x_col=None, y_col = None, subplots=False,theme='solar', verbose=0,figsize=(14,4)):
+    """y_col_kws={'col_name':line_color}"""
+    from sklearn.metrics import mean_squared_error
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import numpy as np
+    import pandas as pd
+    import cufflinks as cf
+    cf.go_offline()
+
+    df = true_vs_preds_df
+    # true_train = true_vs_preds_df[true_train_col].dropna().rename('true_train')
+    # pred_train = true_vs_preds_df[pred_train_col].dropna().rename('pred_train')
+    # true_test =  true_vs_preds_df[true_test_col].dropna().rename('true_test')
+    # pred_test =  true_vs_preds_df[pred_test_col].dropna().rename('pred_test')
+    
+        
+    # ## Define plot styles by train/test/pred data type
+    style_dict = {'true_train':{},'pred_train':{},'true_test':{},'pred_test':{}}
+    style_dict['true_train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
+    style_dict['true_train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
+    style_dict['true_test']={'lw':1,'color':'orange','ls':'-', 'alpha':1}
+    style_dict['pred_test']={'lw':2,'color':'green','ls':'--', 'alpha':0.7}
+    
+    if theme=='solar':
+        my_layout = def_my_layout_solar_theme()
+    else:
+        my_layout = def_my_plotly_stock_layout()
+    
+    # Plot train_price if it is not empty.
+    # if len(train_price)>0:
+    # fig = plotly_time_series(df,x_col=x_col,y_col=None,)
+    fig = df[y_col].iplot(asFigure=True,asDates=True,layout=my_layout,
+                             colors={'train':style_dict['true_train']['color'],
+                                    'test':style_dict['true_test']['color']})
+    fig = df[true_train_col].iplot(line=style_dict['true_train'])
+    fig.add_scatter(df[true_test_col],line=style_dict['true_test'])
+    # df.iplot(kind='scatter', x train_price, label='price-training',**style_dict['train'])
+        
+        
+    # # Plot test and predicted price
+    # ax1.plot(test_price, label='true test price',**style_dict['test'])
+    # ax1.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
+    # ax1.legend()
+
+    # ax1.set_title('S&P500 Price: Forecast by LSTM-Neural-Network')
+    # ax1.set_xlabel('Business Day-Hour')
+    # ax1.set_ylabel('Stock Price')
+
+    # import matplotlib.dates as mdates
+    # import datetime
+
+    # # Instantiate Locators to be used
+    # years = mdates.YearLocator()   # every year
+    # months = mdates.MonthLocator()#interval=2)  # every month
+    # quarters = mdates.MonthLocator(interval=3)#interval=2)  # every month
+
+    # # Define various date formatting to be used
+    # monthsFmt = mdates.DateFormatter('%Y-%b')
+    # yearsFmt = mdates.DateFormatter('%Y') #'%Y')
+    # yr_mo_day_fmt = mdates.DateFormatter('%Y-%m')
+    # monthDayFmt = mdates.DateFormatter('%m-%d-%y')
+
+
+    # ## AX2 SET TICK LOCATIONS AND FORMATTING
+
+    # # Set locators (since using for both location and formatter)
+    # auto_major_loc = mdates.AutoDateLocator(minticks=5)
+    # auto_minor_loc = mdates.AutoDateLocator(minticks=10)
+
+    # # Set Major X Axis Ticks
+    # ax1.xaxis.set_major_locator(auto_major_loc)
+    # ax1.xaxis.set_major_formatter(mdates.AutoDateFormatter(auto_major_loc))
+
+    # # Set Minor X Axis Ticks
+    # ax1.xaxis.set_minor_locator(auto_minor_loc)
+    # ax1.xaxis.set_major_formatter(mdates.AutoDateFormatter(auto_minor_loc))
+
+
+    # ax1.tick_params(axis='x',which='both',rotation=30)
+    # ax1.grid(axis='x',which='major')
+
+    # # Plot a subplot with JUST the test and predicted prices
+    # if subplots==True:
+        
+    #     ax2.plot(test_price, label='true test price',**style_dict['test'])
+    #     ax2.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
+    #     ax2.legend()
+    #     plt.title('Predicted vs. Actual Price - Test Data')
+    #     ax2.set_xlabel('Business Day-Hour')
+    #     ax2.set_ylabel('Stock Price')
+    #     # plt.subplots_adjust(wspace=1)#, hspace=None)[source]¶
+        
+    #     ## AX2 SET TICK LOCATIONS AND FORMATTING
+
+    #     # Major X-Axis Ticks
+    #     ax2.xaxis.set_major_locator(months) #mdates.DayLocator(interval=5))
+    #     ax2.xaxis.set_major_formatter(mdates.DateFormatter('%b-%Y')) #monthsFmt) #mdates.DateFormatter('%m-%Y')) #AutoDateFormatter(locator=locator))#yearsFmt)
+
+    #     # Minor X-Axis Ticks
+    #     ax2.xaxis.set_minor_locator(mdates.DayLocator(interval=5))#,interval=5))
+    #     ax2.xaxis.set_minor_formatter(mdates.DateFormatter('%d')) #, fontDict={'weight':'bold'})
+
+    #     # Changing Tick spacing and rotation.
+    #     ax2.tick_params(axis='x',which='major',rotation=90, direction='inout',length=10, pad=5)
+    #     ax2.tick_params(axis='x',which='minor',length=4,pad=2, direction='in') #,horizontalalignment='right')#,ha='left')
+    #     ax2.grid(axis='x',which='major')
+    
+    # if subplots==True:
+    #     return fig, ax1,ax2
+    # else: 
+    return fig#, ax1
+
+
+def load_processed_stock_data(processed_data_filename = '_stock_df_with_technical_indicators.csv', force_from_raw=False):
+    import functions_combined_BEST as ji
+    import os
+    import pandas as pd
+    
+    # check if csv file already exists
+    current_files = os.listdir()
+
+    # Run all processing on raw data if file not found.
+    if (force_from_raw == True) or (processed_data_filename not in current_files):
+        
+        print(f'File not found. Processing raw data using custom ji functions...')
+        print('1) ji.load_raw_stock_data_from_text\n2) ji.get_technical_indicators,dropping na from column "ma21"')
+
+        stock_df = ji.load_raw_stock_data_from_txt(
+            filename="IVE_bidask1min.txt", 
+            start_index='2016-12-01',
+            clean=True, fill_or_drop_null='drop', 
+            freq='CBH',verbose=1)
+
+        ## CALCULATE TECHNICAL INDICATORS FOR STOCK MARKET
+        stock_df = ji.get_technical_indicators(stock_df, make_price_from='BidClose')
+
+        ## Clean up stock_df 
+        # Remove beginning null values for moving averages
+        na_idx = stock_df.loc[stock_df['ma21'].isna() == True].index # was 'upper_band'
+        stock_df = stock_df.loc[na_idx[-1]+1*na_idx.freq:]
+
+
+    # load processed_data_filename if found
+    elif processed_data_filename in current_files:
+
+        print(f'>> File found. Loading {processed_data_filename}')
+        
+        stock_df=pd.read_csv(processed_data_filename, index_col=0, parse_dates=True)
+        stock_df['date_time_index'] = stock_df.index.to_series()
+        stock_df.index.freq=ji.custom_BH_freq()
+        
+    print(stock_df.index[[0,-1]],stock_df.index.freq)
+#     display(stock_df.head(3))
+
+    return stock_df        
+
+
+
+
+def ihelp_menu(function_names,show_source=True,show_help=False):
+    from ipywidgets import interact
+    from functions_combined_BEST import ihelp
+    import functions_combined_BEST as ji
+    
+    functions_dict = dict()
+    for fun in function_names:
+        functions_dict[fun] = eval(fun)
+
+    @interact(functions_dict=functions_dict,show_help=show_help,show_source=show_source)
+    def help_menu(show_help=show_help,show_source=show_source,functions=functions_dict):
+        return ihelp(functions, show_help=show_help, show_code=show_source)

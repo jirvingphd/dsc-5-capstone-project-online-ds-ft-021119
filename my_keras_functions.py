@@ -1,0 +1,1246 @@
+def quiet_mode(filter_warnings=True, filter_keras=True,in_function=True,verbose=0):
+    """Convenience function to execute commands to silence warnings:
+    - filter_warnings:
+        - warnings.filterwarnings('ignore')
+    - filter_keras:
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'"
+    """
+
+    cmd_warnings = "import warnings\nwarnings.filterwarnings('ignore')"
+    cmd_keras = "import os\nos.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'"
+    cmd_combined = '\n'.join((cmd_warnings,cmd_keras))
+
+    if filter_warnings and filter_keras:
+        if verbose>0: 
+            print(cmd_combined)
+        output = cmd_combined
+
+    elif filter_warnings and filter_keras is False:
+        if verbose>0: 
+            print(cmd_warnings)
+        output = cmd_warnings
+
+    elif filter_warnings is False and filter_keras:
+        if verbose>0: 
+            print(cmd_keras)
+        output = cmd_keras
+    
+    if in_function:
+        # exec_string = output #scaled_test_data#"exec('"+output+"')"
+        return output
+
+    else:
+        return exec(output)
+
+# import os
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# my_keras_functions
+def def_data_params(stock_df, num_test_days=45, num_train_days=365,days_for_x_window=5,verbose=0):
+    """
+    data_params['num_test_days']     =  45 # Number of days for test data
+    data_params['num_train_days']    = 365 # Number of days for training data - 5 days/week * 52 weeks
+    data_params['days_for_x_window'] =   5 # Number of days to include as 1 X sequence for predictions
+    data_params['periods_per_day'] = ji.get_day_window_size_from_freq( stock_df, ji.custom_BH_freq() )
+    """
+    import functions_combined_BEST as ji
+    
+    data_params={}
+    data_params['num_test_days']     =  num_test_days # Number of days for test data
+    data_params['num_train_days']    = num_train_days # Number of days for training data - 5 days/week * 52 weeks
+    data_params['days_for_x_window'] =   days_for_x_window # Number of days to include as 1 X sequence for predictions
+    
+    # Calculate number of rows to bin for x_windows
+    periods_per_day = ji.get_day_window_size_from_freq( stock_df, ji.custom_BH_freq() ) # get the # of rows that == 1 day
+    x_window = periods_per_day * days_for_x_window#data_params['days_for_x_window'] 
+    
+    # Update data_params
+    data_params['periods_per_day'] = periods_per_day
+    data_params['x_window'] = x_window    
+    # days_for_x_window = #data_params['days_for_x_window']
+
+
+    if verbose>1:
+        print(f'X_window size = {x_window} -- ({days_for_x_window} day(s) * {periods_per_day} rows/day)\n')
+    
+    if verbose>0:
+#         ji.display_dict_dropdown(data_params)
+        from pprint import pprint
+        print("data_params.items()={\t")
+        pprint(data_params)
+        print('}\n')
+    return data_params
+
+
+def make_train_test_series_gens(train_data_series,test_data_series,model_params,n_features=1,batch_size=1,verbose=1):
+    
+    import functions_combined_BEST as ji
+    if 'data_params' in model_params.keys():
+        data_params = model_params['data_params']
+        model_params['input_params'] = {}
+    else:
+        print('data_params not found in model_params')
+
+    # elif 'x_window' in model_params.keys():
+    #     data_params = model_params
+
+    ########## Define shape of data by specifing these vars 
+    input_params = {}        
+    input_params['n_input'] = data_params['x_window']  # Number of timebins to analyze at once. Note: try to choose # greater than length of seasonal cycles 
+    input_params['n_features'] = n_features # Number of columns
+    input_params['batch_size'] = batch_size # Generally 1 for sequence data
+
+    import functions_combined_BEST as ji
+    from keras.preprocessing.sequence import TimeseriesGenerator
+
+    # Get params from data_params_dict
+    n_input = input_params['n_input']
+    n_features= input_params['n_features']
+    batch_size = input_params['batch_size']
+
+    # RESHAPING TRAINING AND TRAINING DATA 
+    train_data = train_data_series.values.reshape(-1,1)
+    train_data_index =  train_data_series.index
+    input_params['train_data_index'] = train_data_index
+
+    ## Create Generator for Training Data
+    train_generator = TimeseriesGenerator(data=train_data, targets=train_data,
+                                          length=n_input, batch_size=batch_size )
+
+    # RESHAPING TRAINING AND TEST DATA 
+    test_data = test_data_series.values.reshape(-1,1)
+    test_data_index =test_data_series.index
+    input_params['test_data_index'] = test_data_index
+
+
+    # Create a generator for Test Data
+    test_generator = TimeseriesGenerator(data=test_data, targets=test_data,
+                                         length=n_input, batch_size=batch_size )
+    
+    model_params['input_params'] = input_params
+
+    if verbose>1:
+        ji.display_dict_dropdown(model_params)
+
+    if verbose>0:
+        # What does the first batch look like?
+        X,y = train_generator[0]
+        print(f'Given the Array: \t(with shape={X.shape}) \n{X.flatten()}')
+        print(f'\nPredict this y: \n {y}')
+
+    return train_generator,test_generator, model_params
+
+
+def def_callbacks_and_params(model_params=None,loss_function='my_rmse',checkpoint_mode='min',filepath=None,
+                             stop_mode='min',patience=1,min_delta=.001,verbose=1):
+    import functions_combined_BEST as ji
+    if 'my_rmse' in loss_function:
+        def my_rmse(y_true,y_pred):
+            """RMSE calculation using keras.backend"""
+            from keras import backend as kb
+            sq_err = kb.square(y_pred - y_true)
+            mse = kb.mean(sq_err,axis=-1)
+            rmse =kb.sqrt(mse)
+            return rmse
+        my_rmse=my_rmse
+        loss_function = my_rmse
+
+        
+    ########## Define loss function and callback params ##########
+    callback_params ={}
+    callback_params['custom_loss_function'] = loss_function
+    callback_params['custom_loss_function'] = loss_function
+    callback_params['ModelCheckpoint'] = {'monitor': loss_function, 'mode':checkpoint_mode}
+    callback_params['EarlyStopping'] = {'monitor':loss_function, 'mode':stop_mode, 
+                                        'patience':patience, 'min_delta':min_delta}
+
+    # CREATING CALLBACKS
+    from keras import callbacks
+
+    if filepath is None:
+        filepath = f"models/checkpoints/model1_weights_{ji.auto_filename_time(prefix=None)}.hdf5"
+
+    # Create ModelCheckPoint
+    fun_params=callback_params['ModelCheckpoint']
+    checkpoint = callbacks.ModelCheckpoint(filepath=filepath, monitor=fun_params['monitor'], mode=fun_params['mode'],
+                                           save_best_only=False, verbose=verbose)
+    # Create EarlyStopping
+    fun_params=callback_params['EarlyStopping']
+    early_stop = callbacks.EarlyStopping(monitor=my_rmse, mode=fun_params['mode'], patience=fun_params['patience'],
+                                         min_delta=fun_params['min_delta'],verbose=verbose)
+    callbacks = [checkpoint,early_stop]
+
+    if model_params is None:
+        model_params=callback_params
+    else:
+        model_params['callbacks'] = callback_params
+    return callbacks, model_params
+
+
+def def_compile_params_optimizer(loss='my_rmse',metrics=['acc','my_rmse'],optimizer='optimizers.Nadam()',model_params=None):
+    ####### Specify additional model parameters
+    from keras import optimizers
+    
+    if 'my_rmse' in loss or 'my_rmse' in metrics:
+        def my_rmse(y_true,y_pred):
+            """RMSE calculation using keras.backend"""
+            from keras import backend as kb
+            sq_err = kb.square(y_pred - y_true)
+            mse = kb.mean(sq_err,axis=-1)
+            rmse =kb.sqrt(mse)
+            return rmse
+        my_rmse=my_rmse
+        
+        
+        # replace string with function in loss
+        loss = my_rmse
+        
+        # replace string with function in metrics
+        idx = metrics.index('my_rmse')
+        metrics[idx]=my_rmse
+        
+    compile_params={}
+    compile_params['loss']= loss#{'my_rmse':my_rmse}
+    compile_params['metrics'] = metrics#['acc',my_rmse]
+
+    if type(optimizer) is str:
+        optimizer_name = optimizer
+        optimizer = eval(optimizer_name)
+    else:
+        optimizer_name = optimizer.__class__().__str__()
+        
+    compile_params['optimizer'] = optimizer
+    compile_params['optimizer_name'] = optimizer_name#'optimizers.Nadam()'
+
+    if model_params is not None:
+        model_params['compile_params'] = compile_params
+    else:
+        model_params=compile_params
+    
+    return model_params
+
+
+
+def make_model1(model_params, summary=True):
+    from keras.models import Sequential
+    from keras.layers import Bidirectional, Dense, LSTM, Dropout
+    from IPython.display import display
+    from keras.regularizers import l2
+
+    # Specifying input shape (size of samples, rank of samples?)
+    n_input = model_params['input_params']['n_input']
+    n_features = model_params['input_params']['n_features']
+    
+    input_shape=(n_input, n_features)
+    
+    # Create model architecture
+    model = Sequential()
+    model.add(LSTM(units=50, input_shape =input_shape,return_sequences=True))#,  kernel_regularizer=l2(0.01),recurrent_regularizer=l2(0.01),
+    model.add(LSTM(units=50, activation='relu'))
+    model.add(Dense(1))
+
+    # load compile params and compile
+    comp_params = model_params['compile_params']
+    # metrics = comp_params['metrics']
+    model.compile(loss=comp_params['loss'], metrics=comp_params['metrics'],
+                  optimizer=comp_params['optimizer'])##eval(comp_params['optimizer']), metrics=metrics)#optimizer=optimizers.Nadam()
+    
+    if summary is True:
+        display(model.summary())
+
+    return model
+
+
+
+def fit_model(model,train_generator,model_params=None,epochs=5,callbacks=None,verbose=2,workers=3):
+    import bs_ds as bs
+    import functions_combined_BEST as ji
+    from IPython.display import display
+
+    quiet_command = ji.quiet_mode(True,True,True)
+    exec(quiet_command)
+    
+    if model_params is None:
+        model_params={}
+    model_params['fit_params'] = {'epochs':epochs,'callbacks':callbacks}
+
+    # Instantiating clock timer
+    clock = bs.Clock()
+
+    print('---'*20)
+    print('\tFITTING MODEL:')
+    print('---'*20,'\n')     
+    
+    # start the timer
+    clock.tic('')
+
+    # Fit the model
+    fit_params = model_params['fit_params']
+    if callbacks is None:
+        
+        history = model.fit_generator(train_generator,epochs=fit_params['epochs'], 
+                                       verbose=2, use_multiprocessing=True, workers=3)
+    else:
+        
+        history = model.fit_generator(train_generator,epochs=fit_params['epochs'],
+                                       callbacks=callbacks,
+                                       verbose=2,use_multiprocessing=True, workers=3)
+
+    # model_results = model.history.history
+    clock.toc('')
+    
+    return model,model_params,history
+
+
+def evaluate_model_plot_history(model, train_generator, test_generator, plot=True):
+    """ Takes a keras model fit using fit_generator(), a train_generator and test generator.
+    Extracts and plots Keras model.history's metrics."""
+    from IPython.display import display
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    # # EVALUATE MODEL PREDICTIONS FROM GENERATOR 
+    model_metrics_train = model.evaluate_generator(train_generator)
+    model_metrics_test = model.evaluate_generator(test_generator)
+    print('\n')
+    print('---'*28)
+    print('\tEVALUATE MODEL:')
+    print('---'*28)
+    eval_gen_dict = {}
+    eval_gen_dict['Training Data'] = dict(zip(model.metrics_names,model_metrics_train))
+    eval_gen_dict['Test Data'] = dict(zip(model.metrics_names,model_metrics_test))
+
+
+    display(pd.DataFrame(eval_gen_dict))
+
+    # duration = print(clock._lap_duration_)
+    model_results = model.history.history
+    
+    if plot==True and len(model.history.epoch)>1:
+        plt.figure(figsize=(6,3))
+        for k,v in model_results.items():
+            plt.plot(range(len(v)),v, label=k)
+        plt.legend()
+        plt.show()
+
+    return  eval_gen_dict
+
+
+def save_model_weights_params(model,model_params=None, filename_prefix = 'models/model', check_if_exists = True,
+ auto_increment_name=True, auto_filename_suffix=True,  sep='_', suffix_time_format = '%m-%d-%Y_%I%M%p'):
+    """Saves a fit Keras model and its weights as a .json file and a .h5 file, respectively.
+    auto_filename_suffix will use the date and time to give the model a unique name (avoiding overwrites).
+    Returns the model_filename and weight_filename"""
+    import json
+    import pickle
+    from functions_combined_BEST import auto_filename_time
+    # create base model filename 
+    if auto_filename_suffix:
+        filename = auto_filename_time(prefix=filename_prefix, sep=sep,timeformat=suffix_time_format )
+    
+    full_filename = filename+'.json'
+
+
+    ## check if file exists
+    if check_if_exists:
+        import os
+        import pandas as pd
+        current_files = os.listdir()
+
+        # check if file already exists
+        if full_filename in current_files and auto_increment_name==False:
+            raise Exception('Filename already exists')
+        
+        elif full_filename in current_files and auto_increment_name==True:
+        
+            # check if filename ends in version #
+            import re
+            num_ending = re.compile(r'[vV].?(\d+).json')
+            
+            curr_file_num = num_ending.findall(full_filename)
+            if len(curr_file_num)==0:
+                v_num = '_v01'
+            else:
+                v_num = f"_{int(curr_file_num)+1}"
+
+            full_filename = filename + v_num + '.json'
+
+            print(f'{filename} already exists... incrementing filename to {full_filename}.')
+    
+
+    # convert model to json
+    model_json = model.to_json()
+
+    # save json model to json file
+    with open(full_filename, "w") as json_file:
+        json.dump(model_json,json_file)
+    print(f'Model saved as {full_filename}')
+
+    ## save model_params if provided
+    if model_params is not None:
+        # import json
+        import inspect
+        import pickle# as pickle
+
+        
+        def replace_function(function):
+            import inspect
+            return inspect.getsource(function)
+
+        # replace any functions with their source code before saving params
+        for k,v in model_params.items():
+
+            if inspect.isfunction(v):
+                model_params[k] = replace_function(v)
+
+            elif isinstance(v,dict):
+
+                for k2,v2 in v.items():
+                    if inspect.isfunction(v2):
+                        model_params[k][k2]=replace_function(v2)
+
+                    elif isinstance(v2,dict):
+
+                        for k3,v3 in v2.items():
+                            
+                            if inspect.isfunction(v3):
+                                model_params[k][k2][k3]=replace_function(v3)
+                            
+
+
+        # get filename without extension
+        file_ext=full_filename.split('.')[-1]
+        param_filename = full_filename.replace(f'.{file_ext}','')
+        param_filename+='_params.pkl'
+        with open(param_filename,'wb') as param_file:
+            pickle.dump(model_params, param_file) #sort_keys=True,indent=4)
+
+        
+    # serialize weights to HDF5
+    weight_filename = full_filename+'_weights.h5'
+    model.save_weights(weight_filename)
+    print(f'Weights saved as {weight_filename}')
+
+    return filename, weight_filename
+
+
+def load_model_weights_params(base_filename = 'models/model_',load_params=True, model_filename=None,weight_filename=None, trainable=False,verbose=1):
+    """Loads in Keras model from json file and loads weights from .h5 file.
+    optional set model layer trainability to False"""
+    from IPython.display import display
+    from keras.models import model_from_json
+    import json
+    
+    ## Set model and weight filenames from base_filename if None:
+    if model_filename is None:
+        model_filename = base_filename+'.json'
+    if weight_filename is None:
+        weight_filename = base_filename+'_weights.h5'
+
+    model_params_filename = base_filename+'_params.json'
+
+    # Load json and create model
+    with open(model_filename, 'r') as json_file:
+        loaded_model_json = json_file.read()    
+    loaded_model = model_from_json(loaded_model_json)
+
+    # Load weights into new model
+    loaded_model.load_weights(weight_filename)
+    print(f"Loaded {model_filename} and loaded weights from {weight_filename}.")
+
+    # set layer trainability
+    if trainable is False:
+        for i, model_layer in enumerate(loaded_model.layers):
+            loaded_model.get_layer(index=i).trainable=False
+        if verbose>0:
+            print('All model.layers.trainable set to False.')
+        if verbose>1:
+            print(model_layer,loaded_model.get_layer(index=i).trainable)
+    
+    # display summary if verbose
+    if verbose>0:
+        display(loaded_model.summary())
+        print("Note: Model must be compiled again to be used.")
+
+    if load_params:
+        with open(model_params_filename,'r') as params_file:
+            model_params = json.load(params_file)
+        
+        return loaded_model, model_params
+    else:
+        return loaded_model 
+
+
+def thiels_U(ys_true=None, ys_pred=None,display_equation=True,display_table=True):
+    """Calculate's Thiel's U metric for forecasting accuracy.
+    Accepts true values and predicted values.
+    Returns Thiel's U"""
+
+
+    from IPython.display import Markdown, Latex, display
+    import numpy as np
+    display(Markdown(""))
+    eqn=" $$U = \\sqrt{\\frac{ \\sum_{t=1 }^{n-1}\\left(\\frac{\\bar{Y}_{t+1} - Y_{t+1}}{Y_t}\\right)^2}{\\sum_{t=1 }^{n-1}\\left(\\frac{Y_{t+1} - Y_{t}}{Y_t}\\right)^2}}$$"
+
+    # url="['Explanation'](https://docs.oracle.com/cd/E57185_01/CBREG/ch06s02s03s04.html)"
+    markdown_explanation ="|Thiel's U Value | Interpretation |\n\
+    | --- | --- |\n\
+    | <1 | Forecasting is better than guessing| \n\
+    | 1 | Forecasting is about as good as guessing| \n\
+    |>1 | Forecasting is worse than guessing| \n"
+
+
+    if display_equation and display_table:
+        display(Latex(eqn),Markdown(markdown_explanation))#, Latex(eqn))
+    elif display_equation:
+        display(Latex(eqn))
+    elif display_table:
+        display(Markdown(markdown_explanation))
+
+    if ys_true is None and ys_pred is None:
+        return
+
+    # sum_list = []
+    num_list=[]
+    denom_list=[]
+    for t in range(len(ys_true)-1):
+        num_exp = (ys_pred[t+1] - ys_true[t+1])/ys_true[t]
+        num_list.append([num_exp**2])
+        denom_exp = (ys_true[t+1] - ys_true[t])/ys_true[t]
+        denom_list.append([denom_exp**2])
+    U = np.sqrt( np.sum(num_list) / np.sum(denom_list))
+    return U
+
+def evaluate_regression(y_true, y_pred, display_thiels_u_info=False):
+    """Calculates and displays the following evaluation metrics:
+    RMSE, R2_score, """
+    from sklearn.metrics import r2_score, mean_squared_error
+    import numpy as np
+    from bs_ds import list2df
+    results=[['Metric','Value']]
+    
+    r2 = r2_score(y_true, y_pred)
+    results.append(['R_squared',r2])
+    
+    RMSE = np.sqrt(mean_squared_error(y_true,y_pred))
+    results.append(['Root Mean Squared Error',RMSE])
+    
+    if display_thiels_u_info is True:
+        show_eqn=True
+        show_table=True
+    else:
+        show_eqn=False 
+        show_table=False
+
+    U = thiels_U(y_true, y_pred,display_equation=show_eqn,display_table=show_table )
+    results.append(["Thiel's U", U])
+    
+    results_df = list2df(results)#, index_col='Metric')
+    results_df.set_index('Metric', inplace=True)
+    return results_df.round(3)
+
+
+
+def get_evaluate_regression_dict(df, show_results = True, return_col_names=False):
+    import re
+    import functions_combined_BEST as ji
+    from IPython.display import display
+
+    col_list = df.columns
+    from_where = re.compile('(true|pred)_(from_\w*_?\w+?)')
+    found = [from_where.findall(col)[0] for col in col_list]
+
+
+    pairs_of_cols = {}
+    df_dict = {}
+#     results =[['preds_from','metric','value']]
+    for _,where in found: 
+
+        true_series = df['true_'+where].dropna()
+        pred_series = df['pred_'+where].dropna()
+        pairs_of_cols[where] = {}
+        pairs_of_cols[where]=[true_series.name,pred_series.name]#['col_names']
+        
+        df_dict[where] = ji.evaluate_regression(true_series,pred_series).reset_index()
+#         pairs_of_cols[where]['results']=res_df
+    if show_results:
+        ji.display_df_dict_dropdown(df_dict)
+
+    if return_col_names:
+        return df_dict, pairs_of_cols
+    else:
+        return df_dict
+        
+
+def compare_eval_metrics_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],plot_all=False,plot_best=True):
+    ## SHIFT THE TRUE VALUES, PLOT, AND CALC THIEL's U
+    from bs_ds import list2df
+    import pandas as pd
+    df = pd.concat([true_series, pred_series],axis=1)
+    
+    true_colname = 'true'
+    pred_colname = 'pred'
+    
+    df.columns=[true_colname, pred_colname]#.dropna(axis=0,subset=[[true_colname,pred_colname]])
+
+    results=[['Bins Shifted','Metric','Value']]
+    combined_results = pd.DataFrame(columns=results[0])
+    
+    for shift in shift_list:
+
+        df_shift=pd.DataFrame()
+        df_shift[pred_colname] = df[pred_colname].shift(shift)
+        df_shift[true_colname] = df[true_colname]
+        df_shift.dropna(inplace=True)      
+        
+        shift_results = evaluate_regression(df_shift[true_colname],df_shift[pred_colname]).reset_index()
+        shift_results.insert(0,'Bins Shifted',shift)
+        
+        combined_results = pd.concat([combined_results,shift_results], axis=0)
+#     combined_results.set_index(['Bins Shifted','Metric'], inplace=True)
+    return combined_results
+
+
+def compare_u_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],
+    plot_all=False,plot_best=True, color_coded=True, return_results=False, return_shifted_df=True,
+    display_U_info=False):
+    
+    import functions_combined_BEST as ji
+    from bs_ds import list2df
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from IPython.display import display
+
+    true_colname = true_series.name#'true'
+    pred_colname = pred_series.name#'pred'
+    
+    # combine the series into one dataframe and rename
+    df = pd.concat([true_series, pred_series],axis=1)
+    # df.columns=[true_colname, pred_colname]#.dropna(axis=0,subset=[[true_colname,pred_colname]])
+    
+    # create results list
+    results=[['# of Bins Shifted','U']]
+    
+    if plot_all or plot_best:
+        plt.figure()
+
+    if plot_all is True:
+        df[true_colname].plot(color='black',lw=3,label = 'True Values')
+        plt.legend()
+        plt.title('Shifted Time Series vs Predicted')
+        
+
+    # Loop through shifts, add to df_shifted, calc thiel's U
+    df_shifted = df.copy()        
+
+    for shift in shift_list:
+        if plot_all==True:
+            df[pred_colname].shift(shift).plot(label = f'Predicted-Shifted({shift})')
+
+        # create df for current shift
+        df_shift=pd.DataFrame()
+        df_shift['pred'] = df[pred_colname].shift(shift)
+        df_shift['true'] = df[true_colname]
+        
+        # add to df_shifted
+        df_shifted['pred_shift'+str(shift)] =  df_shift['pred']
+
+        # Drop null values and calcualte Thiels U
+        df_shift.dropna(inplace=True)
+        U = thiels_U(df_shift['true'], df_shift['pred'],False,False)
+
+        # Append results to results list
+        results.append([shift,U])
+    
+    # Turn results into dataframe when complete
+    df_results = list2df(results)#
+    df_results.set_index('# of Bins Shifted', inplace=True)
+
+    # if plot+nest
+    if plot_best==True:
+
+        # def plot_best_shift(df_results,col_to_check):
+        best_shift = df_results['U'].idxmin()#[0]
+
+        df[true_colname].plot(label = 'True Values')
+        df[pred_colname].shift(best_shift).plot(ls='--',label = f'Predicted-Shifted({best_shift})')
+        plt.legend()
+        plt.title("Best Thiel's U for Shifted Time Series")
+        plt.tight_layout()
+
+    # Dispaly Thiel's U info
+    if display_U_info:
+        _ = thiels_U(None,None,True,True)
+
+    # Display dataframe results
+    if color_coded is True:
+        dfs_results = ji.color_cols(df_results, rev=True)
+        display(dfs_results.set_caption("Thiel's U - Shifting Prediction Time bins"))
+
+    else:
+        display(df_results.style.set_caption("Thiel's U - Shifting Prediction Time bins"))
+        
+    # Return requested oututs
+    return_list = []
+
+    if return_results:
+        return_list.append(df_results)
+
+    if return_shifted_df:
+        return_list.append(df_shifted)
+
+    return return_list[:]
+
+
+def compare_time_shifted_model(df_model,true_colname='true test',pred_colname='pred test',
+                               shift_list=[-4,-3,-2,-1,0,1,2,3,4],show_results=True,show_U_info=True,
+                               caption=''):
+    import numpy as np
+    from IPython.display import display
+    import functions_combined_BEST as ji
+
+    # GET EVALUATION METRICS FROM PREDICTIONS
+    true_test_series = df_model[true_colname].dropna()
+    pred_test_series = df_model[pred_colname].dropna()
+
+    # Comparing Shifted Timebins
+    res_df = compare_eval_metrics_for_shifts(true_test_series.rename(true_colname),
+     pred_test_series.rename(pred_colname),shift_list=np.arange(-4,4,1))
+
+    res_df = res_df.pivot(index='Bins Shifted', columns='Metric',values='Value')
+    res_df.columns.rename(None, inplace=True)
+    
+    
+    if show_results:
+        
+        res_dfs = res_df.copy().style
+        res_dfs = ji.color_cols(res_df,subset=["Thiel's U"],rev=True) #OLD
+        display(res_dfs.set_caption(caption))
+    
+    if show_U_info:
+        _ = thiels_U(None,None,True,True)
+        
+#         metric_best_crit = {'R_squared':'max', "Thiel's U":'min','Root Mean Squared Error':'min'}    
+#         for k,v in metric_best_crit.items():
+#             res_dfs = res_dfs.apply(lambda x: highlight_best(x,v),axis=0)        
+#         display(res_dfs)
+    return res_df
+
+# def get_model_preds_df(model, train_generator, test_generator, true_train_data, true_test_data,
+# preds_from_gen=True, preds_from_train_preds =True, preds_from_test_preds=True, model_params=None, train_data_index=None, test_data_index=None, x_window=None, return_combined=False):
+#     """Accepts a model, the training and testing data TimeseriesGenerators, the test_index and train_index.
+#     Returns a dataframe with True and Predicted Values for Both the Training and Test Datasets."""
+#     import pandas as pd
+#     import functions_combined_BEST as ji
+
+#     if model_params is not None:
+#         train_data_index = model_params['input_params']['train_data_index']
+#         test_data_index = model_params['input_params']['test_data_index']
+#         x_window =  model_params['data_params']['x_window']
+
+
+#     if true_test_data is None:
+#         raise Exception("true_test_data = df_test['price']")
+
+#     if true_train_data is None:        
+#         raise Exception("true_train_data=df_train['price']")
+    
+
+
+
+#     #### ADD SWITCH DEPENDING ON TRUE CONDITIONS
+
+#     if preds_from_gen == True:
+#         get_model_preds_from_gen()
+
+#         # #  GET INDICES BASED ON GENERATOR START AND END
+#         # gen_index = true_test_data.index[test_generator.start_index:test_generator.end_index+1]
+
+        
+#         # # GET PREDICTIONS FOR TRAINING DATA AND TEST DATA
+#         # test_predictions = ji.arr2series( model.predict_generator(test_generator),
+#         #                             test_data_index[x_window:], 'pred test')
+        
+#         # train_predictions = ji.arr2series( model.predict_generator(train_generator),
+#         #                             train_data_index[x_window:], 'pred train')
+
+    
+
+#     # GET TRUE TEST AND TRAIN DATA AS SERIES
+#     true_test_price = pd.Series( true_test_data.iloc[x_window:],
+#                                 index= test_data_index[x_window:], name='true test')
+    
+#     true_train_price = pd.Series(true_train_data.iloc[x_window:],
+#                                  index = train_data_index[x_window:], name='true train')
+
+    
+#     # COMBINE TRAINING DATA AND TESTING DATA INTO 2 DFS (with correct date axis)
+#     df_true_v_preds_train = pd.concat([true_train_price, train_predictions],axis=1)
+#     df_true_v_preds_test= pd.concat([true_test_price, test_predictions],axis=1)
+    
+#     # RETURN ONE OR TWO DATAFRAMES
+#     if return_combined is False:
+#         return df_true_v_preds_train, df_true_v_preds_test
+#     elif return_combined is True:
+#         df_combined = pd.concat([df_true_v_preds_train, df_true_v_preds_test],axis=1)
+#         df_combined.columns=['true train','pred train','true test','pred test']
+#         return df_combined
+
+def get_model_preds_df(model, true_train_series,true_test_series, test_generator=None, preds_from_gen=True, 
+preds_from_train_preds =True, preds_from_test_preds=True,  model_params=None,
+ x_window=None, n_features=None, train_data_index=None,
+  test_data_index=None,return_combined=True,inverse_tf=False, 
+  scaler=None, iplot=True, plot_with_train_data=True, return_fig=False):
+    """ Gets predictions for training data from the 3 options: 
+    1) from generator  --  len(output) = (len(true_test_series)-n_input)
+    2) from predictions on test data  --  len(output) = (len(true_test_series)-n_input)
+    3) from predictions on train data -- len(true_test_series)
+    """
+    import pandas as pd
+    import functions_combined_BEST as ji
+    import bs_ds  as bs
+    # x_window=n_input
+
+    if model_params is not None:
+
+        if scaler is None and inverse_tf == True:
+            scaler = model_params['scaler_library']['price']
+
+        n_features = model_params['input_params']['n_features']
+        train_data_index = model_params['input_params']['train_data_index']
+        test_data_index = model_params['input_params']['test_data_index']
+
+
+        if model_params['data_params']['x_window'] == model_params['input_params']['n_input']:
+            x_window = model_params['input_params']['n_input']
+        else:
+            print('x_window and n_input params are not the same, using n_input as x_window...')
+
+
+    if model_params is None:
+
+        if scaler is None and inverse_tf==True:
+            raise Exception('Must provide model_params with "scaler_library" or define scaler.')
+
+        if (x_window is None) or (n_features is None):
+            if preds_from_gen:
+                raise Exception('Must provide model params or define n_input and n_features')
+            
+    if (preds_from_gen == True) and (test_generator == None):
+        raise Exception('If from_gen=True, must provide generator.')
+
+            
+    ### GET the 3 DIFERENT TYPES OF PREDICTIONS    
+    df_list = []
+
+
+    if preds_from_gen:
+
+        gen_df = get_model_preds_from_gen(model=model, test_generator=test_generator,true_test_data=true_test_series,
+         model_params=model_params, n_input=x_window, n_features=n_features,  suffix='_from_gen',return_df=True)
+
+        df_list.append(gen_df)
+
+
+
+    if preds_from_test_preds:
+        
+        func_df_from_test = get_model_preds_from_preds(model=model, true_train_data=true_train_series, true_test_data=true_test_series,
+        model_params=model_params, x_window=x_window, n_features=n_features,
+         suffix='_from_test_preds',build_preds_from_train=False, return_df=True)
+
+        df_list.append(func_df_from_test)
+
+
+
+    if preds_from_train_preds:
+
+        func_df_from_train  = get_model_preds_from_preds(model=model, true_train_data=true_train_series,
+        true_test_data=true_test_series,model_params=model_params, x_window=x_window, n_features=n_features,
+        suffix='_from_train_preds', build_preds_from_train=True,return_df=True)
+        df_list.append(func_df_from_train)
+
+
+    # bs.display_side_by_side(func_df,func_df_from_train)
+    if return_combined:
+        df_all_preds = pd.concat([df for df in df_list],axis=1)
+        df_all_preds = bs.drop_cols(df_all_preds,['i_'])
+
+
+    
+    if inverse_tf:
+        
+        df_out = ji.transform_cols_from_library(df_all_preds,single_scaler=model_params['scaler_library']['price'],inverse=True)
+    else:
+        df_out = df_all_preds
+
+    
+
+    if iplot:
+        if plot_with_train_data == False:
+            ji.plotly_time_series(df_out)
+        
+        else:
+
+            scaler = model_params['scaler_library']['price']
+            true_train_price = ji.transform_series(true_train_series,scaler=scaler,inverse=True)
+            # print(type(true_train_price))
+            df_plot = pd.concat([true_train_price,df_out],axis=1)
+            ji.plotly_time_series(df_plot)
+
+    return df_out
+
+def get_eval_dict_for_paired_cols(df,col_regex_tokens=r'(true|pred)_(from_\w*_?\w+?)'):
+    import re
+    
+    col_list = df.columns
+    from_where = re.compile(col_regex_tokens) #'(true|pred)_(from_\w*_?\w+?)')
+    found = [from_where.findall(col)[0] for col in col_list]
+
+
+    pairs_of_cols = {}
+    for _,where in found: 
+
+        true_series = df['true_'+where].dropna()
+        pred_series = df['pred_'+where].dropna()
+        pairs_of_cols[where] = {}
+        pairs_of_cols[where]['col_names']={'true':true_series.name,'pred':pred_series.name}
+        pairs_of_cols[where]['results']=evaluate_regression(true_series,pred_series).reset_index()
+    
+    return pairs_of_cols
+    
+
+def get_predictions_df_and_evaluate_model(model, test_generator,
+                                        true_train_data, true_test_data, model_params=None,
+                                        train_data_index=None, test_data_index=None, 
+                                        x_window=None, scaler=None, inverse_tf =True,
+                                        return_separate=False, plot_results = True,
+                                        iplot_results=False):
+
+    import functions_combined_BEST as ji
+    import pandas as pd
+    from IPython.display import display
+    n_input=x_window
+
+    if model_params is not None:
+        train_data_index = model_params['input_params']['train_data_index']
+        test_data_index = model_params['input_params']['test_data_index']
+        x_window =  model_params['data_params']['x_window']
+        scaler_library = model_params['scaler_library']
+
+    if true_test_data is None:
+        raise Exception("true_test_data = df_test['price']")
+
+    if true_test_data is None:        
+        raise Exception("true_train_data=df_train['price']")
+
+
+    # Call helper to get predictions and return as dataframes 
+    # df_true_v_preds_train, df_true_v_preds_test 
+    df_model = get_model_preds_df(model,  test_generator=test_generator,
+    true_train_series=true_train_data, true_test_series = true_test_data, model_params=model_params,train_data_index=None, test_data_index=None,
+        x_window=None, inverse_tf = inverse_tf, return_combined=True)
+    ## Concatenate into one dataframe
+    # df_model_preds = pd.concat([df_true_v_preds_train, df_true_v_preds_test],axis=1)
+    
+    # ## CONVERT BACK TO DOLLARS AND PLOT
+    # if inverse_tf==True:
+    #     df_model = pd.DataFrame()
+    #     for col in df_model_preds.columns:
+    #         df_model[col] = ji.transform_series(df_model_preds[col],scaler_library['price'], inverse=True) 
+    # else:
+    #     df_model = df_model_preds
+
+        
+    if plot_results:
+        # PLOTTING TRAINING + TRUE/PRED TEST DATA
+        ji.plot_true_vs_preds_subplots(df_model['true train'],df_model['true test'], 
+                                    df_model['pred test'], subplots=True)
+    if iplot_results:
+        ji.plotly_time_series(df_model.drop('pred train',axis=1))
+
+
+    
+
+    # prepare display_of_results
+
+    # # GET EVALUATION METRICS FROM PREDICTIONS
+    # true_test_series = df_model['true test'].dropna()
+    # pred_test_series = df_model['pred test'].dropna()
+    
+    # # Get and display regression statistics
+    # results_tf = evaluate_regression(true_test_series, pred_test_series)
+    pairs_of_cols = ji.get_evaluate_regression_dict(df_model)
+    display(pairs_of_cols)
+
+    return df_model
+
+
+
+
+def get_model_preds_from_preds(model,true_train_data, true_test_data,
+                         model_params=None, x_window=None, n_features=None, 
+                         build_preds_from_train=True, return_df=True,suffix=None):
+    
+    """ Gets predictions from model using using its own predictions as the subsequent input.
+    Must provide a model_params dictionary with 'input_params' OR must define ('n_input','n_features').
+    
+    * IF build_preds_from_train is True:
+        1. starting true time series for predictions is the last rows [-n_input:] from training data.
+        2. output predicitons will be the same length as the input scaled_test_data
+    
+    * IF build_preds_from_train is False:
+        1. starting true time series for predictions is the first rows [:n_input] from test data.
+        2. output predicitons will be shorter by n_input # of rows
+    """
+    scaled_train_data = true_train_data
+    scaled_test_data = true_test_data
+    import bs_ds as bs
+    import numpy as np
+    import pandas as pd
+    test_predictions = []
+    first_eval_batch=[]
+
+    n_input = x_window
+
+    if model_params is not None:
+        if n_input is None:
+            n_input= model_params['input_params']['n_input']
+
+        if n_features is None:
+            n_features = model_params['input_params']['n_features']
+    
+
+
+    preds_out = [['i','index','pred']]
+    
+    # SAVING COPY OF INPUT TEST DATA
+    scaled_test_series = scaled_test_data.copy() 
+
+    ## SAVING TRAIN AND TEST DATA INDICES AND VALUES
+    train_data_index = scaled_train_data.index
+    scaled_train_data = scaled_train_data.values
+    test_data_index = scaled_test_data.index
+    scaled_test_data = scaled_test_data.values
+    
+    
+    ## PREPARE THE FIRST EVAL BATCH TIMESERIES FROM TRAIN OR TEST DATA
+    # Change parameters depending on if from train or test data
+    if build_preds_from_train:
+        
+        # If using trianing data loop through full test data
+        loop_length = range(len(scaled_test_data))
+        
+        # take the last window size of data from training data 
+        first_eval_batch = scaled_train_data[-1*n_input:]
+        # first_batch_idx = train_data_index[-n_input:]
+        
+        # set the true index to test_data_index
+        true_index_out = test_data_index
+        
+    # Set the loop to be from n_input # of rows into test_data
+    else:
+        loop_length = range(n_input,len(scaled_test_data))
+        first_eval_batch = scaled_test_data[:n_input]
+        true_index_out =  test_data_index[n_input:]
+      
+    
+    # reshape first batch of data for model.predict 
+    current_batch = first_eval_batch.reshape((1, n_input, n_features))
+
+    
+    ## LOOP THROUGH REMAINING TIMEBINS USING CURRENT PREDICITONS AS NEW DATA FOR NEXT
+    for i in loop_length:
+
+        # get prediction 1 time stamp ahead ([0] is for grabbing just the number instead of [array])
+        current_pred = model.predict(current_batch)[0]        
+        # store prediction
+        test_predictions.append(current_pred) 
+
+        # update batch to now include prediction and drop first value
+        current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
+        
+        ## Append the data to the output df list
+        preds_out.append([i,test_data_index[i],current_pred[0]])
+
+
+    ## If returning a dataframe,prepare and rename with suffix
+    if return_df:
+        res_df = bs.list2df(preds_out)
+        res_df['index'] = pd.to_datetime(res_df['index'])
+        res_df.set_index('index',inplace=True)
+        
+        # adding true price
+        res_df['true'] = scaled_test_series.loc[true_index_out]
+        res_df=res_df[['i','true','pred']]
+        
+        if suffix is not None:
+            colnames = [name+suffix for name in res_df.columns]
+        else:
+            colnames = res_df.columns
+            
+        res_df.columns=colnames
+        return res_df #test_predictions, checks
+    
+    # Else just return array of predictions
+    else:
+        return np.array(test_predictions)
+
+
+
+def get_model_preds_from_gen(model,test_generator, true_test_data, model_params=None,
+                       n_input=None, n_features=None, suffix=None, return_df=True):
+        """
+        Gets prediction from model using the generator's timeseries using model.predict_generator()
+        Must provide a model_params dictionary with 'input_params' OR must define ('n_input','n_features').
+
+        """
+        import pandas as pd
+        import numpy as np
+        import bs_ds as bs
+        import functions_combined_BEST as ji
+        if model_params is not None:
+            n_input= model_params['input_params']['n_input']
+            n_features = model_params['input_params']['n_features']
+
+        if model_params is None:
+            if n_input is None or n_features is None:
+                raise Exception('Must provide model params or define n_input and n_features')
+
+        # GET TRUE VALUES AND DATETIME INDEX FROM GENERATOR
+        
+        # Get true time index from the generator's start_index and end_index 
+        gen_index = true_test_data.index[test_generator.start_index:test_generator.end_index+1]
+        gen_true_targets = test_generator.targets[test_generator.start_index:test_generator.end_index+1]
+        
+        
+        # Generate predictions from the test_generator
+        gen_preds = model.predict_generator(test_generator)
+        gen_preds_flat = gen_preds.ravel()
+        
+        gen_true_targets = gen_true_targets.ravel()
+        
+        
+        # RETURN OUTPUT AS DATAFRAME OR ARRAY OF PREDS
+        if return_df==True:
+            # Combine the outputs
+            print(len(gen_index),len(gen_true_targets), len(gen_preds_flat))
+
+            gen_pred_df = pd.DataFrame({'index':gen_index,'true':gen_true_targets,'pred':gen_preds_flat})
+            gen_pred_df['index'] = pd.to_datetime(gen_pred_df['index'])
+            gen_pred_df.set_index('index',inplace=True)
+
+            if suffix is not None:
+                colnames = [name+suffix for name in gen_pred_df.columns]
+            else:
+                colnames = gen_pred_df.columns
+            gen_pred_df.columns=colnames
+            return gen_pred_df
+        else:
+            return gen_preds
+
+
+def compare_model_pred_methods(model, true_train_series,true_test_series, test_generator=None,
+                               model_params=None, n_input=None, n_features=None, from_gen=True,
+                               from_train_series = True, from_test_series=True, 
+                               iplot=True, plot_with_train_data=True,return_df=True, inverse_tf=True):
+    """ Gets predictions for training data from the 3 options: 
+    1) from generator  --  len(output) = (len(true_test_series)-n_input)
+    2) from predictions on test data  --  len(output) = (len(true_test_series)-n_input)
+    3) from predictions on train data -- len(true_test_series)
+    """
+    import pandas as pd
+    import functions_combined_BEST as ji
+    import bs_ds  as bs
+    if model_params is not None:
+        n_input= model_params['input_params']['n_input']
+        n_features = model_params['input_params']['n_features']
+
+    if model_params is None:
+        if n_input is None or n_features is None:
+            raise Exception('Must provide model params or define n_input and n_features')
+            
+    if from_gen is True and test_generator is None:
+        raise Exception('If from_gen=True, must provide generator.')
+
+            
+    ### GET the 3 DIFERENT TYPES OF PREDICTIONS    
+    df_list = []
+    #(model, test_generator, true_test_data, model_params=None, n_input=None, n_features=None, suffix=None, return_df=True)
+    if from_gen:
+        gen_df = get_model_preds_from_gen(model=model, test_generator=test_generator,
+        true_test_data=true_test_series, model_params=model_params, 
+        n_input=n_input, n_features=n_features,  suffix='_from_gen',return_df=True)    
+        df_list.append(gen_df)
+    #s(model, scaled_train_data, scaled_test_data, model_params=None, n_input=None, n_features=None, build_preds_from_train=True, return_df=True, suffix=None)
+    if from_test_series:
+
+        func_df_from_test = get_model_preds_from_preds(model=model, true_train_data=true_train_series,
+        true_test_data=true_test_series,model_params=model_params, x_window=n_input, n_features=n_features,
+         suffix='_from_test',build_preds_from_train=False, return_df=True)
+        df_list.append(func_df_from_test)
+
+    if from_train_series:
+        func_df_from_train  = get_model_preds_from_preds(model=model, true_train_data=true_train_series,
+        true_test_data=true_test_series,model_params=model_params, x_window=n_input, n_features=n_features,
+        suffix='_from_train', build_preds_from_train=True,return_df=True)
+        df_list.append(func_df_from_train)
+
+    # bs.display_side_by_side(func_df,func_df_from_train)
+
+    df_all_preds = pd.concat([df for df in df_list],axis=1)
+    df_all_preds = bs.drop_cols(df_all_preds,['i_'])
+    # print(df_all_preds.shape)
+
+    if inverse_tf:
+        df_out = ji.transform_cols_from_library(df_all_preds,single_scaler=model_params['scaler_library']['price'],inverse=True)
+    else:
+        df_out = df_all_preds
+
+    if iplot:
+        if plot_with_train_data == False:
+            ji.plotly_time_series(df_out)
+        
+        else:
+            scaler = model_params['scaler_library']['price']
+            true_train_price = ji.transform_series(true_train_series,scaler=scaler,inverse=True)
+            # print(type(true_train_price))
+            df_plot = pd.concat([true_train_price,df_out],axis=1)
+            ji.plotly_time_series(df_plot)
+
+    if return_df:
+        return df_out
+
+
+def extract_true_vs_pred_cols(df_model1, rename_cols = True, from_gen=True, from_test_preds=False,
+from_train_preds=False):
+    import pandas as pd
+    if sum([from_gen, from_test_preds, from_train_preds]) >1:
+        raise Exception('Only 1 of the "from_source" inputs may ==True: ')
+    
+    list_of_possible_cols = ['true_from_gen', 'pred_from_gen',
+     'true_from_test_preds','pred_from_test_preds', 'true_from_train_preds',
+       'pred_from_train_preds']
+
+    if from_gen:
+        true_col = 'true_from_gen'
+        pred_col = 'pred_from_gen'
+    
+    if from_test_preds:
+        true_col = 'true_from_test_preds'
+        pred_col = 'pred_from_test_preds'
+
+    if from_test_preds:
+        true_col = 'true_from_train_preds'
+        pred_col = 'pred_from_train_preds'
+
+
+    true_series = df_model1[true_col].rename('true')
+    pred_series = df_model1[pred_col].rename('pred')
+
+    
+    df_model_out = pd.concat([true_series, pred_series],axis=1)
+
+    if rename_cols==True:
+        df_model_out.columns = ['true','pred']
+
+    return df_model_out 

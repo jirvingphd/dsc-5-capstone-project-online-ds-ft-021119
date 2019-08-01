@@ -7,3 +7,5 @@ __pycache__/capstone_functions_jmi.cpython-36.pyc
 *.hdf5
 bestNLPmodel_acc054.json
 bestNLPmodel_best_stock_increase.json
+bestNLPmodel_best_stock_increase.json
+bestNLPmodel_acc054.json
