@@ -1,3 +1,15 @@
+# def make_model_params_df(model_params, multi_index=True):
+#     pass
+#     import bs_ds as bs
+#     import functions_combined_BEST as ji
+#     import pandas as pd
+
+#     # data_fields = 
+#     model_layer_list=model_config_dict['layers']
+#     output = [['#','layer_name', 'layer_config_level','layer_param','param_value']]#,'param_sub_value','param_sub_value_details' ]]
+
+#     for num,layer_dict in enumerate(model_layer_list):
+
 
 def get_model_config_df(model1, multi_index=True):
 
@@ -239,11 +251,18 @@ def make_model_menu(model1, multi_index=True):
 # interactive(view, Menu) #layer=Menu.children[0],level=Menu.children[1])
 
 # df.head()
-def make_qgrid_model_menu(model):
+def make_qgrid_model_menu(model, return_df = False):
     df=get_model_config_df(model)
     import qgrid
+    from IPython.display import display
+
     qgrid_menu = qgrid.show_grid(df,  grid_options={'highlightSelectedCell':True}, show_toolbar=True)
-    return qgrid_menu
+    
+    display(qgrid_menu)
+    if return_df:
+        return df
+    else:
+        return 
 
 
 
@@ -272,6 +291,7 @@ class VariableInspectorWindow(object):
                 via `VariableInspectorWindow.instance`.""")
         from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
         from IPython import get_ipython
+        import ipywidgets as widgets
 
         get_ipython().user_ns_hidden['widgets'] = widgets
         get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 

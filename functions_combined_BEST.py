@@ -1410,14 +1410,14 @@ def unpack_match_stocks(stock_dict):
 
 
 
-### KERAS
-def my_rmse(y_true,y_pred):
-    """RMSE calculation using keras.backend"""
-    from keras import backend as kb
-    sq_err = kb.square(y_pred - y_true)
-    mse = kb.mean(sq_err,axis=-1)
-    rmse =kb.sqrt(mse)
-    return rmse
+# ### KERAS
+# def my_rmse(y_true,y_pred):
+#     """RMSE calculation using keras.backend"""
+#     from keras import backend as kb
+#     sq_err = kb.square(y_pred - y_true)
+#     mse = kb.mean(sq_err,axis=-1)
+#     rmse =kb.sqrt(mse)
+#     return rmse
 
 
 
