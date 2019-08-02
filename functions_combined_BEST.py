@@ -1411,13 +1411,13 @@ def unpack_match_stocks(stock_dict):
 
 
 # ### KERAS
-# def my_rmse(y_true,y_pred):
-#     """RMSE calculation using keras.backend"""
-#     from keras import backend as kb
-#     sq_err = kb.square(y_pred - y_true)
-#     mse = kb.mean(sq_err,axis=-1)
-#     rmse =kb.sqrt(mse)
-#     return rmse
+def my_rmse(y_true,y_pred):
+    """RMSE calculation using keras.backend"""
+    from keras import backend as kb
+    sq_err = kb.square(y_pred - y_true)
+    mse = kb.mean(sq_err,axis=-1)
+    rmse =kb.sqrt(mse)
+    return rmse
 
 
 
@@ -2737,6 +2737,7 @@ def def_my_layout_solar_theme():
 
 def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Price',theme='solar'): #,name='S&P500 Price'):
     import plotly
+    from IPython.display import display
         
     # else:
     import plotly.offline as py
@@ -2835,6 +2836,7 @@ def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Pric
             )
         
     fig.show()
+    # display(fig)
     return fig
 
 def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):

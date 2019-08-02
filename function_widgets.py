@@ -68,7 +68,7 @@ def get_model_config_df(model1, multi_index=True):
                 for sub_param,sub_param_val in param_dict.items():
                     col_1 =sub_param
                     col_2 = sub_param_val
-                    col_3 = ''
+                    # col_3 = ''
 
 
                     output.append([col_000,col_00,col_0, col_1 ,col_2])#,col_3,col_4])
@@ -268,77 +268,77 @@ def make_qgrid_model_menu(model, return_df = False):
 
 
 
-class VariableInspectorWindow(object):
-    instance = None
+# class VariableInspectorWindow(object):
+#     instance = None
 
-    ### WAS OUTSIDE CLASS ORIGINALLY
-    ### https://github.com/jupyter-widgets/ipywidgets/blob/master/docs/source/examples/Variable%20Inspector.ipynb
-    import ipywidgets as widgets # Loads the Widget framework.
-    from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
-    from IPython import get_ipython
+#     ### WAS OUTSIDE CLASS ORIGINALLY
+#     ### https://github.com/jupyter-widgets/ipywidgets/blob/master/docs/source/examples/Variable%20Inspector.ipynb
+#     import ipywidgets as widgets # Loads the Widget framework.
+#     from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
+#     from IPython import get_ipython
 
-    # For this example, hide these names, just to avoid polluting the namespace further
-    get_ipython().user_ns_hidden['widgets'] = widgets
-    get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
+#     # For this example, hide these names, just to avoid polluting the namespace further
+#     get_ipython().user_ns_hidden['widgets'] = widgets
+#     get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
 
 
-    def __init__(self, ipython):
-        """Public constructor."""
-        if VariableInspectorWindow.instance is not None:
-            raise Exception("""Only one instance of the Variable Inspector can exist at a 
-                time.  Call close() on the active instance before creating a new instance.
-                If you have lost the handle to the active instance, you can re-obtain it
-                via `VariableInspectorWindow.instance`.""")
-        from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
-        from IPython import get_ipython
-        import ipywidgets as widgets
+#     def __init__(self, ipython):
+#         """Public constructor."""
+#         if VariableInspectorWindow.instance is not None:
+#             raise Exception("""Only one instance of the Variable Inspector can exist at a 
+#                 time.  Call close() on the active instance before creating a new instance.
+#                 If you have lost the handle to the active instance, you can re-obtain it
+#                 via `VariableInspectorWindow.instance`.""")
+#         from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
+#         from IPython import get_ipython
+#         import ipywidgets as widgets
 
-        get_ipython().user_ns_hidden['widgets'] = widgets
-        get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
-        VariableInspectorWindow.instance = self
-        self.closed = False
-        self.namespace = NamespaceMagics()
-        self.namespace.shell = ipython.kernel.shell
+#         get_ipython().user_ns_hidden['widgets'] = widgets
+#         get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
+#         VariableInspectorWindow.instance = self
+#         self.closed = False
+#         self.namespace = NamespaceMagics()
+#         self.namespace.shell = ipython.kernel.shell
         
-        self._box = widgets.Box()
-        self._box.layout.overflow_y = 'scroll'
-        self._table = widgets.HTML(value = 'Not hooked')
-        self._box.children = [self._table]
+#         self._box = widgets.Box()
+#         self._box.layout.overflow_y = 'scroll'
+#         self._table = widgets.HTML(value = 'Not hooked')
+#         self._box.children = [self._table]
         
-        self._ipython = ipython
-        self._ipython.events.register('post_run_cell', self._fill)
+#         self._ipython = ipython
+#         self._ipython.events.register('post_run_cell', self._fill)
         
-    def close(self):
-        """Close and remove hooks."""
-        if not self.closed:
-            self._ipython.events.unregister('post_run_cell', self._fill)
-            self._box.close()
-            self.closed = True
-            VariableInspectorWindow.instance = None
+#     def close(self):
+#         """Close and remove hooks."""
+#         if not self.closed:
+#             self._ipython.events.unregister('post_run_cell', self._fill)
+#             self._box.close()
+#             self.closed = True
+#             VariableInspectorWindow.instance = None
 
-    def _fill(self):
-        """Fill self with variable information."""
-        values = self.namespace.who_ls()
-        self._table.value = '<div class="rendered_html jp-RenderedHTMLCommon"><table><thead><tr><th>Name</th><th>Type</th><th>Value</th></tr></thead><tr><td>' + \
-            '</td></tr><tr><td>'.join(['{0}</td><td>{1}</td><td>{2}'.format(v, type(eval(v)).__name__, str(eval(v))) for v in values]) + \
-            '</td></tr></table></div>'
+#     def _fill(self):
+#         """Fill self with variable information."""
+#         values = self.namespace.who_ls()
+#         self._table.value = '<div class="rendered_html jp-RenderedHTMLCommon"><table><thead><tr><th>Name</th><th>Type</th><th>Value</th></tr></thead><tr><td>' + \
+#             '</td></tr><tr><td>'.join(['{0}</td><td>{1}</td><td>{2}'.format(v, type(eval(v)).__name__, str(eval(v))) for v in values]) + \
+#             '</td></tr></table></div>'
 
-    def _ipython_display_(self):
-        """Called when display() or pyout is used to display the Variable 
-        Inspector."""
-        self._box._ipython_display_()
+#     def _ipython_display_(self):
+#         """Called when display() or pyout is used to display the Variable 
+#         Inspector."""
+#         self._box._ipython_display_()
 
 
-def inspect_variables():
-    ### https://github.com/jupyter-widgets/ipywidgets/blob/master/docs/source/examples/Variable%20Inspector.ipynb
-    import ipywidgets as widgets # Loads the Widget framework.
-    from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
-    from Ipython import get_ipython
-    # For this example, hide these names, just to avoid polluting the namespace further
-    get_ipython().user_ns_hidden['widgets'] = widgets
-    get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
-    inspector = VariableInspectorWindow(get_ipython())
-    return inspector
+# def inspect_variables():
+#     ### https://github.com/jupyter-widgets/ipywidgets/blob/master/docs/source/examples/Variable%20Inspector.ipynb
+#     import ipywidgets as widgets # Loads the Widget framework.
+#     from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
+#     from Ipython import get_ipython
+#     # For this example, hide these names, just to avoid polluting the namespace further
+#     get_ipython().user_ns_hidden['widgets'] = widgets
+#     get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
+#     inspector = VariableInspectorWindow(get_ipython())
+#     return inspector
 
 
 
@@ -346,9 +346,10 @@ def display_df_dict_menu(dict_to_display, selected_key=None):
     import ipywidgets as widgets
     from IPython.display import display
     from ipywidgets import interact, interactive
+    import pandas as pd
 
 
-    key_list = list(model_regr_eval_dict.keys())
+    key_list = list(dict_to_display.keys())
     key_list.append('_All_')
 
     if selected_key is not None:
