@@ -1,4 +1,4 @@
-name: learn-env-ext
+name: learn-env-ext-capstone
 channels:
   - spyder-ide
   - conda-forge

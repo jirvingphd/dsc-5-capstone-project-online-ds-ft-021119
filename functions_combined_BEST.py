@@ -2735,7 +2735,8 @@ def def_my_layout_solar_theme():
 
 
 
-def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Price',theme='solar'): #,name='S&P500 Price'):
+def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Price',theme='solar',
+as_figure = False): #,name='S&P500 Price'):
     import plotly
     from IPython.display import display
         
@@ -2746,7 +2747,7 @@ def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Pric
     import cufflinks as cf
     cf.go_offline()
 
-    py.init_notebook_mode(connected=True)
+    # py.init_notebook_mode(connected=True)
     # Set title
     if title is None:
         title = "Time series with range slider and selector"
@@ -2775,12 +2776,12 @@ def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Pric
 
 
         if (y_col is None) and (x_col is None):
-            fig = stock_df.iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True)
+            fig = stock_df.iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
 
         elif (y_col is not None) and (x_col is None):
-            fig = stock_df[y_col].iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True)
+            fig = stock_df[y_col].iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
         else:
-            fig = stock_df.iplot(x=x_col,y=y_col, asDates=True, layout=my_layout,world_readable=True,asFigure=True)
+            fig = stock_df.iplot(x=x_col,y=y_col, asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
 
     else:
         # LEARNING HOW TO CUSTOMIZE SLIDER
@@ -2835,9 +2836,9 @@ def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Pric
                 )
             )
         
-    fig.show()
+    # fig.show()
     # display(fig)
-    return fig
+    return #display(fig)#fig
 
 def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):
    
