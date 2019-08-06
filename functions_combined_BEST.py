@@ -204,16 +204,28 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
 #         globals()[shortname] = eval(modulename + "." + shortname)
 
 
-def reload(mod):
-    """Reloads the module from file.
+def reload(mod,verbose=True):
+    """Reloads the module from file. 
+    Mod may be 1 mod or a list of mods [mod1,mod2]
     Example:
     import my_functions_from_file as mf
     # after editing the source file:
-    # mf.reload(mf)"""
+    # mf.reload(mf)
+    # or mf.reload([mf1,mf2])"""
     from importlib import reload
     import sys
-    # print(f'Reloading...\n')
-    return  reload(mod)
+    def print_info(mod):
+        print(f'Reloading {mod.__name__}...')
+    # print('your mom')
+    if type(mod)==list:
+        for m in mod:
+            print_info(m)
+            reload(m)
+        
+        return
+    else:
+        print_info(mod)
+        return  reload(mod)
 
 
 def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,colab=False,file_location=False): 
@@ -225,8 +237,8 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
     from IPython.display import display, Markdown
     page_header = '---'*28
     footer = '---'*28+'\n'
-    print(page_header)
     if show_help:
+        print(page_header)
         banner = ''.join(["---"*2,' HELP ',"---"*24,'\n'])
         print(banner)
         help(function_or_mod)
@@ -243,7 +255,7 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
 
         if colab == False:
             # display(Markdown(f'___\n'))
-            output = "```python" +'\n'+source_DF+'\n'+"```\n"
+            output = "```python" +'\n'+source_DF+'\n'+"```"
             # print(source_DF)    
             display(Markdown(output))
         else:
@@ -259,9 +271,10 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
         print(banner)
         print(file_loc)
 
+    # print(footer)
+
     if return_code:
         return source_DF
-    print(footer)
 
 
 
@@ -603,31 +616,59 @@ def make_time_index_intervals(twitter_df,col ='date', start=None,end=None, freq=
 
 
 #***########### FUNCTIONS FOR RESAMPLING AND BINNING TWITTER DATA
-def int_to_ts(int_list, as_datetime=False, as_str=True):
-    """Accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
+# def int_to_ts(int_list, as_datetime=False, as_str=True):
+#     """Accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
+#     import pandas as pd
+#     if as_datetime & as_str:
+#         raise Exception('Only one of `as_datetime`, or `as_str` can be True.')
+    
+#     left_edges =[]
+#     right_edges= []
+    
+#     for interval in int_list:
+#         int_str = interval.__str__()[1:-1]
+#         left,right = int_str.split(',')
+#         left_edges.append(left)
+#         right_edges.append(right)
+        
+    
+#     if as_str:
+#         return left_edges, right_edges
+    
+#     elif as_datetime:
+#         left = pd.to_datetime(left)
+#         right = pd.to_datetime(right)
+#         return left,right
+
+def int_to_ts(int_list, handle_null='drop',as_datetime=False, as_str=True):
+    """Helper function: accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
     import pandas as pd
     if as_datetime & as_str:
         raise Exception('Only one of `as_datetime`, or `as_str` can be True.')
-    
+
     left_edges =[]
     right_edges= []
-    
+
+    if 'drop' in handle_null:
+        int_list.dropna()
+
     for interval in int_list:
+
         int_str = interval.__str__()[1:-1]
-        left,right = int_str.split(',')
-        left_edges.append(left)
-        right_edges.append(right)
-        
-    
+        output = int_str.split(',')
+        left_edges.append(output)
+#         right_edges.append(right)
+
+
     if as_str:
-        return left_edges, right_edges
-    
+        return left_edges#, right_edges
+
     elif as_datetime:
         left = pd.to_datetime(left)
         right = pd.to_datetime(right)
         return left,right
-    
-    
+
+
 # Step 1:     
 def bin_df_by_date_intervals(test_df,time_intervals,column='date'):
     """Uses pd.cut with half_hour_intervals on specified column.
@@ -654,11 +695,16 @@ def bin_df_by_date_intervals(test_df,time_intervals,column='date'):
     
     # Add column to the dataframe, then map integer code onto it
     test_df['int_bins'] = test_df['int_times'].astype('str').map(bin_codes_mapper)
-    
-    
+    test_df.dropna(subset=['int_times'],inplace=True)
     # Get the left edge of the bins to use later as index (after grouped)
-    left_out, _ =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
-    test_df['left_edge'] = pd.to_datetime(left_out)
+    # left_out, _ =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
+    try:
+        edges =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
+        left_out = [edge[0] for edge in edges]
+        test_df['left_edge'] = pd.to_datetime(left_out)
+    except:
+        print('int_to_ts output= ',left_out)
+    
 
     # bin codes to labels 
     bin_codes = [(k,v) for k,v in bin_codes.items()]
@@ -1411,13 +1457,13 @@ def unpack_match_stocks(stock_dict):
 
 
 # ### KERAS
-def my_rmse(y_true,y_pred):
-    """RMSE calculation using keras.backend"""
-    from keras import backend as kb
-    sq_err = kb.square(y_pred - y_true)
-    mse = kb.mean(sq_err,axis=-1)
-    rmse =kb.sqrt(mse)
-    return rmse
+# def my_rmse(y_true,y_pred):
+#     """RMSE calculation using keras.backend"""
+#     from keras import backend as kb
+#     sq_err = kb.square(y_pred - y_true)
+#     mse = kb.mean(sq_err,axis=-1)
+#     rmse =kb.sqrt(mse)
+#     return rmse
 
 
 
@@ -1462,7 +1508,7 @@ def get_technical_indicators(dataset,make_price_from='BidClose'):
 
 
 
-def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90, num_train_days=180,verbose=1, plot=False,iplot=True):
+def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90, num_train_days=180,verbose=1, plot=False,iplot=True,plot_col='price'):
     """Takes the last num_test_days of the time index to use as testing data, and take shte num_Trian_days prior to that date
     as the training data."""
     from IPython.display import display
@@ -1506,22 +1552,25 @@ def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90
 
                 
     if plot==True:
-        if 'price' in stock_df.columns:
-            plot_col ='price'
-        elif 'price_labels' in stock_df.columns:
-            plot_col = 'price_labels'
-        
-        fig = plt.figure(figsize=(8,4))
-        train_data[plot_col].plot(label='Training')
-        test_data[plot_col].plot(label='Test')
-        plt.title('Training and Test Data for S&P500')
-        plt.ylabel('Price')
-        plt.xlabel('Trading Date/Hour')
-        plt.legend()
-        plt.show()
+        if plot_col in stock_df.columns:
+            # plot_col ='price'
+        # elif 'price_labels' in stock_df.columns:
+        #     plot_col = 'price_labels'
+            
+            fig = plt.figure(figsize=(8,4))
+            train_data[plot_col].plot(label='Training')
+            test_data[plot_col].plot(label='Test')
+            plt.title('Training and Test Data for S&P500')
+            plt.ylabel('Price')
+            plt.xlabel('Trading Date/Hour')
+            plt.legend()
+            plt.show()
+        else:
+            raise Exception('plot_col not found')
+
     if iplot==True:
-        df_plot=pd.concat([train_data['price'].rename('train price'),test_data['price'].rename('test_price')],axis=1)
-        fig = plotly_time_series(df_plot)
+        df_plot=pd.concat([train_data[plot_col].rename('train price'),test_data[plot_col].rename('test_price')],axis=1)
+        display(plotly_time_series(df_plot))#, as_figure=True)
 
     return train_data, test_data
 
@@ -2838,7 +2887,11 @@ as_figure = False): #,name='S&P500 Price'):
         
     # fig.show()
     # display(fig)
-    return #display(fig)#fig
+    if as_figure:
+        return fig
+    else:
+        return#display(fig)#fig
+
 
 def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):
    
@@ -2920,7 +2973,7 @@ def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21'
     # Plot train_price if it is not empty.
     # if len(train_price)>0:
     df=stock_df
-    fig = plotly_time_series(df,x_col=x_col,y_col=plot_indicators)
+    fig = plotly_time_series(df,x_col=x_col,y_col=plot_indicators, as_figure=True)
 
 #BOOKMARK    
 def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, verbose=0,figsize=(14,4)):

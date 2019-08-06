@@ -16,6 +16,8 @@ def get_model_config_df(model1, multi_index=True):
     import bs_ds as bs
     import functions_combined_BEST as ji
     import pandas as pd
+    pd.set_option('display.max_rows',None)
+
     model_config_dict = model1.get_config()
     model_layer_list=model_config_dict['layers']
     output = [['#','layer_name', 'layer_config_level','layer_param','param_value']]#,'param_sub_value','param_sub_value_details' ]]
@@ -29,8 +31,9 @@ def get_model_config_df(model1, multi_index=True):
         # combine class and name into 1 column
         layer_class = layer_dict['class_name']
         layer_name = layer_dict['config'].pop('name')
-        col_000 = f"{num}: {layer_class}"
-        col_00 = layer_name#f"{layer_class} ({layer_name})"
+
+        # col_000 = f"{num}: {layer_class}"
+        # col_00 = layer_name#f"{layer_class} ({layer_name})"
 
         # get layer's config dict
         layer_config = layer_dict['config']
@@ -44,11 +47,27 @@ def get_model_config_df(model1, multi_index=True):
             # col_1 is the key( name of param)
         #     col_1 = param_name
 
+            
+            col_000 = f"{num}: {layer_class}"
+
+            ### DETERMINE LAYER_NAME WITH UNITS OF 
+            if 'units' in layer_config.keys():
+                units = layer_config['units'] #col2_v_or_dict
+                col_00 = layer_name+' ('+str(units)+' units)'
+                
+            elif 'batch_input_shape' in layer_config.keys():
+                input_length =  layer_config['input_length']
+                output_dim =  layer_config['output_dim']
+                col_00 = layer_name+' \n('+str(input_length)+' words, '+str(output_dim)+')'
+            else:
+                col_00 = layer_name#+' '+f"({}"#f"{layer_class} ({layer_name})"
 
             # check the contents of col2_:
 
             # if list, append col2_, fill blank cols
             if isinstance(col2_v_or_dict,dict)==False:
+
+
                 col_0 = 'top-level'
                 col_1 = param_name
                 col_2 = col2_v_or_dict
@@ -119,69 +138,69 @@ def make_model_menu(model1, multi_index=True):
     import ipywidgets as widgets
     from ipywidgets import interact, interactive, interactive_output
     
-    # def get_model_config_df(model1, multi_index=True):
-    #     model_config_dict = model1.get_config()
-    #     model_layer_list=model_config_dict['layers']
-    #     output = [['#','layer_name', 'layer_config_level','layer_param','param_value']]#,'param_sub_value','param_sub_value_details' ]]
+    def get_model_config_df(model1, multi_index=True):
+        model_config_dict = model1.get_config()
+        model_layer_list=model_config_dict['layers']
+        output = [['#','layer_name', 'layer_config_level','layer_param','param_value']]#,'param_sub_value','param_sub_value_details' ]]
 
-    #     for num,layer_dict in enumerate(model_layer_list):
-    #     #     layer_dict = model_layer_list[0]
-
-
-    #         # layer_dict['config'].keys()
-    #         # config_keys = list(layer_dict.keys())
-    #         # combine class and name into 1 column
-    #         layer_class = layer_dict['class_name']
-    #         layer_name = layer_dict['config'].pop('name')
-    #         col_000 = f"{num}: {layer_class}"
-    #         col_00 = layer_name#f"{layer_class} ({layer_name})"
-
-    #         # get layer's config dict
-    #         layer_config = layer_dict['config']
+        for num,layer_dict in enumerate(model_layer_list):
+        #     layer_dict = model_layer_list[0]
 
 
-    #         # config_keys = list(layer_config.keys())
+            # layer_dict['config'].keys()
+            # config_keys = list(layer_dict.keys())
+            # combine class and name into 1 column
+            layer_class = layer_dict['class_name']
+            layer_name = layer_dict['config'].pop('name')
+            col_000 = f"{num}: {layer_class}"
+            col_00 = layer_name#f"{layer_class} ({layer_name})"
+
+            # get layer's config dict
+            layer_config = layer_dict['config']
 
 
-    #         # for each parameter in layer_config
-    #         for param_name,col2_v_or_dict in layer_config.items():
-    #             # col_1 is the key( name of param)
-    #         #     col_1 = param_name
+            # config_keys = list(layer_config.keys())
 
 
-    #             # check the contents of col2_:
-
-    #             # if list, append col2_, fill blank cols
-    #             if isinstance(col2_v_or_dict,dict)==False:
-    #                 col_0 = 'top-level'
-    #                 col_1 = param_name
-    #                 col_2 = col2_v_or_dict
-
-    #                 output.append([col_000,col_00,col_0,col_1 ,col_2])#,col_3,col_4])
+            # for each parameter in layer_config
+            for param_name,col2_v_or_dict in layer_config.items():
+                # col_1 is the key( name of param)
+            #     col_1 = param_name
 
 
-    #             # else, set col_2 as the param name,
-    #             if isinstance(col2_v_or_dict,dict):
+                # check the contents of col2_:
 
-    #                 param_sub_type = col2_v_or_dict['class_name']
-    #                 col_0 = param_name +'  ('+param_sub_type+'):'
+                # if list, append col2_, fill blank cols
+                if isinstance(col2_v_or_dict,dict)==False:
+                    col_0 = 'top-level'
+                    col_1 = param_name
+                    col_2 = col2_v_or_dict
 
-    #                 # then loop through keys,vals of col_2's dict for col3,4
-    #                 param_dict = col2_v_or_dict['config']
-
-    #                 for sub_param,sub_param_val in param_dict.items():
-    #                     col_1 =sub_param
-    #                     col_2 = sub_param_val
-    #                     col_3 = ''
+                    output.append([col_000,col_00,col_0,col_1 ,col_2])#,col_3,col_4])
 
 
-    #                     output.append([col_000,col_00,col_0, col_1 ,col_2])#,col_3,col_4])
+                # else, set col_2 as the param name,
+                if isinstance(col2_v_or_dict,dict):
+
+                    param_sub_type = col2_v_or_dict['class_name']
+                    col_0 = param_name +'  ('+param_sub_type+'):'
+
+                    # then loop through keys,vals of col_2's dict for col3,4
+                    param_dict = col2_v_or_dict['config']
+
+                    for sub_param,sub_param_val in param_dict.items():
+                        col_1 =sub_param
+                        col_2 = sub_param_val
+                        col_3 = ''
+
+
+                        output.append([col_000,col_00,col_0, col_1 ,col_2])#,col_3,col_4])
             
-    #     df = bs.list2df(output)    
-    #     if multi_index==True:
-    #         df.sort_values(by=['#','layer_config_level'], ascending=False,inplace=True)
-    #         df.set_index(['#','layer_name','layer_config_level','layer_param'],inplace=True) #=pd.MultiIndex()
-    #     return df
+        df = bs.list2df(output)    
+        if multi_index==True:
+            df.sort_values(by=['#','layer_config_level'], ascending=False,inplace=True)
+            df.set_index(['#','layer_name','layer_config_level','layer_param'],inplace=True) #=pd.MultiIndex()
+        return df
 
 
     # https://blog.ouseful.info/2016/12/29/simple-view-controls-for-pandas-dataframes-using-ipython-widgets/
@@ -252,9 +271,13 @@ def make_model_menu(model1, multi_index=True):
 
 # df.head()
 def make_qgrid_model_menu(model, return_df = False):
+
     df=get_model_config_df(model)
     import qgrid
     from IPython.display import display
+    import pandas as pd
+
+    pd.set_option('display.max_rows',None)
 
     qgrid_menu = qgrid.show_grid(df,  grid_options={'highlightSelectedCell':True}, show_toolbar=True)
     

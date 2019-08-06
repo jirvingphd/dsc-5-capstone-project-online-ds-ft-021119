@@ -1,3 +1,12 @@
+# print('my_keras_functions loaded')
+def my_rmse(y_true,y_pred):
+    """RMSE calculation using keras.backend"""
+    from keras import backend as kb
+    sq_err = kb.square(y_pred - y_true)
+    mse = kb.mean(sq_err,axis=-1)
+    rmse =kb.sqrt(mse)
+    return rmse
+
 def quiet_mode(filter_warnings=True, filter_keras=True,in_function=True,verbose=0):
     """Convenience function to execute commands to silence warnings:
     - filter_warnings:
@@ -71,7 +80,7 @@ def def_data_params(stock_df, num_test_days=45, num_train_days=365,days_for_x_wi
     return data_params
 
 
-def make_train_test_series_gens(train_data_series,test_data_series,model_params,n_features=1,batch_size=1,verbose=1):
+def make_train_test_series_gens(train_data_series,test_data_series,X_cols = None, y_cols='price', model_params=None,n_features=1,batch_size=1,debug=False,verbose=1):
     
     import functions_combined_BEST as ji
     if 'data_params' in model_params.keys():
@@ -84,10 +93,13 @@ def make_train_test_series_gens(train_data_series,test_data_series,model_params,
     #     data_params = model_params
 
     ########## Define shape of data by specifing these vars 
+
     input_params = {}        
     input_params['n_input'] = data_params['x_window']  # Number of timebins to analyze at once. Note: try to choose # greater than length of seasonal cycles 
     input_params['n_features'] = n_features # Number of columns
     input_params['batch_size'] = batch_size # Generally 1 for sequence data
+    
+
 
     import functions_combined_BEST as ji
     from keras.preprocessing.sequence import TimeseriesGenerator
@@ -97,23 +109,69 @@ def make_train_test_series_gens(train_data_series,test_data_series,model_params,
     n_features= input_params['n_features']
     batch_size = input_params['batch_size']
 
+
+
     # RESHAPING TRAINING AND TRAINING DATA 
-    train_data = train_data_series.values.reshape(-1,1)
     train_data_index =  train_data_series.index
     input_params['train_data_index'] = train_data_index
 
-    ## Create Generator for Training Data
-    train_generator = TimeseriesGenerator(data=train_data, targets=train_data,
+    def reshape_train_data_and_target(train_data_series, X_cols=X_cols, y_cols=y_cols,debug=debug):
+        # if only 1 column (aka is a series)
+        train_data = []
+        train_targets = []
+        
+        train_data_test = train_data_series.values
+
+        if train_data_test.shape[1] < 2:
+
+            train_data = train_data_series.values.reshape(-1,1)
+            train_targets = train_data
+            return train_data, train_targets
+
+        else: # if train_data_series really a df
+
+            # if not specified, use all columns for x data
+            if X_cols is None:
+                train_data = train_data_series.values
+            
+            else:
+                train_data = train_data_series[X_cols].values
+
+
+            # if not specified, assume 'price' is taret_col
+            if y_cols is None:
+                y_cols = 'price'
+            
+            train_targets = train_data_series[y_cols].values
+            # print(train_targets.ndim)
+
+            if train_targets.ndim <2: #ndim<2:
+                train_targets = train_targets.reshape(-1,1)
+
+        if debug==True:
+            print('train_data[0]=\n',train_data[0])
+            print('train_targets[0]=\n',train_targets[0])
+        return train_data, train_targets
+
+
+    ## CREATE TIMESERIES GENERATOR FOR TRAINING DATA
+    train_data, train_targets = reshape_train_data_and_target(train_data_series, X_cols=X_cols, y_cols=y_cols)
+
+    train_generator = TimeseriesGenerator(data=train_data, targets=train_targets,
                                           length=n_input, batch_size=batch_size )
 
+
+
     # RESHAPING TRAINING AND TEST DATA 
-    test_data = test_data_series.values.reshape(-1,1)
+    # test_data = test_data_series.values.reshape(-1,1)
     test_data_index =test_data_series.index
     input_params['test_data_index'] = test_data_index
 
 
-    # Create a generator for Test Data
-    test_generator = TimeseriesGenerator(data=test_data, targets=test_data,
+    ## CREATE TIMESERIES GENERATOR FOR TEST DATA
+    test_data, test_targets = reshape_train_data_and_target(test_data_series, X_cols=X_cols, y_cols=y_cols)
+
+    test_generator = TimeseriesGenerator(data=test_data, targets=test_targets,
                                          length=n_input, batch_size=batch_size )
     
     model_params['input_params'] = input_params
@@ -256,8 +314,12 @@ def fit_model(model,train_generator,model_params=None,epochs=5,callbacks=None,ve
     import functions_combined_BEST as ji
     from IPython.display import display
 
-    quiet_command = ji.quiet_mode(True,True,True)
+    quiet_command = "import os\nos.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'"
     exec(quiet_command)
+    import os
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    # cmd_keras = "import os\nos.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'"
+
     
     if model_params is None:
         model_params={}
@@ -325,14 +387,92 @@ def evaluate_model_plot_history(model, train_generator, test_generator, plot=Tru
     return  eval_gen_dict
 
 
+# def get_model_config_df(model1, multi_index=True):
+
+#     import bs_ds as bs
+#     import functions_combined_BEST as ji
+#     import pandas as pd
+#     pd.set_option('display.max_rows',None)
+
+#     model_config_dict = model1.get_config()
+#     model_layer_list=model_config_dict['layers']
+#     output = [['#','layer_name', 'layer_config_level','layer_param','param_value']]#,'param_sub_value','param_sub_value_details' ]]
+
+#     for num,layer_dict in enumerate(model_layer_list):
+#     #     layer_dict = model_layer_list[0]
+
+
+#         # layer_dict['config'].keys()
+#         # config_keys = list(layer_dict.keys())
+#         # combine class and name into 1 column
+#         layer_class = layer_dict['class_name']
+#         layer_name = layer_dict['config'].pop('name')
+#         col_000 = f"{num}: {layer_class}"
+#         col_00 = layer_name#f"{layer_class} ({layer_name})"
+
+#         # get layer's config dict
+#         layer_config = layer_dict['config']
+
+
+#         # config_keys = list(layer_config.keys())
+
+
+#         # for each parameter in layer_config
+#         for param_name,col2_v_or_dict in layer_config.items():
+#             # col_1 is the key( name of param)
+#         #     col_1 = param_name
+
+
+#             # check the contents of col2_:
+
+#             # if list, append col2_, fill blank cols
+#             if isinstance(col2_v_or_dict,dict)==False:
+#                 col_0 = 'top-level'
+#                 col_1 = param_name
+#                 col_2 = col2_v_or_dict
+
+#                 output.append([col_000,col_00,col_0,col_1 ,col_2])#,col_3,col_4])
+
+
+#             # else, set col_2 as the param name,
+#             if isinstance(col2_v_or_dict,dict):
+
+#                 param_sub_type = col2_v_or_dict['class_name']
+#                 col_0 = param_name +'  ('+param_sub_type+'):'
+
+#                 # then loop through keys,vals of col_2's dict for col3,4
+#                 param_dict = col2_v_or_dict['config']
+
+#                 for sub_param,sub_param_val in param_dict.items():
+#                     col_1 =sub_param
+#                     col_2 = sub_param_val
+#                     # col_3 = ''
+
+
+#                     output.append([col_000,col_00,col_0, col_1 ,col_2])#,col_3,col_4])
+        
+#     df = bs.list2df(output)    
+#     if multi_index==True:
+#         df.sort_values(by=['#','layer_config_level'], ascending=False,inplace=True)
+#         df.set_index(['#','layer_name','layer_config_level','layer_param'],inplace=True) #=pd.MultiIndex()
+#         df.sort_index(level=0, inplace=True)
+#     return df
+
+
+
+
+
+from function_widgets import *
 def save_model_weights_params(model,model_params=None, filename_prefix = 'models/model', check_if_exists = True,
- auto_increment_name=True, auto_filename_suffix=True,  sep='_', suffix_time_format = '%m-%d-%Y_%I%M%p'):
+ auto_increment_name=True, auto_filename_suffix=True, save_model_layer_config_xlsx=True, sep='_', suffix_time_format = '%m-%d-%Y_%I%M%p'):
     """Saves a fit Keras model and its weights as a .json file and a .h5 file, respectively.
     auto_filename_suffix will use the date and time to give the model a unique name (avoiding overwrites).
     Returns the model_filename and weight_filename"""
     import json
     import pickle
     from functions_combined_BEST import auto_filename_time
+    import functions_combined_BEST as ji
+
     # create base model filename 
     if auto_filename_suffix:
         filename = auto_filename_time(prefix=filename_prefix, sep=sep,timeformat=suffix_time_format )
@@ -375,35 +515,77 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
         json.dump(model_json,json_file)
     print(f'Model saved as {full_filename}')
 
+    # serialize weights to HDF5
+    weight_filename = full_filename+'_weights.h5'
+    model.save_weights(weight_filename)
+    print(f'Weights saved as {weight_filename}') 
+
+
     ## save model_params if provided
+    if save_model_layer_config_xlsx == True:
+        
+        # get filename without extension
+        file_ext=full_filename.split('.')[-1]
+        excel_filename = full_filename.replace(f'.{file_ext}','')
+        excel_filename+='_model_layers.xlsx'
+
+        # Get modelo config df
+        df_model_config = get_model_config_df(model)
+        df_model_config.to_excel(excel_filename, sheet_name='Keras Model Config')
+           
+
+
+    ## save model_params
     if model_params is not None:
         # import json
         import inspect
-        import pickle# as pickle
-
+        import pickle# as pickle        
         
         def replace_function(function):
             import inspect
             return inspect.getsource(function)
+        
+        ## Select good model params to save
+        model_params_to_save = {}
+        model_params_to_save['data_params'] = model_params['data_params']
+        model_params_to_save['input_params'] = model_params['input_params']
+        
+        model_params_to_save['compile_params'] = {}
+        model_params_to_save['compile_params']['loss'] = model_params['compile_params']['loss']
 
-        # replace any functions with their source code before saving params
-        for k,v in model_params.items():
+        ## Check for and replace functins in metrics
+        # print('compile_params>metrics not saved')
+        metric_list =  model_params['compile_params']['metrics']
+        for i,metric in enumerate(metric_list):
+            if inspect.isfunction(metric):
+                metric_list[i] = replace_function(metric)
+        metric_list =  model_params['compile_params']['metrics']
 
-            if inspect.isfunction(v):
-                model_params[k] = replace_function(v)
 
-            elif isinstance(v,dict):
+        # model_params_to_save['compile_params']['metrics'] = model_params['compile_params']['metrics']
+        model_params_to_save['compile_params']['optimizer_name'] = model_params['compile_params']['optimizer_name']
+        
+        model_params_to_save['fit_params'] = model_params['fit_params']
 
-                for k2,v2 in v.items():
-                    if inspect.isfunction(v2):
-                        model_params[k][k2]=replace_function(v2)
 
-                    elif isinstance(v2,dict):
+        # # replace any functions with their source code before saving params
+        # for k,v in model_params.items():
 
-                        for k3,v3 in v2.items():
+        #     if inspect.isfunction(v):
+        #         model_params[k] = replace_function(v)
+
+        #     elif isinstance(v,dict):
+
+        #         for k2,v2 in v.items():
+        #             if inspect.isfunction(v2):
+        #                 model_params[k][k2]=replace_function(v2)
+
+        #             elif isinstance(v2,dict):
+
+        #                 for k3,v3 in v2.items():
                             
-                            if inspect.isfunction(v3):
-                                model_params[k][k2][k3]=replace_function(v3)
+        #                     if inspect.isfunction(v3):
+        #                         model_params[k][k2][k3]=replace_function(v3)
                             
 
 
@@ -411,14 +593,15 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
         file_ext=full_filename.split('.')[-1]
         param_filename = full_filename.replace(f'.{file_ext}','')
         param_filename+='_params.pkl'
-        with open(param_filename,'wb') as param_file:
-            pickle.dump(model_params, param_file) #sort_keys=True,indent=4)
+        try:
+                
+            with open(param_filename,'wb') as param_file:
+                pickle.dump(model_params_to_save, param_file) #sort_keys=True,indent=4)
+        except:
+            print('Pickling failed')
+       
 
-        
-    # serialize weights to HDF5
-    weight_filename = full_filename+'_weights.h5'
-    model.save_weights(weight_filename)
-    print(f'Weights saved as {weight_filename}')
+
 
     return filename, weight_filename
 
@@ -510,29 +693,45 @@ def thiels_U(ys_true=None, ys_pred=None,display_equation=True,display_table=True
     U = np.sqrt( np.sum(num_list) / np.sum(denom_list))
     return U
 
-def evaluate_regression(y_true, y_pred, display_thiels_u_info=False):
-    """Calculates and displays the following evaluation metrics:
-    RMSE, R2_score, """
-    from sklearn.metrics import r2_score, mean_squared_error
+
+def evaluate_regression(y_true, y_pred, metrics=['r2','RMSE','U'], display_thiels_u_info=False):
+    """Calculates and displays any of the following evaluation metrics: (passed as strings in metrics param)
+    r2, MAE,MSE,RMSE,U """
+    from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
     import numpy as np
     from bs_ds import list2df
-    results=[['Metric','Value']]
-    
-    r2 = r2_score(y_true, y_pred)
-    results.append(['R_squared',r2])
-    
-    RMSE = np.sqrt(mean_squared_error(y_true,y_pred))
-    results.append(['Root Mean Squared Error',RMSE])
-    
-    if display_thiels_u_info is True:
-        show_eqn=True
-        show_table=True
-    else:
-        show_eqn=False 
-        show_table=False
 
-    U = thiels_U(y_true, y_pred,display_equation=show_eqn,display_table=show_table )
-    results.append(["Thiel's U", U])
+    results=[['Metric','Value']]
+
+    metrics = [m.lower() for m in metrics]
+
+    if any(m in metrics for m in ('r2','r squared','R_squared')): #'r2' in metrics: #any(m in metrics for m in ('r2','r squared','R_squared'))
+        r2 = r2_score(y_true, y_pred)
+        results.append(['R Squared',r2])##f'R\N{SUPERSCRIPT TWO}',r2])
+    
+    if any(m in metrics for m in ('RMSE','rmse','root_mean_squared_error','root mean squared error')): #'RMSE' in metrics:
+        RMSE = np.sqrt(mean_squared_error(y_true,y_pred))
+        results.append(['Root Mean Squared Error',RMSE])
+
+    if any(m in metrics for m in ('MSE','mse','mean_squared_error','mean squared error')):
+        MSE = mean_squared_error(y_true,y_pred)
+        results.append(['Mean Squared Error',MSE])
+
+    if any(m in metrics for m in ('MAE','mae','mean_absolute_error','mean absolute error')):#'MAE' in metrics or 'mean_absolute_error' in metrics:
+        MAE = mean_absolute_error(y_true,y_pred)
+        results.append(['Mean Absolute Error',MAE])
+
+    
+    if any(m in metrics for m in ('u',"thiel's u")):# in metrics:
+        if display_thiels_u_info is True:
+            show_eqn=True
+            show_table=True
+        else:
+            show_eqn=False 
+            show_table=False
+
+        U = thiels_U(y_true, y_pred,display_equation=show_eqn,display_table=show_table )
+        results.append(["Thiel's U", U])
     
     results_df = list2df(results)#, index_col='Metric')
     results_df.set_index('Metric', inplace=True)
@@ -540,10 +739,40 @@ def evaluate_regression(y_true, y_pred, display_thiels_u_info=False):
 
 
 
-def get_evaluate_regression_dict(df, show_results = True, return_col_names=False):
+def res_dict_to_merged_df(dict_of_dfs, key_index_name='Prediction Source', old_col_index_name=None):
+    import pandas as pd
+    res_dict = dict_of_dfs
+    rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
+
+    if len(res_dict.keys())==1:
+        
+        res_df = res_dict[list(res_dict.keys())[0]]
+
+        # res_df.set_index('Metric',inplace=True)
+        res_df.rename(mapper=rename_mapper, axis='index',inplace=True)
+        res_df=res_df.transpose()
+        # caption='Evaluation Metrics'
+
+    else:
+        res_df= pd.concat(res_dict.values(), axis=1,keys=res_dict.keys())
+        res_df.columns = res_df.columns.levels[0]
+        res_df.columns.name=key_index_name
+        res_df.index.name=old_col_index_name
+        res_df = res_df.transpose()#inplace=True)
+    
+        # rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
+        res_df.rename(mapper= rename_mapper, axis='columns',inplace=True)
+
+    return res_df
+
+
+def get_evaluate_regression_dict(df,  metrics=['r2','RMSE','U'], show_results_dict = False, show_results_df=True, return_as_df =True): #, return_col_names=False):
+    """Calculates and displays any of the following evaluation metrics (passed as strings in metrics param) for each true/pred pair of columns in df:
+    r2, MAE,MSE,RMSE,U """
     import re
     import functions_combined_BEST as ji
     from IPython.display import display
+    import pandas as pd
 
     col_list = df.columns
     from_where = re.compile('(true|pred)_(from_\w*_?\w+?)')
@@ -560,44 +789,161 @@ def get_evaluate_regression_dict(df, show_results = True, return_col_names=False
         pairs_of_cols[where] = {}
         pairs_of_cols[where]=[true_series.name,pred_series.name]#['col_names']
         
-        df_dict[where] = ji.evaluate_regression(true_series,pred_series).reset_index()
+        df_dict[where] = ji.evaluate_regression(true_series,pred_series,metrics=metrics) #.reset_index().set_index('Metric')#,inplace=True)
 #         pairs_of_cols[where]['results']=res_df
-    if show_results:
-        ji.display_df_dict_dropdown(df_dict)
 
-    if return_col_names:
-        return df_dict, pairs_of_cols
+    # # combine into one dataframe
+    # df_results = pd.DataFrame.from_dict(df_dict,)
+
+    if show_results_dict:
+        ji.display_df_dict_dropdown(df_dict)
+    
+    ## Combine dataframes from dictionary into one output table 
+    if return_as_df or show_results_df:
+        
+        # if only 1 set of results, just rename metrics
+
+
+        def res_dict_to_merged_df(dict_of_dfs, key_index_name='Prediction Source', old_col_index_name=None):
+
+            res_dict = dict_of_dfs
+            rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
+
+            if len(res_dict.keys())==1:
+                
+                res_df = res_dict[list(res_dict.keys())[0]]
+
+                # res_df.set_index('Metric',inplace=True)
+                res_df.rename(mapper=rename_mapper, axis='index',inplace=True)
+                res_df=res_df.transpose()
+                # caption='Evaluation Metrics'
+
+            else:
+                res_df= pd.concat(res_dict.values(), axis=1,keys=res_dict.keys())
+                res_df.columns = res_df.columns.levels[0]
+                res_df.columns.name=key_index_name
+                res_df.index.name=old_col_index_name
+                res_df = res_df.transpose()#inplace=True)
+            
+                # rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
+                res_df.rename(mapper= rename_mapper, axis='columns',inplace=True)
+
+            return res_df
+
+        res_df = res_dict_to_merged_df(df_dict)
+
+
+    if show_results_df:
+        display(res_df.style.set_caption('Evaluation Metrics'))# by Prediction Source'))
+
+    if return_as_df:
+        return res_df
     else:
         return df_dict
         
 
-def compare_eval_metrics_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],plot_all=False,plot_best=True):
+def compare_eval_metrics_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],
+color_coded=True, return_results=False, return_shifted_df=True, display_results=True, display_U_info=False):
+    
     ## SHIFT THE TRUE VALUES, PLOT, AND CALC THIEL's U
+    import functions_combined_BEST as ji
     from bs_ds import list2df
     import pandas as pd
-    df = pd.concat([true_series, pred_series],axis=1)
-    
-    true_colname = 'true'
-    pred_colname = 'pred'
-    
+    import matplotlib.pyplot as plt
+    from IPython.display import display
+    import pandas as pd
+
+    true_colname = true_series.name#'true'
+    pred_colname = pred_series.name#'pred'
+
+    # combine true and preds into one dataframe
+    df = pd.concat([true_series, pred_series], axis=1)
     df.columns=[true_colname, pred_colname]#.dropna(axis=0,subset=[[true_colname,pred_colname]])
 
+    # Create Empty Resuts containers
     results=[['Bins Shifted','Metric','Value']]
     combined_results = pd.DataFrame(columns=results[0])
+    shift_results_dict= {}
     
+    # Loop through shifts, add to df_shifted, calc thiel's U
+    df_shifted=df.copy()
     for shift in shift_list:
 
+        # create df for current shift
         df_shift=pd.DataFrame()
-        df_shift[pred_colname] = df[pred_colname].shift(shift)
-        df_shift[true_colname] = df[true_colname]
-        df_shift.dropna(inplace=True)      
+        df_shift['pred'] = df[pred_colname].shift(shift)
+        df_shift['true'] = df[true_colname]
         
-        shift_results = evaluate_regression(df_shift[true_colname],df_shift[pred_colname]).reset_index()
+        # Add shifted columns to df_shifted
+        df_shifted['pred_shift'+str(shift)] =  df_shift['pred']
+        
+        # drop null values from current shit to calc metrics
+        df_shift.dropna(inplace=True)
+
+        #[!] ### DIFFERENT THAN U COMPARE U FUNCTION
+        shift_results = evaluate_regression(df_shift['true'],df_shift['pred']).reset_index() #[true_colname],df_shift[pred_colname]).reset_index()
         shift_results.insert(0,'Bins Shifted',shift)
         
+
+        ## ADD RESULTS TO VARIOUS OUTPUT METHODS
+        results.append(shift_results)
         combined_results = pd.concat([combined_results,shift_results], axis=0)
-#     combined_results.set_index(['Bins Shifted','Metric'], inplace=True)
-    return combined_results
+        shift_results_dict[shift] =  shift_results.drop('Bins Shifted',axis=1).set_index('Metric')
+
+
+    # Turn results into dataframe when complete
+    # df_results = list2df(results)#
+    # df_results.set_index('# of Bins Shifted', inplace=True)
+    
+
+
+    # Restructure DataFrame for ouput
+    df_results = res_dict_to_merged_df(shift_results_dict, key_index_name='Pred Shifted')
+
+    if display_results:
+        
+        # Dispaly Thiel's U info
+        if display_U_info:
+            _ = thiels_U(None,None,True,True)
+        
+        
+        # Display dataframe results
+        if color_coded is True:
+            dfs_results = ji.color_cols(df_results, subset=['RMSE','U'], rev=True)
+            display(dfs_results.set_caption("Evaluation Metrics for Shifted Preds"))
+
+        else:
+            display(df_results.style.set_caption('Evaluation Metrics for Shifted Preds'))
+
+
+    ## Return requested oututs
+    return_list = []
+
+    if return_results:
+        return_list.append(df_results)
+
+    if return_shifted_df:
+        return_list.append(df_shifted)
+
+    return return_list[:]
+    
+
+
+def plot_best_shift(df,df_results, true_colname='true',pred_colname='pred',  col_to_check='U', best='min'):
+    
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    if 'min' in best:
+        best_shift = df_results[col_to_check].idxmin()#[0]
+    elif 'max' in best:
+        best_shift = df_results[col_to_check].idxmax()#[0]
+
+    df[true_colname].plot(label = 'True Values')
+    df[pred_colname].shift(best_shift).plot(ls='--',label = f'Predicted-Shifted({best_shift})')
+    plt.legend()
+    plt.title(f"Best {col_to_check} for Shifted Time Series")
+    plt.tight_layout()
+    return 
 
 
 def compare_u_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],
@@ -657,15 +1003,16 @@ def compare_u_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],
 
     # if plot+nest
     if plot_best==True:
+        plot_best_shift(df,df_results,true_colname=true_colname, pred_colname=pred_colname)
 
-        # def plot_best_shift(df_results,col_to_check):
-        best_shift = df_results['U'].idxmin()#[0]
+        # # def plot_best_shift(df_results,col_to_check):
+        # best_shift = df_results['U'].idxmin()#[0]
 
-        df[true_colname].plot(label = 'True Values')
-        df[pred_colname].shift(best_shift).plot(ls='--',label = f'Predicted-Shifted({best_shift})')
-        plt.legend()
-        plt.title("Best Thiel's U for Shifted Time Series")
-        plt.tight_layout()
+        # df[true_colname].plot(label = 'True Values')
+        # df[pred_colname].shift(best_shift).plot(ls='--',label = f'Predicted-Shifted({best_shift})')
+        # plt.legend()
+        # plt.title("Best Thiel's U for Shifted Time Series")
+        # plt.tight_layout()
 
     # Dispaly Thiel's U info
     if display_U_info:
@@ -704,7 +1051,7 @@ def compare_time_shifted_model(df_model,true_colname='true test',pred_colname='p
 
     # Comparing Shifted Timebins
     res_df = compare_eval_metrics_for_shifts(true_test_series.rename(true_colname),
-     pred_test_series.rename(pred_colname),shift_list=np.arange(-4,4,1))
+    pred_test_series.rename(pred_colname),shift_list=np.arange(-4,4,1))
 
     res_df = res_df.pivot(index='Bins Shifted', columns='Metric',values='Value')
     res_df.columns.rename(None, inplace=True)
@@ -863,7 +1210,7 @@ preds_from_train_preds =True, preds_from_test_preds=True,  model_params=None,
     # bs.display_side_by_side(func_df,func_df_from_train)
     if return_combined:
         df_all_preds = pd.concat([df for df in df_list],axis=1)
-        df_all_preds = bs.drop_cols(df_all_preds,['i_'])
+        df_all_preds = bs.drop_cols(df_all_preds,['i_']);
 
 
     
@@ -876,15 +1223,65 @@ preds_from_train_preds =True, preds_from_test_preds=True,  model_params=None,
     
 
     if iplot:
+        
+        def get_plot_df_with_one_true_series(df_out):
+            import re
+
+            col_list = df_out.columns
+            from_where = re.compile('(true|pred)_(from_\w*_?\w+?)')
+            found = [from_where.findall(col)[0] for col in col_list]
+            
+            pairs_of_cols = {}
+            df_plot = pd.DataFrame()
+        #     results =[['preds_from','metric','value']]
+
+            for tf, where in found: 
+
+                if 'true' in tf and 'from_gen' in where:
+                    # true_series_to_plot = pairs_of_cols['true']['true_series']
+                    name_recon = f"{tf}_{where}"
+                    df_plot['true'] = df_out[name_recon]#true_series_to_plot
+                    continue #break?
+                
+                elif 'pred' in tf:
+                    name_recon = f"{tf}_{where}"
+                    df_plot[name_recon] = df_out[name_recon]
+                continue            
+
+            #     true_series = df_out['true_'+where].dropna()
+            #     pred_series = df_out['pred_'+where].dropna()
+
+            #     pairs_of_cols['true'] = {'from':where,'true_series':true_series}
+            #     pairs_of_cols['pred']={'from':where,'pred_series':pred_series}#['col_names']
+
+            # ## FIND THE TRUE FROM GEN SERIES TO RETURN
+            # for k,v in pairs_of_cols['true'].items():
+            #     if 'from' in k and 'from_gen' in v:
+            #         continue
+            
+            # ## FIND THE PRED COLUMNS TO RETURN
+            
+            # for k,v in pairs_of_cols['pred'].items():
+            #     if 'from' in k:
+            
+
+            return df_plot 
+            
+
+
+        df_plot = get_plot_df_with_one_true_series(df_out) #df_out.copy().drop(['true_from_test_preds','true_from_train_preds'],axis=1)
+        # df_plot = df_plot.rename(mapper={'true_from_gen':'true price'},axis='columns')
         if plot_with_train_data == False:
-            ji.plotly_time_series(df_out)
+            ji.plotly_time_series(df_plot) 
+
+            # ji.plotly_time_series(df_out.drop(''))
         
         else:
 
             scaler = model_params['scaler_library']['price']
             true_train_price = ji.transform_series(true_train_series,scaler=scaler,inverse=True)
             # print(type(true_train_price))
-            df_plot = pd.concat([true_train_price,df_out],axis=1)
+            df_plot = pd.concat([true_train_price,df_plot],axis=1)
             ji.plotly_time_series(df_plot)
 
     return df_out
@@ -956,7 +1353,8 @@ def get_predictions_df_and_evaluate_model(model, test_generator,
         ji.plot_true_vs_preds_subplots(df_model['true train'],df_model['true test'], 
                                     df_model['pred test'], subplots=True)
     if iplot_results:
-        ji.plotly_time_series(df_model.drop('pred train',axis=1))
+        df_plot = df_model.copy().drop(['pred train','true_from_test_preds','true_from_train_preds'],axis=1)
+        ji.plotly_time_series(df_plot) 
 
 
     
@@ -1045,7 +1443,9 @@ def get_model_preds_from_preds(model,true_train_data, true_test_data,
       
     
     # reshape first batch of data for model.predict 
+    first_batch_pre_reshape = first_eval_batch.shape    
     current_batch = first_eval_batch.reshape((1, n_input, n_features))
+    first_batch_shape = current_batch.shape
 
     
     ## LOOP THROUGH REMAINING TIMEBINS USING CURRENT PREDICITONS AS NEW DATA FOR NEXT
@@ -1057,7 +1457,16 @@ def get_model_preds_from_preds(model,true_train_data, true_test_data,
         test_predictions.append(current_pred) 
 
         # update batch to now include prediction and drop first value
-        current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
+        try:
+            # current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
+            current_batch = np.append(current_batch[:,1:,:],[current_pred],axis=1)
+        except:
+            print(f'\nn_features={n_features}')
+            print(f"n_input={n_input}")
+            print(f"first_batch_shape={first_batch_shape}; current_batch.shape={current_batch.shape}; current_pred.shape={current_pred.shape}" )
+        finally:
+            from pprint import pprint
+            print('current_batch:',current_batch,'\ncurrent_pred:',current_pred)
         
         ## Append the data to the output df list
         preds_out.append([i,test_data_index[i],current_pred[0]])
