@@ -535,7 +535,7 @@ def case_ratio(msg):
 
 
 #################################################### STOCK ##############################################################
-def twitter_column_report(twitter_df, decision_map=None, sort_column=None, ascending=True, interactive=True):
+def column_report(twitter_df, decision_map=None, sort_column=None, ascending=True, interactive=True):
     from ipywidgets import interact
     import pandas as pd
     df_dtypes=pd.DataFrame()
@@ -577,316 +577,7 @@ def twitter_column_report(twitter_df, decision_map=None, sort_column=None, ascen
 #     half_hour_intervals = pd.interval_range(start=start_idx, end=end_idx,freq='30T',name='half_hour_bins',closed='left')
     
 #     return half_hour_intervals
-def make_time_index_intervals(twitter_df,col ='date', start=None,end=None, freq='CBH',num_offset=1):
-    """Takes a df, rounds first timestamp down to nearest hour, last timestamp rounded up to hour.
-    Creates 30 minute intervals based that encompass all data."""
-    import pandas as pd
-    
-    if freq=='CBH':
-        freq=pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30')
-        ofst = pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
-        ofst_early = pd.offsets.CustomBusinessHour(n=-num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
-    if freq=='T':
-        ofst = pd.offsets.Minute(n=num_offset)
-        ofst_early = pd.offsets.Minute(n=-num_offset)
-        
-    if freq=='H':
-        ofst = pd.offsets.Hour(n=num_offset)
-        ofst_early=pd.offsets.Hour(n=-num_offset)
 
-        
-    if start is None:
-        # Get timebin before the first timestamp that starts     
-        start_idx = ofst.rollback(twitter_df[col].iloc[0])#.floor('H'))
-    else:
-        start_idx = pd.to_datetime(start)
-
-    if end is None:
-        # Get timbin after last timestamp that starts 30m into the hour.
-        end_idx= ofst.rollforward(twitter_df[col].iloc[-1])#.ceil('H'))
-    else:
-        end_idx = pd.to_datetime(end)
-
-
-    # Make time bins using the above start and end points 
-    time_range = pd.date_range(start =start_idx, end = end_idx, freq=freq)#.to_period()
-    time_intervals = pd.interval_range(start=start_idx, end=end_idx,freq=freq,name='interval_index',closed='left')
-    
-    return time_intervals
-
-
-#***########### FUNCTIONS FOR RESAMPLING AND BINNING TWITTER DATA
-# def int_to_ts(int_list, as_datetime=False, as_str=True):
-#     """Accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
-#     import pandas as pd
-#     if as_datetime & as_str:
-#         raise Exception('Only one of `as_datetime`, or `as_str` can be True.')
-    
-#     left_edges =[]
-#     right_edges= []
-    
-#     for interval in int_list:
-#         int_str = interval.__str__()[1:-1]
-#         left,right = int_str.split(',')
-#         left_edges.append(left)
-#         right_edges.append(right)
-        
-    
-#     if as_str:
-#         return left_edges, right_edges
-    
-#     elif as_datetime:
-#         left = pd.to_datetime(left)
-#         right = pd.to_datetime(right)
-#         return left,right
-
-def int_to_ts(int_list, handle_null='drop',as_datetime=False, as_str=True):
-    """Helper function: accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
-    import pandas as pd
-    if as_datetime & as_str:
-        raise Exception('Only one of `as_datetime`, or `as_str` can be True.')
-
-    left_edges =[]
-    right_edges= []
-
-    if 'drop' in handle_null:
-        int_list.dropna()
-
-    for interval in int_list:
-
-        int_str = interval.__str__()[1:-1]
-        output = int_str.split(',')
-        left_edges.append(output)
-#         right_edges.append(right)
-
-
-    if as_str:
-        return left_edges#, right_edges
-
-    elif as_datetime:
-        left = pd.to_datetime(left)
-        right = pd.to_datetime(right)
-        return left,right
-
-
-# Step 1:     
-def bin_df_by_date_intervals(test_df,time_intervals,column='date'):
-    """Uses pd.cut with half_hour_intervals on specified column.
-    Creates a dictionary/map of integer bin codes. 
-    Adds column"int_bins" with int codes.
-    Adds column "left_edge" as datetime object representing the beginning of the time interval. 
-    Returns the updated test_df and a list of bin_codes."""
-    import pandas as pd
-    # Cut The Date column into interval bins, 
-    cut_date = pd.cut(test_df[column], bins=time_intervals)#,labels=list(range(len(half_hour_intervals))), retbins=True)
-    test_df['int_times'] = cut_date    
-    
-    # convert to str to be used as group names/codes
-    unique_bins = cut_date.astype('str').unique()
-    num_code = list(range(len(unique_bins)))
-    
-    # Dictioanry of number codes to be used for interval groups
-    bin_codes = dict(zip(num_code,unique_bins))#.astype('str')
-
-    
-    # Mapper dictionary to convert intervals into number codes
-    bin_codes_mapper = {v:k for k,v in bin_codes.items()}
-
-    
-    # Add column to the dataframe, then map integer code onto it
-    test_df['int_bins'] = test_df['int_times'].astype('str').map(bin_codes_mapper)
-    test_df.dropna(subset=['int_times'],inplace=True)
-    # Get the left edge of the bins to use later as index (after grouped)
-    # left_out, _ =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
-    try:
-        edges =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
-        left_out = [edge[0] for edge in edges]
-        test_df['left_edge'] = pd.to_datetime(left_out)
-    except:
-        print('int_to_ts output= ',left_out)
-    
-
-    # bin codes to labels 
-    bin_codes = [(k,v) for k,v in bin_codes.items()]
-    
-    return test_df, bin_codes
-
-
-def concatenate_group_data(group_df_or_series):
-    """Accepts a series or dataframe from a groupby.get_group() loop.
-    Adds TweetFreq column for # of rows concatenate. If input is series, 
-    TweetFreq=1 and series is returned."""
-    
-    import pandas as pd
-    from pandas.api import types as tp
-    
-    if isinstance(group_df_or_series, pd.Series):
-        
-        group_data = group_df_or_series
-        
-#         group_data.index = group_df_or_series.index
-        group_data['TweetFreq'] = 1
-
-        return group_data
-    
-    # if the group is a dataframe:
-    elif isinstance(group_df_or_series, pd.DataFrame):
-        
-        df = group_df_or_series
-        
-        # create an output series to collect combined data
-        group_data = pd.Series(index=df.columns)
-        group_data['TweetFreq'] = df.shape[0]
-        
-
-        for col in df.columns:
-            
-            combined=[]
-            col_data = []
-            
-            col_data = df[col]
-            combined=col_data.values
-            
-            group_data[col] = combined
-
-    return group_data
-
-
-#***#
-# def collapse_df_by_group_indices(twitter_df,group_indices, new_col_order=None):
-#     """Loops through the group_indices provided to concatenate each group into
-#     a single row and combine into one dataframe with the ______ as the index"""
-
-#     import pandas as pd
-#     # Create a Panel to temporarily hold the group series and dataframes
-#     # group_dict_to_df = {}
-#     # create a dataframe with same columns as twitter_df, and index=group ids from twitter_groups
-#     group_df_index = [x[0] for x in group_indices]
-    
-    
-#     twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=group_df_index)
-#     twitter_grouped['TweetFreq'] =0
-
-#     for (idx,group_members) in group_indices:
-
-#         group_df = twitter_df.loc[group_members]
-
-#         combined_series = concatenate_group_data(group_df)
-
-# #         twitter_grouped.loc[idx,:] = combined_series
-#         twitter_grouped.loc[idx] = combined_series#.values
-
-#     if new_col_order==None:
-#         return twitter_grouped
-    
-#     else:
-#         df_out = twitter_grouped[new_col_order].copy()
-#         df_out.index = group_df_index#twitter_grouped.index
-#         return df_out
-def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins', new_col_order=None):
-    """Loops through the group_indices provided to concatenate each group into
-    a single row and combine into one dataframe with the ______ as the index"""
-
-    import pandas as pd
-
-
-    # Create a Panel to temporarily hold the group series and dataframes
-    # group_dict_to_df = {}
-    # create a dataframe with same columns as twitter_df, and index=group ids from twitter_groups
-        
-    group_indices = twitter_df.groupby(group_index_col).groups
-    group_indices = [(k,v) for k,v in group_indices.items()]
-    group_df_index = [x[0] for x in group_indices]
-    
-    
-    # Create empty shell of twitter_grouped dataframe
-    twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=group_df_index)
-    twitter_grouped['TweetFreq'] =0
-
-    
-    # Loop through each group_indices
-    for (idx,group_members) in group_indices:
-
-        group_df = twitter_df.loc[group_members]
-
-        # Call on concatenate_group_data to handle the merging of rows
-        combined_series = concatenate_group_data(group_df)
-
-#         twitter_grouped.loc[idx,:] = combined_series
-        twitter_grouped.loc[idx] = combined_series#.values
-
-    # Update Column order, if requested, otherwise return twitter_grouped
-    if new_col_order==None:
-        return twitter_grouped
-    else:
-        df_out = twitter_grouped[new_col_order].copy()
-        df_out.index = group_df_index#twitter_grouped.index
-        return df_out
-
-
-
-def load_stock_price_series(filename='IVE_bidask1min.txt', 
-                               folderpath='data/',
-                               start_index = '2017-01-23', freq='T'):
-    import pandas as pd
-    import numpy as np
-    from IPython import display
-
-    # Load in the text file and set headers
-    fullfilename= folderpath+filename
-    headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
-    stock_df = pd.read_csv(fullfilename, names=headers,parse_dates=True,usecols=['Date','Time','BidClose'])
-    
-    # Create datetime index
-    date_time_index = stock_df['Date']+' '+stock_df['Time']
-    date_time_index = pd.to_datetime(date_time_index)
-    stock_df.index=date_time_index
-    
-    # Select only the days after start_index
-    stock_df = stock_df[start_index:]
-    
-    stock_price = stock_df['BidClose'].rename('stock_price')
-    stock_price[stock_price==0] = np.nan
-                 
-    return stock_price
-
-def load_twitter_df(overwrite=True,set_index='time_index',verbose=2,replace_na=''):
-    import pandas as pd
-    from IPython.display import display
-    try: twitter_df
-    except NameError: twitter_df = None
-    if twitter_df is not None:
-        print('twitter_df already exists.')
-        if overwrite==True:
-            print('Overwrite=True. deleting original...')
-            del(twitter_df)
-            
-    if twitter_df is None:
-        print('loading twitter_df')
-        
-        twitter_df = pd.read_csv('data/trump_twitter_archive_df.csv', encoding='utf-8', parse_dates=True)
-        twitter_df.drop('Unnamed: 0',axis=1,inplace=True)
-
-        twitter_df['date']  = pd.to_datetime(twitter_df['date'])
-        twitter_df['time_index'] = twitter_df['date'].copy()
-        twitter_df.set_index(set_index,inplace=True,drop=True)
-
-
-        # Fill in missing values before merging with stock data
-        twitter_df.fillna(replace_na, inplace=True)
-        twitter_df.sort_index(ascending=True, inplace=True)
-
-        # RECASTING A COUPLE COLUMNS
-        twitter_df['is_retweet'] = twitter_df['is_retweet'].astype('bool')
-        twitter_df['id_str'] = twitter_df['id_str'].astype('str')
-        twitter_df['sentiment_class'] = twitter_df['sentiment_class'].astype('category')
-
-#         twitter_df.reset_index(inplace=True)
-        # Check header and daterange of index
-    if verbose>0:
-        display(twitter_df.head(2))
-        print(twitter_df.index[[0,-1]])
-    return twitter_df
     
 
 #################### GENERAL HELPER FUNCTIONS #####################
@@ -1335,124 +1026,6 @@ def make_date_range_slider(start_date,end_date,freq='D'):
 
 
 
-
-#### TWITTER_STOCK MATCHING
-def get_B_day_time_index_shift(test_df, verbose=1):
-    import pandas as pd
-    import numpy as np
-    fmtYMD= '%Y-%m-%d'
-
-    test_df['day']= test_df['date'].dt.strftime('%Y-%m-%d')
-    test_df['time'] = test_df['date'].dt.strftime('%T')
-    test_df['dayofweek'] = test_df['date'].dt.day_name()
-
-    test_df_to_period = test_df[['date','content']]
-    test_df_to_period = test_df_to_period.to_period('B')
-    test_df_to_period['B_periods'] = test_df_to_period.index.values
-    test_df_to_period['B_day'] = test_df_to_period['B_periods'].apply(lambda x: x.strftime(fmtYMD))
-
-
-
-    test_df['B_day'] = test_df_to_period['B_day'].values
-    test_df['B_shifted']=np.where(test_df['day']== test_df['B_day'],False,True)
-    test_df['B_time'] = np.where(test_df['B_shifted'] == True,'09:30:00', test_df['time'])
-    
-    test_df['B_dt_index'] = pd.to_datetime(test_df['B_day'] + ' ' + test_df['B_time']) 
-
-    test_df['time_shift'] = test_df['B_dt_index']-test_df['date'] 
-    
-    if verbose > 0:
-        test_df.head(20)
-    
-    return test_df
-
-def reorder_twitter_df_columns(twitter_df, order=[]):
-    if len(order)==0:
-        order=['date','dayofweek','B_dt_index','source','content','content_raw','retweet_count','favorite_count','sentiment_scores','time_shift']
-    twitter_df_out = twitter_df[order]
-    twitter_df_out.index = twitter_df.index
-    return twitter_df_out
-
-
-def match_stock_price_to_tweets(tweet_timestamp,time_after_tweet= 30,time_freq ='T',stock_price=[]):#stock_price_index=stock_date_data):
-    
-    import pandas as pd
-    import numpy as np
-    from datetime import datetime as dt
-    # output={'pre_tweet_price': price_at_tweet,'post_tweet_price':price_after_tweet,'delta_price':delta_price, 'delta_time':delta_time}
-    output={}
-    # convert tweet timestamp to minute accuracy
-    ts=[]
-    ts = pd.to_datetime(tweet_timestamp).round(time_freq)
-    
-    BH = pd.tseries.offsets.BusinessHour(start='09:30',end='16:30')
-    BD = pd.tseries.offsets.BusinessDay()
-    
-    
-    # checking if time is within stock_date_data
-#     def roll_B_day_forward(ts):
-        
-    if ts not in stock_price.index:
-        ts = BH.rollforward(ts)        
-        
-        if ts not in stock_price.index:
-            return np.nan#"ts2_not_in_index"
-
-    # Get price at tweet time
-    price_at_tweet = stock_price.loc[ts]
-    
-    if np.isnan(price_at_tweet):
-        output['pre_tweet_price'] = np.nan
-    else: 
-        output['pre_tweet_price'] = price_at_tweet
-                    
-        
-    # Use timedelta to get desired timepoint following tweet
-    hour_freqs = 'BH','H','CBH'
-    day_freqs = 'B','D'
-
-    if time_freq=='T':
-        ofst=pd.offsets.Minute(time_after_tweet)
-
-    elif time_freq in hour_freqs:
-        ofst=pd.offsets.Hour(time_after_tweet)
-
-    elif time_freq in day_freqs:
-        ofst=pd.offsets.Day(time_after_tweet)
-
-
-    # get timestamp to check post-tweet price
-    post_tweet_ts = ofst(ts)
-
-    
-    if post_tweet_ts not in stock_price.index:
-#         post_tweet_ts =BD.rollforward(post_tweet_ts)
-        post_tweet_ts = BH.rollforward(post_tweet_ts)
-    
-        if post_tweet_ts not in stock_price.index:
-            return np.nan
-
-
-    # Get next available stock price
-    price_after_tweet = stock_price.loc[post_tweet_ts]
-    if np.isnan(price_after_tweet):
-        output['post_tweet_price'] = 'NaN in stock_price'
-    else:
-        # calculate change in price
-        delta_price = price_after_tweet - price_at_tweet
-        delta_time = post_tweet_ts - ts
-        output['post_tweet_price'] = price_after_tweet
-        output['delta_time'] = delta_time
-        output['delta_price'] = delta_price
-
-#         output={'pre_tweet_price': price_at_tweet,'post_tweet_price':price_after_tweet,'delta_price':delta_price, 'delta_time':delta_time}
-
-    return output
-    
-def unpack_match_stocks(stock_dict):
-    import pandas as pd
-    stock_series = pd.Series(stock_dict)
-    return stock_series
 
 
 
@@ -2291,73 +1864,7 @@ def display_random_tweets(df_tokenize,n=5 ,display_cols=['content','text_for_vec
 
 
 
-###################### TWITTER AND STOCK PRICE DATA ######################
-## twitter_df, stock_price = load_twitter_df_stock_price()
-## twitter_df = get_stock_prices_for_twitter_data(twitter_df, stock_prices)
-#  
-def load_twitter_df_stock_price():# del stock_price
-    from IPython.display import display
-    try: stock_price
-    except NameError: stock_price = None
-    if stock_price is  None:    
-        print('loading stock_price')
-        stock_price = load_stock_price_series()
-    else:
-        print('using pre-existing stock_price')
 
-    # Make sure stock_price is loaded as minute data
-    stock_price = stock_price.asfreq('T')
-    stock_price.dropna(inplace=True)
-    stock_price.sort_index(inplace=True)
-
-    ## LOAD TWEETS, SELECT THE PROPER DATE RANGE AND COLUMNS
-    # twitter_df = load_twitter_df(verbose=0)
-    try: twitter_df
-    except NameError: twitter_df=None
-    if twitter_df is None:
-        print('Loading twitter_df')
-        twitter_df= load_raw_twitter_file()
-        twitter_df = full_twitter_df_processing(twitter_df,cleaned_tweet_col='clean_content')
-
-    stock_price.sort_index(inplace=True)
-    twitter_df.sort_index(inplace=True)
-    
-    display(twitter_df.head())
-    print(stock_price.index[0],stock_price.index[-1])
-    print(twitter_df.index[0],twitter_df.index[-1])
-    
-    return twitter_df, stock_price
-
-
-def get_stock_prices_for_twitter_data(twitter_df, stock_prices):
-    import numpy as np
-    # Get get the business day index to account for tweets during off-hours
-    import pandas as pd
-    twitter_df = get_B_day_time_index_shift(twitter_df,verbose=1)
-
-    # Make temporary B_dt_index var in order to round that column to minute-resolution
-    B_dt_index = twitter_df[['B_dt_index','B_day']]#.asfreq('T')
-    B_dt_index['B_dt_index']= pd.to_datetime(B_dt_index['B_dt_index'])
-    B_dt_index['B_dt_index']= B_dt_index['B_dt_index'].dt.round('T')
-
-    # Get stock_prices for each twitter timestamp
-    twitter_df['B_dt_minutes'] = B_dt_index['B_dt_index'].copy()
-    twitter_df['stock_price_results'] = twitter_df['B_dt_minutes'].apply(lambda x: match_stock_price_to_tweets(x,time_after_tweet=60,stock_price=stock_prices))
-    
-    df_to_add = twitter_df['stock_price_results'].apply(lambda x: unpack_match_stocks(x))
-
-    new_twitter_df = pd.concat([twitter_df,df_to_add], axis=1)
-
-
-    twitter_df = new_twitter_df.loc[~new_twitter_df['post_tweet_price'].isna()]
-    # twitter_df.drop(['0'],axis=1,inplace=True)
-    twitter_df['delta_price_class'] = np.where(twitter_df['delta_price'] > 0,'pos','neg')
-
-    twitter_df.drop([0],axis=1, inplace=True)
-    # display(twitter_df.head())
-    print(twitter_df.isna().sum())
-    
-    return twitter_df
 
 
 
@@ -2824,14 +2331,20 @@ as_figure = False): #,name='S&P500 Price'):
                         }
 
 
+        # if no columns specified, use the whole df
         if (y_col is None) and (x_col is None):
             fig = stock_df.iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
 
+        # else plot y_col 
         elif (y_col is not None) and (x_col is None):
             fig = stock_df[y_col].iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
+        
+        #  else plot x_col vs y_col
         else:
             fig = stock_df.iplot(x=x_col,y=y_col, asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
-
+    
+    
+    ## IF using verson v4.0 of plotly
     else:
         # LEARNING HOW TO CUSTOMIZE SLIDER
         # ** https://plot.ly/python/range-slider/    
@@ -3276,3 +2789,618 @@ def ihelp_menu(function_names,show_source=True,show_help=False):
     @interact(functions_dict=functions_dict,show_help=show_help,show_source=show_source)
     def help_menu(show_help=show_help,show_source=show_source,functions=functions_dict):
         return ihelp(functions, show_help=show_help, show_code=show_source)
+
+
+
+
+def make_time_index_intervals(twitter_df,col ='B_ts_rounded', start=None,end=None, freq='CBH',num_offset=1):#col used to be 'date'
+    """Takes a df, rounds first timestamp down to nearest hour, last timestamp rounded up to hour.
+    Creates 30 minute intervals based that encompass all data."""
+    import pandas as pd
+    
+    if freq=='CBH':
+        freq=pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30')
+        ofst = pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
+        ofst_early = pd.offsets.CustomBusinessHour(n=-num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
+    if freq=='T':
+        ofst = pd.offsets.Minute(n=num_offset)
+        ofst_early = pd.offsets.Minute(n=-num_offset)
+        
+    if freq=='H':
+        ofst = pd.offsets.Hour(n=num_offset)
+        ofst_early=pd.offsets.Hour(n=-num_offset)
+
+        
+    if start is None:
+        # Get timebin before the first timestamp that starts     
+        start_idx = ofst.rollback(twitter_df[col].iloc[0])#.floor('H'))
+        start_idx = start_idx.floor('30min')
+    else:
+        start_idx = pd.to_datetime(start)
+
+    if end is None:
+        # Get timbin after last timestamp that starts 30m into the hour.
+        end_idx= ofst.rollforward(twitter_df[col].iloc[-1])#.ceil('H'))
+        end_idx.ceil('30min')
+    else:
+        end_idx = pd.to_datetime(end)
+
+
+    # Make time bins using the above start and end points 
+    time_range = pd.date_range(start =start_idx, end = end_idx, freq=freq)#.to_period()
+    time_intervals = pd.interval_range(start=start_idx, end=end_idx,freq=freq,name='interval_index',closed='left')
+    
+    return time_intervals
+
+
+#***########### FUNCTIONS FOR RESAMPLING AND BINNING TWITTER DATA
+# def int_to_ts(int_list, as_datetime=False, as_str=True):
+#     """Accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
+#     import pandas as pd
+#     if as_datetime & as_str:
+#         raise Exception('Only one of `as_datetime`, or `as_str` can be True.')
+    
+#     left_edges =[]
+#     right_edges= []
+    
+#     for interval in int_list:
+#         int_str = interval.__str__()[1:-1]
+#         left,right = int_str.split(',')
+#         left_edges.append(left)
+#         right_edges.append(right)
+        
+    
+#     if as_str:
+#         return left_edges, right_edges
+    
+#     elif as_datetime:
+#         left = pd.to_datetime(left)
+#         right = pd.to_datetime(right)
+#         return left,right
+
+def int_to_ts(int_list, handle_null='drop',as_datetime=False, as_str=True):
+    """Helper function: accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
+    import pandas as pd
+    if as_datetime & as_str:
+        raise Exception('Only one of `as_datetime`, or `as_str` can be True.')
+
+    left_edges =[]
+    right_edges= []
+
+    if 'drop' in handle_null:
+        int_list.dropna()
+
+    for interval in int_list:
+
+        int_str = interval.__str__()[1:-1]
+        output = int_str.split(',')
+        left_edges.append(output)
+#         right_edges.append(right)
+
+
+    if as_str:
+        return left_edges#, right_edges
+
+    elif as_datetime:
+        left = pd.to_datetime(left)
+        right = pd.to_datetime(right)
+        return left,right
+
+
+# Step 1:     
+def bin_df_by_date_intervals(test_df,time_intervals,column='date'):
+    """Uses pd.cut with half_hour_intervals on specified column.
+    Creates a dictionary/map of integer bin codes. 
+    Adds column"int_bins" with int codes.
+    Adds column "left_edge" as datetime object representing the beginning of the time interval. 
+    Returns the updated test_df and a list of bin_codes."""
+    import pandas as pd
+    # Cut The Date column into interval bins, 
+    cut_date = pd.cut(test_df[column], bins=time_intervals)#,labels=list(range(len(half_hour_intervals))), retbins=True)
+    test_df['int_times'] = cut_date    
+    
+    # convert to str to be used as group names/codes
+    unique_bins = cut_date.astype('str').unique()
+    num_code = list(range(len(unique_bins)))
+    
+    # Dictioanry of number codes to be used for interval groups
+    bin_codes = dict(zip(num_code,unique_bins))#.astype('str')
+
+    
+    # Mapper dictionary to convert intervals into number codes
+    bin_codes_mapper = {v:k for k,v in bin_codes.items()}
+
+    
+    # Add column to the dataframe, then map integer code onto it
+    test_df['int_bins'] = test_df['int_times'].astype('str').map(bin_codes_mapper)
+    test_df.dropna(subset=['int_times'],inplace=True)
+    # Get the left edge of the bins to use later as index (after grouped)
+    # left_out, _ =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
+    try:
+        edges =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
+        left_out = [edge[0] for edge in edges]
+        test_df['left_edge'] = pd.to_datetime(left_out)
+    except:
+        print('int_to_ts output= ',left_out)
+    
+
+    # bin codes to labels 
+    bin_codes = [(k,v) for k,v in bin_codes.items()]
+    
+    return test_df, bin_codes
+
+
+def concatenate_group_data(group_df_or_series):
+    """Accepts a series or dataframe from a groupby.get_group() loop.
+    Adds TweetFreq column for # of rows concatenate. If input is series, 
+    TweetFreq=1 and series is returned."""
+    import numpy as np
+    import pandas as pd
+    from pandas.api import types as tp
+    
+    # make input a dataframe
+    if isinstance(group_df_or_series, pd.Series):
+        df = pd.DataFrame(group_df_or_series)
+    elif isinstance(group_df_or_series, pd.DataFrame):
+        df = group_df_or_series
+        
+    # create an output series to collect combined data
+    group_data = pd.Series(index=df.columns)
+    group_data['TweetFreq'] = df.shape[0]
+
+    ## For each columns:
+    for col in df.columns:
+
+        combined=[]
+        col_data = []
+
+#         col_data = df[col]
+#         combined=col_data.values
+
+        group_data[col] = df[col].to_numpy()
+
+    return group_data
+    
+ 
+
+
+#***#
+# def collapse_df_by_group_indices(twitter_df,group_indices, new_col_order=None):
+#     """Loops through the group_indices provided to concatenate each group into
+#     a single row and combine into one dataframe with the ______ as the index"""
+
+#     import pandas as pd
+#     # Create a Panel to temporarily hold the group series and dataframes
+#     # group_dict_to_df = {}
+#     # create a dataframe with same columns as twitter_df, and index=group ids from twitter_groups
+#     group_df_index = [x[0] for x in group_indices]
+    
+    
+#     twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=group_df_index)
+#     twitter_grouped['TweetFreq'] =0
+
+#     for (idx,group_members) in group_indices:
+
+#         group_df = twitter_df.loc[group_members]
+
+#         combined_series = concatenate_group_data(group_df)
+
+# #         twitter_grouped.loc[idx,:] = combined_series
+#         twitter_grouped.loc[idx] = combined_series#.values
+
+#     if new_col_order==None:
+#         return twitter_grouped
+    
+#     else:
+#         df_out = twitter_grouped[new_col_order].copy()
+#         df_out.index = group_df_index#twitter_grouped.index
+#         return df_out
+def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins', recast_index_freq=False, new_col_order=None, verbose=1):
+    """Loops through the group_indices provided to concatenate each group into
+    a single row and combine into one dataframe with the ______ as the index"""
+    import numpy as np
+    import pandas as pd
+    from IPython.display import display
+    import bs_ds as bs
+
+    import numpy as np
+    import pandas as pd
+    if verbose>0:
+        clock = bs.Clock()
+        clock.tic('Starting processing')
+
+    # Get the groups integer_index and current timeindex values 
+    group_indices = twitter_df.groupby(group_index_col).groups
+    group_indices = [(k,v) for k,v in group_indices.items()]
+    group_df_index = [x[0] for x in group_indices]
+
+
+    # Create empty shell of twitter_grouped dataframe
+    twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=group_df_index)
+    twitter_grouped['TweetFreq'] = 0
+    twitter_grouped['time_bin'] = 0
+
+
+    # Loop through each group_indices
+    for (idx,group_members) in group_indices:
+        group_df = twitter_df.loc[group_members]
+        
+        combined_series = concatenate_group_data(group_df)
+        
+        combined_series['time_bin'] = combined_series['left_edge'][0] #.apply(lambda x: x[0])
+        combined_series['time_bin'] = pd.to_datetime(combined_series['time_bin']) #twitter_gr
+        
+        combined_series['left_edge'] = combined_series['left_edge'][0] #.apply(lambda x: x[0])
+        combined_series['left_edge'] = pd.to_datetime(combined_series['left_edge']) #twitter_gr
+        
+        
+        # Append result_list and fill in proper idx in twitter_grouped
+        twitter_grouped.iloc[idx] = combined_series
+
+    if verbose>0: print('twitter_grouped populated. Now processing grouped data...')
+
+    ## UNPACK COLUMNS WITH ARRAYS CONTAINING  ONLY 1 UNIQUE VALUES
+    # List of columns to unpack
+    col_list = ['int_bins','int_times','time','B_day','B_time','dayofweek','B_shifted','time_shift','B_dt_index','B_dt_minutes','B_ts_rounded',
+            'pre_tweet_price','post_tweet_price','delta_time','delta_price','delta_price_class','null_results',
+            'B_ts_post_tweet','mins_after_tweet']
+
+    ## unpack values on completed dataframe
+    for col in col_list:
+        twitter_grouped[col] = twitter_grouped[col].apply(lambda x: np.unique(x)[0])
+
+    
+    ## Recast datetime columns
+    time_cols = ['time','int_times','time_bin','B_ts_post_tweet']
+    for col in time_cols:
+        try:
+            twitter_grouped[col] = pd.to_datetime(twitter_grouped[col])
+        except:
+            continue
+
+    # String cols to join 
+    string_cols = ['content']
+    for col in string_cols:
+        try:
+            twitter_grouped[col] = twitter_grouped[col].apply(lambda x: ','.join(x))
+        except:
+            continue
+
+
+
+
+    # Update Column order, if requested, otherwise return twitter_grouped
+    if new_col_order is None:
+        # return twitter_grouped
+        df_out = twitter_grouped
+    else:
+        df_out = twitter_grouped[new_col_order].copy()
+        df_out.index = group_df_index#twitter_grouped.index
+        # return df_out
+
+    if recast_index_freq:
+        ## RETURN TWITTER GROUPED AS CORRECT FREQUENCY
+        df_out['time_bin'] = pd.to_datetime(df_out['time_bin'] )
+        df_out.set_index('time_bin',inplace=True)
+
+        df_out.index.freq = custom_BH_freq()
+
+    if verbose>0:
+        clock.toc('completed')
+        if recast_index_freq:
+            print(df_out.index[[0,-1]])
+            print(df_out.index.freq)
+        display(df_out.head(2))
+    
+    return df_out
+
+
+
+def load_stock_price_series(filename='IVE_bidask1min.txt', 
+                               folderpath='data/',
+                               start_index = '2017-01-20', freq='T'):
+    import pandas as pd
+    import numpy as np
+    from IPython import display
+
+    # Load in the text file and set headers
+    fullfilename= folderpath+filename
+    headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
+    stock_df = pd.read_csv(fullfilename, names=headers,parse_dates=True,usecols=['Date','Time','BidClose'])
+    
+    # Create datetime index
+    date_time_index = stock_df['Date']+' '+stock_df['Time']
+    date_time_index = pd.to_datetime(date_time_index)
+    stock_df.index=date_time_index
+    
+    # Select only the days after start_index
+    stock_df = stock_df[start_index:]
+    
+    stock_price = stock_df['BidClose'].rename('stock_price')
+    stock_price[stock_price==0] = np.nan
+
+    # Make sure stock_price is loaded as minute data
+    stock_price = stock_price.asfreq('T')
+    stock_price.dropna(inplace=True)
+    stock_price.sort_index(inplace=True)
+                 
+    return stock_price
+
+
+
+
+def load_twitter_df(overwrite=True,set_index='time_index',verbose=2,replace_na=''):
+    import pandas as pd
+    from IPython.display import display
+    try: twitter_df
+    except NameError: twitter_df = None
+    if twitter_df is not None:
+        print('twitter_df already exists.')
+        if overwrite==True:
+            print('Overwrite=True. deleting original...')
+            del(twitter_df)
+            
+    if twitter_df is None:
+        print('loading twitter_df')
+        
+        twitter_df = pd.read_csv('data/trump_twitter_archive_df.csv', encoding='utf-8', parse_dates=True)
+        twitter_df.drop('Unnamed: 0',axis=1,inplace=True)
+
+        twitter_df['date']  = pd.to_datetime(twitter_df['date'])
+        twitter_df['time_index'] = twitter_df['date'].copy()
+        twitter_df.set_index(set_index,inplace=True,drop=True)
+
+
+        # Fill in missing values before merging with stock data
+        twitter_df.fillna(replace_na, inplace=True)
+        twitter_df.sort_index(ascending=True, inplace=True)
+
+        # RECASTING A COUPLE COLUMNS
+        twitter_df['is_retweet'] = twitter_df['is_retweet'].astype('bool')
+        twitter_df['id_str'] = twitter_df['id_str'].astype('str')
+        twitter_df['sentiment_class'] = twitter_df['sentiment_class'].astype('category')
+
+#         twitter_df.reset_index(inplace=True)
+        # Check header and daterange of index
+    if verbose>0:
+        display(twitter_df.head(2))
+        print(twitter_df.index[[0,-1]])
+    return twitter_df
+
+
+
+#### TWITTER_STOCK MATCHING
+def get_B_day_time_index_shift(test_df, verbose=1):
+    """Get business day index shifted"""
+    import pandas as pd
+    import numpy as np
+
+    ## Extract date, time, day of week from 'date'column
+    test_df['day']= test_df['date'].dt.strftime('%Y-%m-%d')
+    test_df['time'] = test_df['date'].dt.strftime('%T')
+    test_df['dayofweek'] = test_df['date'].dt.day_name()
+
+    # coopy date and twitter content
+    test_df_to_period = test_df[['date','content']]
+    
+    # convert to business day periods
+    test_df_to_period = test_df_to_period.to_period('B')
+    test_df_to_period['B_periods'] = test_df_to_period.index.to_series() #.values
+    
+    # Get B_day from B_periods
+    fmtYMD= '%Y-%m-%d'
+    test_df_to_period['B_day'] = test_df_to_period['B_periods'].apply(lambda x: x.strftime(fmtYMD))
+
+
+    #
+    test_df['B_day'] = test_df_to_period['B_day'].values
+    test_df['B_shifted']=np.where(test_df['day']== test_df['B_day'],False,True)
+    test_df['B_time'] = np.where(test_df['B_shifted'] == True,'09:30:00', test_df['time'])
+    
+    test_df['B_dt_index'] = pd.to_datetime(test_df['B_day'] + ' ' + test_df['B_time']) 
+
+    test_df['time_shift'] = test_df['B_dt_index']-test_df['date'] 
+    
+    if verbose > 0:
+        test_df.head(20)
+    
+    return test_df
+
+def reorder_twitter_df_columns(twitter_df, order=[]):
+    if len(order)==0:
+        order=['date','dayofweek','B_dt_index','source','content','content_raw','retweet_count','favorite_count','sentiment_scores','time_shift']
+    twitter_df_out = twitter_df[order]
+    twitter_df_out.index = twitter_df.index
+    return twitter_df_out
+
+
+def match_stock_price_to_tweets(tweet_timestamp,time_after_tweet= 60,time_freq ='T',stock_price=[]):#stock_price_index=stock_date_data):
+    
+    import pandas as pd
+    import numpy as np
+    from datetime import datetime as dt
+    # output={'pre_tweet_price': price_at_tweet,'post_tweet_price':price_after_tweet,'delta_price':delta_price, 'delta_time':delta_time}
+    output={}
+    # convert tweet timestamp to minute accuracy
+    ts=[]
+    ts = pd.to_datetime(tweet_timestamp).round(time_freq)
+    
+    BH = pd.tseries.offsets.BusinessHour(start='09:30',end='16:30')
+    BD = pd.tseries.offsets.BusinessDay()
+    
+    
+    # checking if time is within stock_date_data
+#     def roll_B_day_forward(ts):
+     
+    if ts not in stock_price.index:
+        ts = BH.rollforward(ts)   
+
+        
+        if ts not in stock_price.index:
+            return np.nan#"ts2_not_in_index"
+
+    # Get price at tweet time
+    price_at_tweet = stock_price.loc[ts]
+    output['B_ts_rounded'] = ts
+
+
+    if np.isnan(price_at_tweet):
+        output['pre_tweet_price'] = np.nan
+    else: 
+        output['pre_tweet_price'] = price_at_tweet
+
+    output['mins_after_tweet'] = time_after_tweet
+               
+        
+    # Use timedelta to get desired timepoint following tweet
+    hour_freqs = 'BH','H','CBH'
+    day_freqs = 'B','D'
+
+    if time_freq=='T':
+        ofst=pd.offsets.Minute(time_after_tweet)
+
+    elif time_freq in hour_freqs:
+        ofst=pd.offsets.Hour(time_after_tweet)
+
+    elif time_freq in day_freqs:
+        ofst=pd.offsets.Day(time_after_tweet)
+
+
+    # get timestamp to check post-tweet price
+    post_tweet_ts = ofst(ts)
+
+    
+    if post_tweet_ts not in stock_price.index:
+#         post_tweet_ts =BD.rollforward(post_tweet_ts)
+        post_tweet_ts = BH.rollforward(post_tweet_ts)
+    
+        if post_tweet_ts not in stock_price.index:
+            return np.nan
+
+    output['B_ts_post_tweet'] = post_tweet_ts
+
+    # Get next available stock price
+    price_after_tweet = stock_price.loc[post_tweet_ts]
+    if np.isnan(price_after_tweet):
+        output['post_tweet_price'] = 'NaN in stock_price'
+    else:
+        # calculate change in price
+        delta_price = price_after_tweet - price_at_tweet
+        delta_time = post_tweet_ts - ts
+        output['post_tweet_price'] = price_after_tweet
+        output['delta_time'] = delta_time
+        output['delta_price'] = delta_price
+
+#         output={'pre_tweet_price': price_at_tweet,'post_tweet_price':price_after_tweet,'delta_price':delta_price, 'delta_time':delta_time}
+
+    # reorder_output_cols  = ['B_dt_index','pre_tweet_price','']
+    # reorder_output 
+    return output
+    
+def unpack_match_stocks(stock_dict):
+    import pandas as pd
+    import numpy as np
+    dict_keys = ['B_ts_rounded', 'pre_tweet_price', 'mins_after_tweet', 'B_ts_post_tweet', 'post_tweet_price', 'delta_time', 'delta_price']
+
+    if (isinstance(stock_dict,dict)==False) and (np.isnan(stock_dict)):
+        fill_nulls=True
+    else:
+        fill_nulls=False
+
+    temp = pd.Series(stock_dict)
+
+    output=pd.Series(index=dict_keys)
+
+    for key in dict_keys:
+        if fill_nulls==True:
+            output[key] = np.nan
+        else:
+            output[key] = temp[key]
+
+    stock_series = output#pd.Series(stock_dict)
+    return stock_series
+
+
+
+###################### TWITTER AND STOCK PRICE DATA ######################
+## twitter_df, stock_price = load_twitter_df_stock_price()
+## twitter_df = get_stock_prices_for_twitter_data(twitter_df, stock_prices)
+#  
+def load_twitter_df_stock_price():# del stock_price
+    from IPython.display import display
+    try: stock_price
+    except NameError: stock_price = None
+    if stock_price is  None:    
+        print('loading stock_price')
+        stock_price = load_stock_price_series()
+    else:
+        print('using pre-existing stock_price')
+
+    # Make sure stock_price is loaded as minute data
+    stock_price = stock_price.asfreq('T')
+    stock_price.dropna(inplace=True)
+    stock_price.sort_index(inplace=True)
+
+    ## LOAD TWEETS, SELECT THE PROPER DATE RANGE AND COLUMNS
+    # twitter_df = load_twitter_df(verbose=0)
+    try: twitter_df
+    except NameError: twitter_df=None
+    if twitter_df is None:
+        print('Loading twitter_df')
+        twitter_df= load_raw_twitter_file()
+        twitter_df = full_twitter_df_processing(twitter_df,cleaned_tweet_col='clean_content')
+
+    stock_price.sort_index(inplace=True)
+    twitter_df.sort_index(inplace=True)
+    
+    display(twitter_df.head())
+    print(stock_price.index[0],stock_price.index[-1])
+    print(twitter_df.index[0],twitter_df.index[-1])
+    
+    return twitter_df, stock_price
+
+
+def get_stock_prices_for_twitter_data(twitter_df, stock_prices, time_after_tweet=60):
+    """ Adds Business Day shifted times for each row and corresponding stock_prices 
+    1) twitter_df = get_B_day_time_index_shift(twitter_df,verbose=1) """
+    import numpy as np
+    # Get get the business day index to account for tweets during off-hours
+    import pandas as pd
+    twitter_df = get_B_day_time_index_shift(twitter_df,verbose=1)
+
+    # Make temporary B_dt_index var in order to round that column to minute-resolution
+    B_dt_index = twitter_df[['B_dt_index','B_day']]#.asfreq('T')
+    B_dt_index['B_dt_index']= pd.to_datetime(B_dt_index['B_dt_index'])
+    B_dt_index['B_dt_index']= B_dt_index['B_dt_index'].dt.round('T')
+
+    # Get stock_prices for each twitter timestamp
+    twitter_df['B_dt_minutes'] = B_dt_index['B_dt_index'].copy()
+
+    twitter_df['stock_price_results'] = twitter_df['B_dt_minutes'].apply(lambda x: match_stock_price_to_tweets(x,
+    time_after_tweet=time_after_tweet,stock_price=stock_prices))
+
+    ## NEW COL TRACK NULL VAUES
+    twitter_df['null_results'] = twitter_df['stock_price_results'].isna()
+
+    df_to_add = twitter_df['stock_price_results'].apply(lambda x: unpack_match_stocks(x))
+
+    ## VERIFTY INDICES MATCH BEFORE MERGING
+    if all(df_to_add.index == twitter_df.index):
+        new_twitter_df = pd.concat([twitter_df,df_to_add],axis=1)
+        # display(df_out.head())
+    else:
+        print('Indices are mismatched. Cannot concatenate')
+    # new_twitter_df = pd.concat([twitter_df,df_to_add], axis=1)
+
+    ## REMOVED THIS LINE ON 08/07/19
+    # twitter_df = new_twitter_df.loc[~new_twitter_df['post_tweet_price'].isna()]
+
+    # twitter_df.drop(['0'],axis=1,inplace=True)
+    twitter_df = new_twitter_df
+    twitter_df['delta_price_class'] = np.where(twitter_df['delta_price'] > 0,'pos','neg')
+
+    # twitter_df.drop([0],axis=1, inplace=True)
+    # display(twitter_df.head())
+    # print(twitter_df.isna().sum())
+    
+    return twitter_df

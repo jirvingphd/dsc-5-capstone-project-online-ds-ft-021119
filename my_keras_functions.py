@@ -119,18 +119,13 @@ def make_train_test_series_gens(train_data_series,test_data_series,X_cols = None
         # if only 1 column (aka is a series)
         train_data = []
         train_targets = []
-        
-        train_data_test = train_data_series.values
+        import pandas as pd
+        import numpy as np
 
-        if train_data_test.shape[1] < 2:
-
-            train_data = train_data_series.values.reshape(-1,1)
-            train_targets = train_data
-            return train_data, train_targets
-
-        else: # if train_data_series really a df
-
-            # if not specified, use all columns for x data
+        if isinstance(train_data_series, pd.DataFrame):
+            # train_data_test = train_data_series.values
+            train_data = train_data_series.values
+                # if not specified, use all columns for x data
             if X_cols is None:
                 train_data = train_data_series.values
             
@@ -143,10 +138,19 @@ def make_train_test_series_gens(train_data_series,test_data_series,X_cols = None
                 y_cols = 'price'
             
             train_targets = train_data_series[y_cols].values
+            
             # print(train_targets.ndim)
+        elif isinstance(train_data_series, pd.Series): #        if train_data_test.ndim<2: #shape[1] < 2:
 
-            if train_targets.ndim <2: #ndim<2:
-                train_targets = train_targets.reshape(-1,1)
+            train_data = train_data_series.values.reshape(-1,1)
+            train_targets = train_data
+
+            # return train_data, train_targets
+
+        # else: # if train_data_series really a df
+
+        if train_targets.ndim <2: #ndim<2:
+            train_targets = train_targets.reshape(-1,1)
 
         if debug==True:
             print('train_data[0]=\n',train_data[0])
@@ -506,7 +510,7 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
 
             print(f'{filename} already exists... incrementing filename to {full_filename}.')
     
-
+    ## SAVE MODEL AS JSON FILE
     # convert model to json
     model_json = model.to_json()
 
@@ -515,27 +519,28 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
         json.dump(model_json,json_file)
     print(f'Model saved as {full_filename}')
 
-    # serialize weights to HDF5
-    weight_filename = full_filename+'_weights.h5'
+
+    ## GET BASE FILENAME WITHOUT EXTENSION
+    file_ext=full_filename.split('.')[-1]
+    filename = full_filename.replace(f'.{file_ext}','')    
+
+    ## SAVE MODEL WEIGHTS AS HDF5 FILE
+    weight_filename = filename+'_weights.h5'
     model.save_weights(weight_filename)
     print(f'Weights saved as {weight_filename}') 
 
 
-    ## save model_params if provided
+    ## SAVE MODEL LAYER CONFIG TO EXCEL FILE 
     if save_model_layer_config_xlsx == True:
-        
-        # get filename without extension
-        file_ext=full_filename.split('.')[-1]
-        excel_filename = full_filename.replace(f'.{file_ext}','')
-        excel_filename+='_model_layers.xlsx'
 
+        excel_filename=filename+'_model_layers.xlsx'
         # Get modelo config df
         df_model_config = get_model_config_df(model)
         df_model_config.to_excel(excel_filename, sheet_name='Keras Model Config')
            
 
 
-    ## save model_params
+    ## SAVE MODEL PARAMS TO PICKLE 
     if model_params is not None:
         # import json
         import inspect
@@ -554,8 +559,9 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
         model_params_to_save['compile_params']['loss'] = model_params['compile_params']['loss']
 
         ## Check for and replace functins in metrics
-        # print('compile_params>metrics not saved')
         metric_list =  model_params['compile_params']['metrics']
+        
+        # replace functions in metric list with source code
         for i,metric in enumerate(metric_list):
             if inspect.isfunction(metric):
                 metric_list[i] = replace_function(metric)
@@ -564,49 +570,21 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
 
         # model_params_to_save['compile_params']['metrics'] = model_params['compile_params']['metrics']
         model_params_to_save['compile_params']['optimizer_name'] = model_params['compile_params']['optimizer_name']
-        
         model_params_to_save['fit_params'] = model_params['fit_params']
 
-
-        # # replace any functions with their source code before saving params
-        # for k,v in model_params.items():
-
-        #     if inspect.isfunction(v):
-        #         model_params[k] = replace_function(v)
-
-        #     elif isinstance(v,dict):
-
-        #         for k2,v2 in v.items():
-        #             if inspect.isfunction(v2):
-        #                 model_params[k][k2]=replace_function(v2)
-
-        #             elif isinstance(v2,dict):
-
-        #                 for k3,v3 in v2.items():
-                            
-        #                     if inspect.isfunction(v3):
-        #                         model_params[k][k2][k3]=replace_function(v3)
-                            
-
-
-        # get filename without extension
-        file_ext=full_filename.split('.')[-1]
-        param_filename = full_filename.replace(f'.{file_ext}','')
-        param_filename+='_params.pkl'
+        ## save model_params_to_save to pickle
+        model_params_filename=filename+'_model_params.pkl'
         try:
-                
-            with open(param_filename,'wb') as param_file:
+            with open(model_params_filename,'wb') as param_file:
                 pickle.dump(model_params_to_save, param_file) #sort_keys=True,indent=4)
         except:
             print('Pickling failed')
-       
+
+    return [filename, weight_filename, excel_filename, model_params_filename]
 
 
-
-    return filename, weight_filename
-
-
-def load_model_weights_params(base_filename = 'models/model_',load_params=True, model_filename=None,weight_filename=None, trainable=False,verbose=1):
+def load_model_weights_params(base_filename = 'models/model_',load_model_params=True, load_model_layers_excel=True, trainable=False, 
+model_filename=None,weight_filename=None, model_params_filename = None, excel_filename=None, verbose=1):
     """Loads in Keras model from json file and loads weights from .h5 file.
     optional set model layer trainability to False"""
     from IPython.display import display
@@ -616,21 +594,27 @@ def load_model_weights_params(base_filename = 'models/model_',load_params=True, 
     ## Set model and weight filenames from base_filename if None:
     if model_filename is None:
         model_filename = base_filename+'.json'
+
     if weight_filename is None:
         weight_filename = base_filename+'_weights.h5'
+    
+    if model_params_filename is None:
+        model_params_filename = base_filename + '_model_params.pkl'
+    
+    if excel_filename is None:
+        excel_filename = base_filename + '_model_layers.xlsx'
 
-    model_params_filename = base_filename+'_params.json'
 
-    # Load json and create model
+    ## LOAD JSON MODEL
     with open(model_filename, 'r') as json_file:
         loaded_model_json = json_file.read()    
     loaded_model = model_from_json(loaded_model_json)
 
-    # Load weights into new model
+    ## LOAD MODEL WEIGHTS 
     loaded_model.load_weights(weight_filename)
     print(f"Loaded {model_filename} and loaded weights from {weight_filename}.")
 
-    # set layer trainability
+    # SET LAYER TRAINABILITY
     if trainable is False:
         for i, model_layer in enumerate(loaded_model.layers):
             loaded_model.get_layer(index=i).trainable=False
@@ -639,18 +623,31 @@ def load_model_weights_params(base_filename = 'models/model_',load_params=True, 
         if verbose>1:
             print(model_layer,loaded_model.get_layer(index=i).trainable)
     
-    # display summary if verbose
+    # IF VERBOSE, DISPLAY SUMMARY
     if verbose>0:
         display(loaded_model.summary())
         print("Note: Model must be compiled again to be used.")
 
-    if load_params:
-        with open(model_params_filename,'r') as params_file:
-            model_params = json.load(params_file)
-        
-        return loaded_model, model_params
-    else:
-        return loaded_model 
+    
+    ## START RETURN LIST WITH MODEL
+    return_list = loaded_model
+
+    ## LOAD MODEL_PARAMS PICKLE
+    if load_model_params:
+        import pickle
+        model_params = pickle.load(model_params_filename)
+        return_list.append(model_params)
+
+    ## LOAD EXCEL OF MODEL LAYERS CONFIG
+    if load_model_layers_excel:
+        import pandas as pd
+        df_model_layers = pd.read_excel(excel_filename)
+        return_list.append(df_model_layers)
+
+    return return_list[:]
+    #     return loaded_model, model_params
+    # else:
+    #     return loaded_model 
 
 
 def thiels_U(ys_true=None, ys_pred=None,display_equation=True,display_table=True):
@@ -776,20 +773,41 @@ def get_evaluate_regression_dict(df,  metrics=['r2','RMSE','U'], show_results_di
 
     col_list = df.columns
     from_where = re.compile('(true|pred)_(from_\w*_?\w+?)')
-    found = [from_where.findall(col)[0] for col in col_list]
+    found = [from_where.findall(col) for col in col_list]
+    found = [x[0] for x in found if len(x)>0]
 
 
     pairs_of_cols = {}
     df_dict = {}
-#     results =[['preds_from','metric','value']]
-    for _,where in found: 
 
-        true_series = df['true_'+where].dropna()
-        pred_series = df['pred_'+where].dropna()
-        pairs_of_cols[where] = {}
-        pairs_of_cols[where]=[true_series.name,pred_series.name]#['col_names']
+    if 'true_test_price' in col_list:
+        use_single_true_column = True
+        true_test_series = df['true_test_price']
+    else:
+        use_single_true_column = False
+
+#     results =[['preds_from','metric','value']]
+    # for _,where in found:  
+    for true_pred, from_source in found: 
+
+        if use_single_true_column:
+            true_series = true_test_series #.dropna()
+            true_series_name = true_series.name
+        else:
+            true_series = df['true_'+from_source]#.dropna()
+            true_series_name = true_series.name
+
+        pred_series = df['pred_'+from_source]#.dropna()
+        pred_series_name = pred_series.name
+
+        # combine true_series and pred_series and then dropna()
+        df_eval = pd.concat([true_series,pred_series],axis=1)
+        df_eval.dropna(inplace=True)
+
+        pairs_of_cols[from_source] = {}
+        pairs_of_cols[from_source]=[true_series_name,pred_series_name]#['col_names']
         
-        df_dict[where] = ji.evaluate_regression(true_series,pred_series,metrics=metrics) #.reset_index().set_index('Metric')#,inplace=True)
+        df_dict[from_source] = ji.evaluate_regression(df_eval[true_series_name],df_eval[pred_series_name],metrics=metrics) #.reset_index().set_index('Metric')#,inplace=True)
 #         pairs_of_cols[where]['results']=res_df
 
     # # combine into one dataframe
@@ -842,7 +860,7 @@ def get_evaluate_regression_dict(df,  metrics=['r2','RMSE','U'], show_results_di
         return df_dict
         
 
-def compare_eval_metrics_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],
+def compare_eval_metrics_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2], true_train_series_to_add=None,
 color_coded=True, return_results=False, return_shifted_df=True, display_results=True, display_U_info=False):
     
     ## SHIFT THE TRUE VALUES, PLOT, AND CALC THIEL's U
@@ -891,6 +909,9 @@ color_coded=True, return_results=False, return_shifted_df=True, display_results=
         shift_results_dict[shift] =  shift_results.drop('Bins Shifted',axis=1).set_index('Metric')
 
 
+    # if 
+    if true_train_series_to_add is not None:
+        df_shifted['true_train_price'] = true_train_series_to_add
     # Turn results into dataframe when complete
     # df_results = list2df(results)#
     # df_results.set_index('# of Bins Shifted', inplace=True)
@@ -1050,8 +1071,8 @@ def compare_time_shifted_model(df_model,true_colname='true test',pred_colname='p
     pred_test_series = df_model[pred_colname].dropna()
 
     # Comparing Shifted Timebins
-    res_df = compare_eval_metrics_for_shifts(true_test_series.rename(true_colname),
-    pred_test_series.rename(pred_colname),shift_list=np.arange(-4,4,1))
+    res_df, shifted_df = compare_eval_metrics_for_shifts(true_test_series.rename(true_colname),
+    pred_test_series.rename(pred_colname),shift_list=np.arange(-4,4,1,))
 
     res_df = res_df.pivot(index='Bins Shifted', columns='Metric',values='Value')
     res_df.columns.rename(None, inplace=True)
@@ -1133,7 +1154,7 @@ def compare_time_shifted_model(df_model,true_colname='true test',pred_colname='p
 #         return df_combined
 
 def get_model_preds_df(model, true_train_series,true_test_series, test_generator=None, preds_from_gen=True, 
-preds_from_train_preds =True, preds_from_test_preds=True,  model_params=None,
+preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=True,  model_params=None,
  x_window=None, n_features=None, train_data_index=None,
   test_data_index=None,return_combined=True,inverse_tf=False, 
   scaler=None, iplot=True, plot_with_train_data=True, return_fig=False):
@@ -1213,85 +1234,105 @@ preds_from_train_preds =True, preds_from_test_preds=True,  model_params=None,
         df_all_preds = bs.drop_cols(df_all_preds,['i_']);
 
 
-    
-    if inverse_tf:
+    ## ADD TRAINING DATA TO DATAFRAME IF REQUESTED
+    if include_train_data:
+        true_train_series=true_train_series.rename('true_train_price')
+        df_all_preds=pd.concat([true_train_series,df_all_preds],axis=1)
         
+    ## INVERSE TRANSOFRM BACK TO PRICE
+    if inverse_tf:
         df_out = ji.transform_cols_from_library(df_all_preds,single_scaler=model_params['scaler_library']['price'],inverse=True)
     else:
         df_out = df_all_preds
 
     
 
-    if iplot:
         
-        def get_plot_df_with_one_true_series(df_out):
-            import re
+    def get_plot_df_with_one_true_series(df_out,train_data = true_train_series, include_train_data=include_train_data):
+        
+        # print(df_out.columns)
+        df_plot = pd.DataFrame()
 
-            col_list = df_out.columns
-            from_where = re.compile('(true|pred)_(from_\w*_?\w+?)')
-            found = [from_where.findall(col)[0] for col in col_list]
+        ## Check columns for true_train_price, then make list of other colnames
+        cols = df_out.columns.to_list()
+
+        if 'true_train_price' in cols:
+            if include_train_data:
+                df_plot['true_train_price'] = df_out['true_train_price']
             
-            pairs_of_cols = {}
-            df_plot = pd.DataFrame()
-        #     results =[['preds_from','metric','value']]
+        # remove from the col_list to be looped through.
+        col_list = [x for x in cols if x !='true_train_price']
 
-            for tf, where in found: 
+        ## Use regexp to separate 'true_from_source','pred_from_source' columns
+        import re
+        from_where = re.compile('(true|pred)_(from_\w*_?\w+?)')
+        # found = [from_where.findall(col)[0] for col in col_list]
+        found = [from_where.findall(col) for col in col_list]
+        found = [x[0] for x in found if len(x)>0]
+        
+        pairs_of_cols = {}
+        true_col_data = []
+        true_col_name = []
+        check_true_col_name = []
+        check_true_col_data = []
+        # Check tuple for true/pred and from_source
+        for true_pred, from_source in found: 
 
-                if 'true' in tf and 'from_gen' in where:
-                    # true_series_to_plot = pairs_of_cols['true']['true_series']
-                    name_recon = f"{tf}_{where}"
-                    df_plot['true'] = df_out[name_recon]#true_series_to_plot
-                    continue #break?
+            if 'true' in true_pred:
                 
-                elif 'pred' in tf:
-                    name_recon = f"{tf}_{where}"
-                    df_plot[name_recon] = df_out[name_recon]
-                continue            
+                if len(true_col_data)==0:
+                    
+                    true_col_name = f"{true_pred}_{from_source}"
+                    true_col_data = df_out[true_col_name]
 
-            #     true_series = df_out['true_'+where].dropna()
-            #     pred_series = df_out['pred_'+where].dropna()
+                    df_plot['true_test_price'] = true_col_data
 
-            #     pairs_of_cols['true'] = {'from':where,'true_series':true_series}
-            #     pairs_of_cols['pred']={'from':where,'pred_series':pred_series}#['col_names']
+                else:
+                    check_true_col_name = f"{true_pred}_{from_source}"
+                    check_true_col_data = df_out[check_true_col_data]
 
-            # ## FIND THE TRUE FROM GEN SERIES TO RETURN
-            # for k,v in pairs_of_cols['true'].items():
-            #     if 'from' in k and 'from_gen' in v:
-            #         continue
-            
-            # ## FIND THE PRED COLUMNS TO RETURN
-            
-            # for k,v in pairs_of_cols['pred'].items():
-            #     if 'from' in k:
-            
+                    if all(check_true_col_data == true_col_data):
+                        continue
+                    else:
+                        print(f'Warning: true data from {true_col_name} and {check_true_col_name} do not match!')
+                        # name_recon = f"{true_pred}_{from_source}"
+                        # df_plot['true_test_price'] = df_out[name_recon]#true_series_to_plot
+                        # continue #break?
+                
+            elif 'pred' in true_pred:
+                name_recon = f"{true_pred}_{from_source}"
+                df_plot[name_recon] = df_out[name_recon]
+                # continue            
 
-            return df_plot 
-            
+        return df_plot 
 
 
-        df_plot = get_plot_df_with_one_true_series(df_out) #df_out.copy().drop(['true_from_test_preds','true_from_train_preds'],axis=1)
+    df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) 
+    
+    if iplot:
+
+        # df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) #df_out.copy().drop(['true_from_test_preds','true_from_train_preds'],axis=1)
         # df_plot = df_plot.rename(mapper={'true_from_gen':'true price'},axis='columns')
         if plot_with_train_data == False:
-            ji.plotly_time_series(df_plot) 
-
-            # ji.plotly_time_series(df_out.drop(''))
-        
+            ji.plotly_time_series(df_plot.drop('true_train_price')) 
         else:
 
-            scaler = model_params['scaler_library']['price']
-            true_train_price = ji.transform_series(true_train_series,scaler=scaler,inverse=True)
+            # scaler = model_params['scaler_library']['price']
+            # true_train_price = ji.transform_series(true_train_series,scaler=scaler,inverse=True)
             # print(type(true_train_price))
-            df_plot = pd.concat([true_train_price,df_plot],axis=1)
+            # df_plot = pd.concat([true_train_price,df_plot],axis=1)
             ji.plotly_time_series(df_plot)
 
-    return df_out
+    return df_plot
 
-def get_eval_dict_for_paired_cols(df,col_regex_tokens=r'(true|pred)_(from_\w*_?\w+?)'):
+
+def get_eval_dict_for_paired_cols(df,col_regex_tokens='(true|pred)_(from_\w*_?\w+?)'):
     import re
     
     col_list = df.columns
     from_where = re.compile(col_regex_tokens) #'(true|pred)_(from_\w*_?\w+?)')
-    found = [from_where.findall(col)[0] for col in col_list]
+    found = [from_where.findall(col) for col in col_list]
+    found = [x[0] for x in found if len(x)>0]
 
 
     pairs_of_cols = {}
@@ -1377,7 +1418,7 @@ def get_predictions_df_and_evaluate_model(model, test_generator,
 
 def get_model_preds_from_preds(model,true_train_data, true_test_data,
                          model_params=None, x_window=None, n_features=None, 
-                         build_preds_from_train=True, return_df=True,suffix=None):
+                         build_preds_from_train=True, return_df=True,suffix=None, debug=False):
     
     """ Gets predictions from model using using its own predictions as the subsequent input.
     Must provide a model_params dictionary with 'input_params' OR must define ('n_input','n_features').
@@ -1457,16 +1498,17 @@ def get_model_preds_from_preds(model,true_train_data, true_test_data,
         test_predictions.append(current_pred) 
 
         # update batch to now include prediction and drop first value
-        try:
+        # try:
             # current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
-            current_batch = np.append(current_batch[:,1:,:],[current_pred],axis=1)
-        except:
-            print(f'\nn_features={n_features}')
-            print(f"n_input={n_input}")
-            print(f"first_batch_shape={first_batch_shape}; current_batch.shape={current_batch.shape}; current_pred.shape={current_pred.shape}" )
-        finally:
-            from pprint import pprint
-            print('current_batch:',current_batch,'\ncurrent_pred:',current_pred)
+        current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
+        # except:
+            # print('COMMAND FAILED: "current_batch = np.append(current_batch[:,1:,:],[current_pred],axis=1)"' )
+        #     print(f'\nn_features={n_features}')
+        #     print(f"n_input={n_input}")
+        #     print(f"first_batch_shape={first_batch_shape}; current_batch.shape={current_batch.shape}; current_pred.shape={current_pred.shape}" )
+        # finally:
+        #     from pprint import pprint
+        #     print('current_batch:',current_batch,'\ncurrent_pred:',current_pred)
         
         ## Append the data to the output df list
         preds_out.append([i,test_data_index[i],current_pred[0]])
