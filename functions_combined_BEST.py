@@ -2616,9 +2616,22 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
         return fig, ax1
 
 
-def plotly_true_vs_preds_subplots(true_vs_preds_df, true_train_col ,pred_train_col,true_test_col, pred_test_col, 
-x_col=None, y_col = None, subplots=False,theme='solar', verbose=0,figsize=(14,4)):
+def plotly_true_vs_preds_subplots(true_vs_preds_df, true_train_col ,true_test_col, pred_test_columns,
+theme='solar', verbose=0,figsize=(14,4)):
     """y_col_kws={'col_name':line_color}"""
+
+    import pandas as pd
+    import numpy as np
+    import plotly.graph_objs as go
+
+    from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot, iplot_mpl
+
+    
+    init_notebook_mode(connected=True)
+    
+    import functions_combined_BEST as ji
+    import bs_ds as bs
+
     from sklearn.metrics import mean_squared_error
     import matplotlib.pyplot as plt
     import matplotlib as mpl
@@ -2634,101 +2647,54 @@ x_col=None, y_col = None, subplots=False,theme='solar', verbose=0,figsize=(14,4)
     # pred_test =  true_vs_preds_df[pred_test_col].dropna().rename('pred_test')
     
         
-    # ## Define plot styles by train/test/pred data type
-    style_dict = {'true_train':{},'pred_train':{},'true_test':{},'pred_test':{}}
-    style_dict['true_train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
-    style_dict['true_train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
-    style_dict['true_test']={'lw':1,'color':'orange','ls':'-', 'alpha':1}
-    style_dict['pred_test']={'lw':2,'color':'green','ls':'--', 'alpha':0.7}
+    # # ## Define plot styles by train/test/pred data type
+    # style_dict = {'true_train':{},'pred_train':{},'true_test':{},'pred_test':{}}
+    # style_dict['true_train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
+    # style_dict['true_train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
+    # style_dict['true_test']={'lw':1,'color':'orange','ls':'-', 'alpha':1}
+    # style_dict['pred_test']={'lw':2,'color':'green','ls':'--', 'alpha':0.7}
     
     if theme=='solar':
         my_layout = def_my_layout_solar_theme()
     else:
         my_layout = def_my_plotly_stock_layout()
     
-    # Plot train_price if it is not empty.
-    # if len(train_price)>0:
-    # fig = plotly_time_series(df,x_col=x_col,y_col=None,)
-    fig = df[y_col].iplot(asFigure=True,asDates=True,layout=my_layout,
-                             colors={'train':style_dict['true_train']['color'],
-                                    'test':style_dict['true_test']['color']})
-    fig = df[true_train_col].iplot(line=style_dict['true_train'])
-    fig.add_scatter(df[true_test_col],line=style_dict['true_test'])
-    # df.iplot(kind='scatter', x train_price, label='price-training',**style_dict['train'])
-        
-        
-    # # Plot test and predicted price
-    # ax1.plot(test_price, label='true test price',**style_dict['test'])
-    # ax1.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
-    # ax1.legend()
-
-    # ax1.set_title('S&P500 Price: Forecast by LSTM-Neural-Network')
-    # ax1.set_xlabel('Business Day-Hour')
-    # ax1.set_ylabel('Stock Price')
-
-    # import matplotlib.dates as mdates
-    # import datetime
-
-    # # Instantiate Locators to be used
-    # years = mdates.YearLocator()   # every year
-    # months = mdates.MonthLocator()#interval=2)  # every month
-    # quarters = mdates.MonthLocator(interval=3)#interval=2)  # every month
-
-    # # Define various date formatting to be used
-    # monthsFmt = mdates.DateFormatter('%Y-%b')
-    # yearsFmt = mdates.DateFormatter('%Y') #'%Y')
-    # yr_mo_day_fmt = mdates.DateFormatter('%Y-%m')
-    # monthDayFmt = mdates.DateFormatter('%m-%d-%y')
-
-
-    # ## AX2 SET TICK LOCATIONS AND FORMATTING
-
-    # # Set locators (since using for both location and formatter)
-    # auto_major_loc = mdates.AutoDateLocator(minticks=5)
-    # auto_minor_loc = mdates.AutoDateLocator(minticks=10)
-
-    # # Set Major X Axis Ticks
-    # ax1.xaxis.set_major_locator(auto_major_loc)
-    # ax1.xaxis.set_major_formatter(mdates.AutoDateFormatter(auto_major_loc))
-
-    # # Set Minor X Axis Ticks
-    # ax1.xaxis.set_minor_locator(auto_minor_loc)
-    # ax1.xaxis.set_major_formatter(mdates.AutoDateFormatter(auto_minor_loc))
-
-
-    # ax1.tick_params(axis='x',which='both',rotation=30)
-    # ax1.grid(axis='x',which='major')
-
-    # # Plot a subplot with JUST the test and predicted prices
-    # if subplots==True:
-        
-    #     ax2.plot(test_price, label='true test price',**style_dict['test'])
-    #     ax2.plot(pred_price, label='predicted price', **style_dict['pred'])#, label=['true_price','predicted_price'])#, label='price-predictions')
-    #     ax2.legend()
-    #     plt.title('Predicted vs. Actual Price - Test Data')
-    #     ax2.set_xlabel('Business Day-Hour')
-    #     ax2.set_ylabel('Stock Price')
-    #     # plt.subplots_adjust(wspace=1)#, hspace=None)[source]¶
-        
-    #     ## AX2 SET TICK LOCATIONS AND FORMATTING
-
-    #     # Major X-Axis Ticks
-    #     ax2.xaxis.set_major_locator(months) #mdates.DayLocator(interval=5))
-    #     ax2.xaxis.set_major_formatter(mdates.DateFormatter('%b-%Y')) #monthsFmt) #mdates.DateFormatter('%m-%Y')) #AutoDateFormatter(locator=locator))#yearsFmt)
-
-    #     # Minor X-Axis Ticks
-    #     ax2.xaxis.set_minor_locator(mdates.DayLocator(interval=5))#,interval=5))
-    #     ax2.xaxis.set_minor_formatter(mdates.DateFormatter('%d')) #, fontDict={'weight':'bold'})
-
-    #     # Changing Tick spacing and rotation.
-    #     ax2.tick_params(axis='x',which='major',rotation=90, direction='inout',length=10, pad=5)
-    #     ax2.tick_params(axis='x',which='minor',length=4,pad=2, direction='in') #,horizontalalignment='right')#,ha='left')
-    #     ax2.grid(axis='x',which='major')
+    ## FIGURE 1- TRAINING DATA + TEST DATA
+    true_train_trace = go.Scatter(x=df.index, y=df[true_train_col].dropna())
+    true_test_trace = go.Scatter(x=df.index, y= df[true_test_col].dropna())
     
-    # if subplots==True:
-    #     return fig, ax1,ax2
-    # else: 
-    return fig#, ax1
+    fig1_data = []
+    fig1_data.append(true_train_trace)
+    fig1_data.append(true_test_trace)
+    
+    fig2_data = [true_test_trace]
+    
+    if isinstance(pred_test_columns,list)==False:
+        
+        pred_test_trace = go.Scatter(x=df.index, y=df[pred_test_columns].dropna())
+        
+        fig1_data.append(pred_test_trace)
+        fig2_data.append(pred_test_trace)
+        
+    else:
+        for i,col in enumerate(pred_test_columns):
+            eval(f"pred_trace{i} = go.Scatter(x=df.index, y=df[{pred_test_columns[i]}].dropna())")
+            
+            fig1_data.append(eval(f"pred_trace{i}"))
+            fig2_data.append(eval(f"pred_trace{i}"))
+
+
+    fig_1 = go.Figure(data = fig1_data,layout=my_layout)
+    fig_2 = go.Figure(data = fig2_data, layout=my_layout)
+    
+    my_range_selector = ji.def_range_selector()
+
+    specs= [[{'colspan':2},None,{'colspan':1}]]
+    big_fig = cf.subplots(theme='solar',figures=[fig_1,fig_2],shape=[1,3],specs=specs) #,specs=)
+    iplot(big_fig)    
+    return big_fig
+    
+
 
 
 def load_processed_stock_data(processed_data_filename = '_stock_df_with_technical_indicators.csv', force_from_raw=False):
@@ -2793,42 +2759,56 @@ def ihelp_menu(function_names,show_source=True,show_help=False):
 
 
 
-def make_time_index_intervals(twitter_df,col ='B_ts_rounded', start=None,end=None, freq='CBH',num_offset=1):#col used to be 'date'
+def make_time_index_intervals(twitter_df,col ='B_ts_rounded', start=None,end=None, freq='CBH'):#,num_offset=1):#col used to be 'date'
     """Takes a df, rounds first timestamp down to nearest hour, last timestamp rounded up to hour.
     Creates 30 minute intervals based that encompass all data."""
     import pandas as pd
+    time_index = twitter_df[col].copy()
     
-    if freq=='CBH':
-        freq=pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30')
-        ofst = pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
-        ofst_early = pd.offsets.CustomBusinessHour(n=-num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
-    if freq=='T':
-        ofst = pd.offsets.Minute(n=num_offset)
-        ofst_early = pd.offsets.Minute(n=-num_offset)
+    copy_idx = time_index.index.to_series() 
+    time_index.index = pd.to_datetime(copy_idx)
+    time_index.sort_index(inplace=True)
+
+    ts = time_index.index[0]
+    ts_end  = time_index.index[-1]
+
+    start = pd.to_datetime(f"{ts.month}-{ts.day}-{ts.year} 09:30:00")
+    end = pd.to_datetime(f"{ts_end.month}-{ts_end.day}-{ts_end.year} 16:30:00")
+    time_intervals = pd.interval_range(start=start,end=end,freq='H')
+
+    # if freq=='CBH':
+    #     freq=pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30')
+    #     ofst = pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
+    #     ofst_early = pd.offsets.CustomBusinessHour(n=-num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
+
+
+    # if freq=='T':
+    #     ofst = pd.offsets.Minute(n=num_offset)
+    #     ofst_early = pd.offsets.Minute(n=-num_offset)
         
-    if freq=='H':
-        ofst = pd.offsets.Hour(n=num_offset)
-        ofst_early=pd.offsets.Hour(n=-num_offset)
+    # if freq=='H':
+    #     ofst = pd.offsets.Hour(n=num_offset)
+    #     ofst_early=pd.offsets.Hour(n=-num_offset)
 
         
-    if start is None:
-        # Get timebin before the first timestamp that starts     
-        start_idx = ofst.rollback(twitter_df[col].iloc[0])#.floor('H'))
-        start_idx = start_idx.floor('30min')
-    else:
-        start_idx = pd.to_datetime(start)
+    # if start is None:
+    #     # Get timebin before the first timestamp that starts     
+    #     start_idx = ofst.rollback(twitter_df[col].iloc[0])#.floor('H'))
+    #     start_idx = start_idx.floor('30min')
+    # else:
+    #     start_idx = pd.to_datetime(start)
 
-    if end is None:
-        # Get timbin after last timestamp that starts 30m into the hour.
-        end_idx= ofst.rollforward(twitter_df[col].iloc[-1])#.ceil('H'))
-        end_idx.ceil('30min')
-    else:
-        end_idx = pd.to_datetime(end)
+    # if end is None:
+    #     # Get timbin after last timestamp that starts 30m into the hour.
+    #     end_idx= ofst.rollforward(twitter_df[col].iloc[-1])#.ceil('H'))
+    #     end_idx = end_idx.ceil('30min')
+    # else:
+    #     end_idx = pd.to_datetime(end)
 
 
-    # Make time bins using the above start and end points 
-    time_range = pd.date_range(start =start_idx, end = end_idx, freq=freq)#.to_period()
-    time_intervals = pd.interval_range(start=start_idx, end=end_idx,freq=freq,name='interval_index',closed='left')
+    # # Make time bins using the above start and end points 
+    # time_range = pd.date_range(start =start_idx, end = end_idx, freq=freq)#.to_period()
+    # time_intervals = pd.interval_range(start=start_idx, end=end_idx,freq=freq,name='interval_index',closed='left')
     
     return time_intervals
 
@@ -3035,13 +3015,18 @@ def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins', recast
         
         
         # Append result_list and fill in proper idx in twitter_grouped
-        twitter_grouped.iloc[idx] = combined_series
+        try:
+            twitter_grouped.iloc[idx] = combined_series
+        except:
+            print(idx)
+            display(combined_series)
+            raise Exception('Error with index')
 
     if verbose>0: print('twitter_grouped populated. Now processing grouped data...')
 
     ## UNPACK COLUMNS WITH ARRAYS CONTAINING  ONLY 1 UNIQUE VALUES
     # List of columns to unpack
-    col_list = ['int_bins','int_times','time','B_day','B_time','dayofweek','B_shifted','time_shift','B_dt_index','B_dt_minutes','B_ts_rounded',
+    col_list = ['int_bins','int_times','date','time','B_day','B_time','dayofweek','B_shifted','time_shift','B_dt_index','B_dt_minutes','B_ts_rounded',
             'pre_tweet_price','post_tweet_price','delta_time','delta_price','delta_price_class','null_results',
             'B_ts_post_tweet','mins_after_tweet']
 
@@ -3051,7 +3036,7 @@ def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins', recast
 
     
     ## Recast datetime columns
-    time_cols = ['time','int_times','time_bin','B_ts_post_tweet']
+    time_cols = ['date','time','int_times','time_bin','B_ts_post_tweet']
     for col in time_cols:
         try:
             twitter_grouped[col] = pd.to_datetime(twitter_grouped[col])
@@ -3086,7 +3071,9 @@ def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins', recast
         df_out.index.freq = custom_BH_freq()
 
     if verbose>0:
+
         clock.toc('completed')
+        
         if recast_index_freq:
             print(df_out.index[[0,-1]])
             print(df_out.index.freq)
@@ -3183,6 +3170,9 @@ def get_B_day_time_index_shift(test_df, verbose=1):
     # coopy date and twitter content
     test_df_to_period = test_df[['date','content']]
     
+
+    # new 08/07
+    # B_ofst = pd.offs
     # convert to business day periods
     test_df_to_period = test_df_to_period.to_period('B')
     test_df_to_period['B_periods'] = test_df_to_period.index.to_series() #.values

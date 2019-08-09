@@ -424,3 +424,71 @@ def display_df_dict_menu(dict_to_display, selected_key=None):
 #     widgets.HBox([])
 
     return widgets.VBox([widgets.HBox([w]),output])#out])
+
+def quick_ref_pandas_freqs():
+    from IPython.display import Markdown
+    mkdwn_notes = """
+    - **Pandas Frequency Abbreviations**
+
+    |Alias|	Description|
+    |----|-----|
+    |B|	business day frequency|
+    |C|	custom business day frequency|
+    |D|	calendar day frequency|
+    |W|	weekly frequency|
+    |M|	month end frequency|
+    |SM|	semi-month end frequency (15th and end of month)|
+    |BM|	business month end frequency|
+    |CBM|	custom business month end frequency|
+    |MS|	month start frequency|
+    |SMS|	semi-month start frequency (1st and 15th)|
+    |BMS|	business month start frequency|
+    |CBMS|	custom business month start frequency|
+    |Q|	quarter end frequency|
+    |BQ|	business quarter end frequency|
+    |QS|	quarter start frequency|
+    |BQS|	business quarter start frequency|
+    |A|, Y	year end frequency|
+    |BA|, BY	business year end frequency|
+    |AS|, YS	year start frequency|
+    |BAS|, BYS	business year start frequency|
+    |BH|	business hour frequency|
+    |H|	hourly frequency|
+    |T|, min	minutely frequency|
+    |S|	secondly frequency|
+    |L|, ms	milliseconds|
+    |U|, us	microseconds|
+    |N|	nanoseconds|
+
+    - **Time/data properties of Timestamps**
+
+    |Property|	Description|
+    |---|---|
+    |year|	The year of the datetime|
+    |month|	The month of the datetime|
+    |day|	The days of the datetime|
+    |hour|	The hour of the datetime|
+    |minute|	The minutes of the datetime|
+    |second|	The seconds of the datetime|
+    |microsecond|	The microseconds of the datetime|
+    |nanosecond|	The nanoseconds of the datetime|
+    |date|	Returns datetime.date (does not contain timezone information)|
+    |time|	Returns datetime.time (does not contain timezone information)|
+    |timetz|	Returns datetime.time as local time with timezone information|
+    |dayofyear|	The ordinal day of year|
+    |weekofyear|	The week ordinal of the year|
+    |week|	The week ordinal of the year|
+    |dayofweek|	The number of the day of the week with Monday=0, Sunday=6|
+    |weekday|	The number of the day of the week with Monday=0, Sunday=6|
+    |weekday_name|	The name of the day in a week (ex: Friday)|
+    |quarter|	Quarter of the date: Jan-Mar = 1, Apr-Jun = 2, etc.|
+    |days_in_month|	The number of days in the month of the datetime|
+    |is_month_start|	Logical indicating if first day of month (defined by frequency)|
+    |is_month_end|	Logical indicating if last day of month (defined by frequency)|
+    |is_quarter_start|	Logical indicating if first day of quarter (defined by frequency)|
+    |is_quarter_end|	Logical indicating if last day of quarter (defined by frequency)|
+    |is_year_start|	Logical indicating if first day of year (defined by frequency)|
+    |is_year_end|	Logical indicating if last day of year (defined by frequency)|
+    |is_leap_year|	Logical indicating if the date belongs to a leap year|
+    """
+    return Markdown(mkdwn_notes)
