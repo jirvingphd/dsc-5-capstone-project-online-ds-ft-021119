@@ -743,17 +743,18 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min.txt',
     
     # Remove 0's from BidClose
     if clean==True:
+
         print(f"There are {len(stock_df.loc[stock_df['BidClose']==0])} '0' values for 'BidClose'")
         stock_df.loc[stock_df['BidClose']==0] = np.nan
         num_null = stock_df['BidClose'].isna().sum()
         print(f'\tReplaced 0 with np.nan. There are {num_null} null values to address.')
         
         if fill_or_drop_null=='drop':
-            print("\tSince fill_or_drop_null=drop, dropping null values from BidClose.")
+            print("\tsince fill_or_drop_null=drop, dropping null values from BidClose.")
             stock_df.dropna(subset=['BidClose'],axis=0, inplace=True)
 
         elif fill_or_drop_null=='fill':
-            print(f"\tSince fill_or_drop_null=fill, using fill_method={fill_method} to fill BidClose.")
+            print(f"\tsince fill_or_drop_null=fill, using fill_method={fill_method} to fill BidClose.")
 
             stock_df['BidClose'].fillna(method=fill_method, inplace=True)
         
@@ -761,7 +762,7 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min.txt',
             # print(f"Number of 0 values:\n{len(stock_df.loc[stock_df['BidClose']==0])}")
             # print(f"Filling 0 values using method = {fill_method}")
     # call set_timeindex_freq to specify proper frequency
-    if freq!=None:
+    if freq is not None:
         # Set the time index .
         print(f'Setting the timeindex to freq{freq}')
         stock_df = set_timeindex_freq(stock_df, freq=freq, fill_method = fill_method, verbose=verbose)
@@ -2697,7 +2698,7 @@ theme='solar', verbose=0,figsize=(14,4)):
 
 
 
-def load_processed_stock_data(processed_data_filename = '_stock_df_with_technical_indicators.csv', force_from_raw=False):
+def load_processed_stock_data(processed_data_filename = '_stock_df_with_technical_indicators.csv', force_from_raw=False, verbose=0):
     import functions_combined_BEST as ji
     import os
     import pandas as pd
@@ -2708,7 +2709,7 @@ def load_processed_stock_data(processed_data_filename = '_stock_df_with_technica
     # Run all processing on raw data if file not found.
     if (force_from_raw == True) or (processed_data_filename not in current_files):
         
-        print(f'File not found. Processing raw data using custom ji functions...')
+        print(f'[!] File not found. Processing raw data using custom ji functions...')
         print('1) ji.load_raw_stock_data_from_text\n2) ji.get_technical_indicators,dropping na from column "ma21"')
 
         stock_df = ji.load_raw_stock_data_from_txt(
@@ -2734,9 +2735,12 @@ def load_processed_stock_data(processed_data_filename = '_stock_df_with_technica
         stock_df=pd.read_csv(processed_data_filename, index_col=0, parse_dates=True)
         stock_df['date_time_index'] = stock_df.index.to_series()
         stock_df.index.freq=ji.custom_BH_freq()
-        
-    print(stock_df.index[[0,-1]],stock_df.index.freq)
+    
+    if verbose>0:
+        # -print(stock_df.index[[0,-1]],stock_df.index.freq)
+        index_report(stock_df)
 #     display(stock_df.head(3))
+    stock_df.sort_index(inplace=True)
 
     return stock_df        
 
@@ -2747,10 +2751,22 @@ def ihelp_menu(function_names,show_source=True,show_help=False):
     from ipywidgets import interact
     from functions_combined_BEST import ihelp
     import functions_combined_BEST as ji
+    import inspect
+    import pandas as pd
     
     functions_dict = dict()
     for fun in function_names:
-        functions_dict[fun] = eval(fun)
+        if isinstance(fun, str):
+            functions_dict[fun] = eval(fun)
+
+        elif inspect.isfunction(fun):
+
+            members= inspect.getmembers(fun)
+            member_df = pd.DataFrame(members,columns=['param','values']).set_index('param')
+            
+            fun_name = member_df.loc['__name__'].values[0]
+            functions_dict[fun_name] = fun
+            
 
     @interact(functions_dict=functions_dict,show_help=show_help,show_source=show_source)
     def help_menu(show_help=show_help,show_source=show_source,functions=functions_dict):
@@ -2759,9 +2775,11 @@ def ihelp_menu(function_names,show_source=True,show_help=False):
 
 
 
-def make_time_index_intervals(twitter_df,col ='B_ts_rounded', start=None,end=None, freq='CBH'):#,num_offset=1):#col used to be 'date'
+def make_time_index_intervals(twitter_df,col ='B_ts_rounded', start=None,end=None, closed='right',return_interval_dicts=False,freq='H'):#,num_offset=1):#col used to be 'date'
     """Takes a df, rounds first timestamp down to nearest hour, last timestamp rounded up to hour.
-    Creates 30 minute intervals based that encompass all data."""
+    Creates 30 minute intervals based that encompass all data.
+    If return_interval_dicts == False, returns an interval index.
+    If reutn_as_mappers == True, returns interval_index, bin_int_index, bin_to_int_mapper"""
     import pandas as pd
     time_index = twitter_df[col].copy()
     
@@ -2772,71 +2790,31 @@ def make_time_index_intervals(twitter_df,col ='B_ts_rounded', start=None,end=Non
     ts = time_index.index[0]
     ts_end  = time_index.index[-1]
 
-    start = pd.to_datetime(f"{ts.month}-{ts.day}-{ts.year} 09:30:00")
-    end = pd.to_datetime(f"{ts_end.month}-{ts_end.day}-{ts_end.year} 16:30:00")
-    time_intervals = pd.interval_range(start=start,end=end,freq='H')
-
-    # if freq=='CBH':
-    #     freq=pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30')
-    #     ofst = pd.offsets.CustomBusinessHour(n=num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
-    #     ofst_early = pd.offsets.CustomBusinessHour(n=-num_offset,start='09:30',end='16:30') #freq=ji.custom_BH_freq()
-
-
-    # if freq=='T':
-    #     ofst = pd.offsets.Minute(n=num_offset)
-    #     ofst_early = pd.offsets.Minute(n=-num_offset)
-        
-    # if freq=='H':
-    #     ofst = pd.offsets.Hour(n=num_offset)
-    #     ofst_early=pd.offsets.Hour(n=-num_offset)
-
-        
-    # if start is None:
-    #     # Get timebin before the first timestamp that starts     
-    #     start_idx = ofst.rollback(twitter_df[col].iloc[0])#.floor('H'))
-    #     start_idx = start_idx.floor('30min')
-    # else:
-    #     start_idx = pd.to_datetime(start)
-
-    # if end is None:
-    #     # Get timbin after last timestamp that starts 30m into the hour.
-    #     end_idx= ofst.rollforward(twitter_df[col].iloc[-1])#.ceil('H'))
-    #     end_idx = end_idx.ceil('30min')
-    # else:
-    #     end_idx = pd.to_datetime(end)
+    if start is None:
+        start = pd.to_datetime(f"{ts.month}-{ts.day}-{ts.year} 09:30:00")
+    else:
+        start = pd.to_datetime(start)
+    if end is None:
+        end = pd.to_datetime(f"{ts_end.month}-{ts_end.day}-{ts_end.year} 16:30:00")
+        end = pd.to_datetime(end)
 
 
-    # # Make time bins using the above start and end points 
-    # time_range = pd.date_range(start =start_idx, end = end_idx, freq=freq)#.to_period()
-    # time_intervals = pd.interval_range(start=start_idx, end=end_idx,freq=freq,name='interval_index',closed='left')
-    
-    return time_intervals
+    # make the proper time intervals
+    time_intervals = pd.interval_range(start=start,end=end,closed=closed,freq=freq)
+
+    if return_interval_dicts==True:
+        ## MAKE DICTIONARY FOR LOOKING UP INTEGER CODES FOR TIME INTERVALS
+        bin_int_index = dict(zip( range(len(time_intervals)),
+                                time_intervals))
+
+        ## MAKE MAPPER DICTIONARY TO TURN INTERVALS INTO INTEGER BINS
+        bin_to_int_mapper = {v:k for k,v in bin_int_index.items()}
+
+        return time_intervals, bin_int_index, bin_to_int_mapper
+    else:
+        return time_intervals
 
 
-#***########### FUNCTIONS FOR RESAMPLING AND BINNING TWITTER DATA
-# def int_to_ts(int_list, as_datetime=False, as_str=True):
-#     """Accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
-#     import pandas as pd
-#     if as_datetime & as_str:
-#         raise Exception('Only one of `as_datetime`, or `as_str` can be True.')
-    
-#     left_edges =[]
-#     right_edges= []
-    
-#     for interval in int_list:
-#         int_str = interval.__str__()[1:-1]
-#         left,right = int_str.split(',')
-#         left_edges.append(left)
-#         right_edges.append(right)
-        
-    
-#     if as_str:
-#         return left_edges, right_edges
-    
-#     elif as_datetime:
-#         left = pd.to_datetime(left)
-#         right = pd.to_datetime(right)
-#         return left,right
 
 def int_to_ts(int_list, handle_null='drop',as_datetime=False, as_str=True):
     """Helper function: accepts one Panda's interval and returns the left and right ends as either strings or Timestamps."""
@@ -2868,7 +2846,8 @@ def int_to_ts(int_list, handle_null='drop',as_datetime=False, as_str=True):
 
 
 # Step 1:     
-def bin_df_by_date_intervals(test_df,time_intervals,column='date'):
+
+def bin_df_by_date_intervals(test_df,time_intervals,column='date', return_codex=True):
     """Uses pd.cut with half_hour_intervals on specified column.
     Creates a dictionary/map of integer bin codes. 
     Adds column"int_bins" with int codes.
@@ -2876,38 +2855,45 @@ def bin_df_by_date_intervals(test_df,time_intervals,column='date'):
     Returns the updated test_df and a list of bin_codes."""
     import pandas as pd
     # Cut The Date column into interval bins, 
-    cut_date = pd.cut(test_df[column], bins=time_intervals)#,labels=list(range(len(half_hour_intervals))), retbins=True)
-    test_df['int_times'] = cut_date    
+    # cut_date = pd.cut(test_df[column], bins=time_intervals)#,labels=list(range(len(half_hour_intervals))), retbins=True)
+    # test_df['int_times'] = cut_date    
+    test_df['int_times'] = pd.cut(test_df[column], bins=time_intervals)#,labels=list(range(len(half_hour_intervals))), retbins=True)
+    test_df['int_bins'] = test_df['int_times'].cat.codes
+    test_df['left_edge'] = test_df['int_times'].apply(lambda x: x.left)
+
+    if return_codex:
+        bin_codex = dict(enumerate(time_intervals))
+
+
+    # # convert to str to be used as group names/codes
+    # unique_bins = cut_date.astype('str').unique()
+    # num_code = list(range(len(unique_bins)))
     
-    # convert to str to be used as group names/codes
-    unique_bins = cut_date.astype('str').unique()
-    num_code = list(range(len(unique_bins)))
-    
-    # Dictioanry of number codes to be used for interval groups
-    bin_codes = dict(zip(num_code,unique_bins))#.astype('str')
+    # # Dictioanry of number codes to be used for interval groups
+    # bin_codes = dict(zip(num_code,unique_bins))#.astype('str')
 
     
-    # Mapper dictionary to convert intervals into number codes
-    bin_codes_mapper = {v:k for k,v in bin_codes.items()}
+    # # Mapper dictionary to convert intervals into number codes
+    # bin_codes_mapper = {v:k for k,v in bin_codes.items()}
 
     
-    # Add column to the dataframe, then map integer code onto it
-    test_df['int_bins'] = test_df['int_times'].astype('str').map(bin_codes_mapper)
-    test_df.dropna(subset=['int_times'],inplace=True)
+    # # Add column to the dataframe, then map integer code onto it
+    # test_df['int_bins'] = test_df['int_times'].astype('str').map(bin_codes_mapper)
+    # test_df.dropna(subset=['int_times'],inplace=True)
     # Get the left edge of the bins to use later as index (after grouped)
     # left_out, _ =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
-    try:
-        edges =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
-        left_out = [edge[0] for edge in edges]
-        test_df['left_edge'] = pd.to_datetime(left_out)
-    except:
-        print('int_to_ts output= ',left_out)
+    # try:
+    #     edges =int_to_ts(test_df['int_times'])#.apply(lambda x: int_to_ts(x))    
+    #     left_out = [edge[0] for edge in edges]
+    #     test_df['left_edge'] = pd.to_datetime(left_out)
+    # except:
+    #     print('int_to_ts output= ',left_out)
     
 
     # bin codes to labels 
-    bin_codes = [(k,v) for k,v in bin_codes.items()]
+    # bin_codes = [(k,v) for k,v in bin_codes.items()]
     
-    return test_df, bin_codes
+    return test_df, bin_codex
 
 
 def concatenate_group_data(group_df_or_series):
@@ -2942,40 +2928,7 @@ def concatenate_group_data(group_df_or_series):
     return group_data
     
  
-
-
-#***#
-# def collapse_df_by_group_indices(twitter_df,group_indices, new_col_order=None):
-#     """Loops through the group_indices provided to concatenate each group into
-#     a single row and combine into one dataframe with the ______ as the index"""
-
-#     import pandas as pd
-#     # Create a Panel to temporarily hold the group series and dataframes
-#     # group_dict_to_df = {}
-#     # create a dataframe with same columns as twitter_df, and index=group ids from twitter_groups
-#     group_df_index = [x[0] for x in group_indices]
-    
-    
-#     twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=group_df_index)
-#     twitter_grouped['TweetFreq'] =0
-
-#     for (idx,group_members) in group_indices:
-
-#         group_df = twitter_df.loc[group_members]
-
-#         combined_series = concatenate_group_data(group_df)
-
-# #         twitter_grouped.loc[idx,:] = combined_series
-#         twitter_grouped.loc[idx] = combined_series#.values
-
-#     if new_col_order==None:
-#         return twitter_grouped
-    
-#     else:
-#         df_out = twitter_grouped[new_col_order].copy()
-#         df_out.index = group_df_index#twitter_grouped.index
-#         return df_out
-def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins', recast_index_freq=False, new_col_order=None, verbose=1):
+def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins',date_time_index_col = None, drop_orig=False, unpack_all=True, debug=False, verbose=1):#recast_index_freq=False, verbose=1):
     """Loops through the group_indices provided to concatenate each group into
     a single row and combine into one dataframe with the ______ as the index"""
     import numpy as np
@@ -2985,101 +2938,134 @@ def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins', recast
 
     import numpy as np
     import pandas as pd
-    if verbose>0:
+    if verbose>1:
         clock = bs.Clock()
         clock.tic('Starting processing')
+
+    if date_time_index_col is None:
+        twitter_df['date_time_index'] = twitter_df.index.to_series()
+    else:
+        twitter_df['date_time_index'] = twitter_df[date_time_index_col]
+    twitter_df['date_time_index'] = pd.to_datetime(twitter_df['date_time_index'])
+    cols_to_drop = []
 
     # Get the groups integer_index and current timeindex values 
     group_indices = twitter_df.groupby(group_index_col).groups
     group_indices = [(k,v) for k,v in group_indices.items()]
-    group_df_index = [x[0] for x in group_indices]
+    # group_df_index = [x[0] for x in group_indices]
 
 
     # Create empty shell of twitter_grouped dataframe
-    twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=group_df_index)
-    twitter_grouped['TweetFreq'] = 0
-    twitter_grouped['time_bin'] = 0
+    twitter_grouped = pd.DataFrame(columns=twitter_df.columns, index=[x[0] for x in group_indices])
+
+    # twitter_grouped['num_tweets'] = 0
+    # twitter_grouped['time_bin'] = 0
 
 
     # Loop through each group_indices
-    for (idx,group_members) in group_indices:
-        group_df = twitter_df.loc[group_members]
-        
-        combined_series = concatenate_group_data(group_df)
-        
-        combined_series['time_bin'] = combined_series['left_edge'][0] #.apply(lambda x: x[0])
-        combined_series['time_bin'] = pd.to_datetime(combined_series['time_bin']) #twitter_gr
-        
-        combined_series['left_edge'] = combined_series['left_edge'][0] #.apply(lambda x: x[0])
-        combined_series['left_edge'] = pd.to_datetime(combined_series['left_edge']) #twitter_gr
-        
-        
-        # Append result_list and fill in proper idx in twitter_grouped
-        try:
-            twitter_grouped.iloc[idx] = combined_series
-        except:
-            print(idx)
-            display(combined_series)
-            raise Exception('Error with index')
+    for (int_bin,group_members) in group_indices:
+        # group_df = twitter_df.loc[group_members]
+        # combined_series = concatenate_group_data(group_df)
 
-    if verbose>0: print('twitter_grouped populated. Now processing grouped data...')
+        ## REPLACE COMBINED SERIES WITH:
+        twitter_grouped.loc[int_bin] =  twitter_df.loc[group_members].apply(lambda x: [x.to_numpy()]).to_numpy()
 
-    ## UNPACK COLUMNS WITH ARRAYS CONTAINING  ONLY 1 UNIQUE VALUES
-    # List of columns to unpack
-    col_list = ['int_bins','int_times','date','time','B_day','B_time','dayofweek','B_shifted','time_shift','B_dt_index','B_dt_minutes','B_ts_rounded',
-            'pre_tweet_price','post_tweet_price','delta_time','delta_price','delta_price_class','null_results',
-            'B_ts_post_tweet','mins_after_tweet']
+        ## NEW::
+        # twitter_grouped.loc[int_bin].apply(lambda x: x[:])
+        # twitter_grouped['num_tweets'].loc[int_bin] = len(group_members)
 
-    ## unpack values on completed dataframe
-    for col in col_list:
-        twitter_grouped[col] = twitter_grouped[col].apply(lambda x: np.unique(x)[0])
 
+    ## FIRST, unpack left_edge since you only want one item no matter how long.
+    twitter_grouped['time_bin'] = twitter_grouped['left_edge'].apply(lambda x: x[0])
+    twitter_grouped['num_per_bin'] = twitter_grouped[group_index_col].apply(lambda x: len(x))
+    cols_to_drop.append('left_edge') 
+
+    # ## Afer combining, process the columns as a whole instead of for each series:
+    # def unpack_x(x):
+    #     if len(x)<=1:
+    #         return x[0]
+    #     else:
+    #         return x[:]
+
+    # for col in twitter_grouped.columns:
+    #     if 'time_bin' in col:
+    #         continue
+    #     else:
+    #         twitter_grouped[col] = twitter_grouped[col].apply(lambda x: unpack_x(x))
     
-    ## Recast datetime columns
-    time_cols = ['date','time','int_times','time_bin','B_ts_post_tweet']
-    for col in time_cols:
+    ## NOW PROCESS THE COLUMNS THAT NEED PROCESSING    
+    cols_to_sum = ['retweet_count','favorite_count']
+    for col in cols_to_sum:
         try:
-            twitter_grouped[col] = pd.to_datetime(twitter_grouped[col])
+            twitter_grouped['total_'+col] = twitter_grouped[col].apply(lambda x: np.sum(x))
+            cols_to_drop.append(col)
         except:
-            continue
+            if debug:
+                print(f"Columns {col} not in df")
 
-    # String cols to join 
-    string_cols = ['content']
-    for col in string_cols:
+
+    ## Combine string columns 
+    str_cols_to_join = ['content']#,'id_str']
+    for col in str_cols_to_join:
+        # print(col)
+
+        def join_or_return(x):
+
+            # if isinstance(x,list):
+            #     return ','.join(x)
+            # else:
+            #     return (x)
+
+            if len(x)==1:
+                return str(x[0])
+            else:
+                return ','.join(x)
+        
         try:
-            twitter_grouped[col] = twitter_grouped[col].apply(lambda x: ','.join(x))
+            twitter_grouped['group_'+col] = twitter_grouped[col].apply(lambda x:join_or_return(x)) #','.join(str(x)))
+            cols_to_drop.append(col)
         except:
-            continue
+            print(f"Columns {col} not in df")
 
 
+    ## recast dates as pd.to_datetime
+    date_cols =['date']
+    for col in date_cols:
+        try:
+            twitter_grouped[col] = twitter_grouped[col].apply(lambda x: list(pd.to_datetime(x).strftime('%Y-%m-%d %T')))
+        except:
+            print(f"Columns {col} not in df")
 
+    # final_cols_to_drop = ['']
+    #     cols_to_drop.append(x) for x in     
+    if drop_orig:
+        twitter_grouped.drop(cols_to_drop,axis=1,inplace=True)
+    
+    if unpack_all:
+        def unpack(x):
+            if len(x)==1:
+                return x[0]
+            else:
+                return x
+        
+        for col in twitter_grouped.columns:
+            try:
+                twitter_grouped[col] = twitter_grouped[col].apply(lambda x: unpack(x))
+            except:
+                twitter_grouped[col] =  twitter_grouped[col]
+                if debug:
+                    print(f'Error with column {col}')
 
-    # Update Column order, if requested, otherwise return twitter_grouped
-    if new_col_order is None:
-        # return twitter_grouped
-        df_out = twitter_grouped
-    else:
-        df_out = twitter_grouped[new_col_order].copy()
-        df_out.index = group_df_index#twitter_grouped.index
-        # return df_out
-
-    if recast_index_freq:
-        ## RETURN TWITTER GROUPED AS CORRECT FREQUENCY
-        df_out['time_bin'] = pd.to_datetime(df_out['time_bin'] )
-        df_out.set_index('time_bin',inplace=True)
-
-        df_out.index.freq = custom_BH_freq()
-
-    if verbose>0:
+    if verbose>1:
 
         clock.toc('completed')
-        
-        if recast_index_freq:
-            print(df_out.index[[0,-1]])
-            print(df_out.index.freq)
-        display(df_out.head(2))
-    
-    return df_out
+
+    ## Replace 'int_bins' array column with index-> series
+    twitter_grouped['int_bins'] = twitter_grouped.index.to_series()
+
+    return twitter_grouped
+
+
 
 
 
@@ -3394,3 +3380,45 @@ def get_stock_prices_for_twitter_data(twitter_df, stock_prices, time_after_tweet
     # print(twitter_df.isna().sum())
     
     return twitter_df
+
+
+
+def index_report(df):
+    df.sort_index(inplace=True)
+    time_fmt = '%Y-%m-%d %T'
+    print(f"* Index Endpoints:\n\t{df.index[0].strftime(time_fmt)} -- to -- {df.index[-1].strftime(time_fmt)}")
+    print(f'* Index Freq:\n\t{df.index.freq}')
+    return 
+
+
+def preview_dict(d, n=5,print_or_menu='print',return_list=False):
+    """Previews the first n keys and values from the dict"""
+    import functions_combined_BEST as ji
+    from pprint import pprint
+    list_keys = list(d.keys())
+    prev_d = {}
+    for key in list_keys[:n]:
+        prev_d[key]=d[key]
+    
+    if 'print' in print_or_menu:
+        pprint(prev_d)
+    elif 'menu' in print_or_menu:
+        ji.display_dict_dropdown(prev_d)
+    else:
+        raise Exception("print_or_menu must be 'print' or 'menu'")
+        
+    if return_list:
+        out = [(k,v) for k,v in prev_d.items()]
+        return out
+    else:
+        pass
+
+
+
+def df_head_tail(df,n_head=3, n_tail=3,head_capt='df.head',tail_capt='df.tail'):
+    """Displays the df.head(n_head) and df.tail(n_tail) and sets captions using df.style"""
+    from IPython.display import display
+    import pandas as pd
+    df_h = df.head(n_head).style.set_caption(head_capt)
+    df_t = df.tail(n_tail).style.set_caption(tail_capt)
+    display(df_h, df_t)

@@ -291,77 +291,77 @@ def make_qgrid_model_menu(model, return_df = False):
 
 
 
-# class VariableInspectorWindow(object):
-#     instance = None
+class VariableInspectorWindow(object):
+    instance = None
 
-#     ### WAS OUTSIDE CLASS ORIGINALLY
-#     ### https://github.com/jupyter-widgets/ipywidgets/blob/master/docs/source/examples/Variable%20Inspector.ipynb
-#     import ipywidgets as widgets # Loads the Widget framework.
-#     from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
-#     from IPython import get_ipython
+    ### WAS OUTSIDE CLASS ORIGINALLY
+    ### https://github.com/jupyter-widgets/ipywidgets/blob/master/docs/source/examples/Variable%20Inspector.ipynb
+    import ipywidgets as widgets # Loads the Widget framework.
+    from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
+    from IPython import get_ipython
 
-#     # For this example, hide these names, just to avoid polluting the namespace further
-#     get_ipython().user_ns_hidden['widgets'] = widgets
-#     get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
+    # For this example, hide these names, just to avoid polluting the namespace further
+    get_ipython().user_ns_hidden['widgets'] = widgets
+    get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
 
 
-#     def __init__(self, ipython):
-#         """Public constructor."""
-#         if VariableInspectorWindow.instance is not None:
-#             raise Exception("""Only one instance of the Variable Inspector can exist at a 
-#                 time.  Call close() on the active instance before creating a new instance.
-#                 If you have lost the handle to the active instance, you can re-obtain it
-#                 via `VariableInspectorWindow.instance`.""")
-#         from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
-#         from IPython import get_ipython
-#         import ipywidgets as widgets
+    def __init__(self, ipython):
+        """Public constructor."""
+        if VariableInspectorWindow.instance is not None:
+            raise Exception("""Only one instance of the Variable Inspector can exist at a 
+                time.  Call close() on the active instance before creating a new instance.
+                If you have lost the handle to the active instance, you can re-obtain it
+                via `VariableInspectorWindow.instance`.""")
+        from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
+        from IPython import get_ipython
+        import ipywidgets as widgets
 
-#         get_ipython().user_ns_hidden['widgets'] = widgets
-#         get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
-#         VariableInspectorWindow.instance = self
-#         self.closed = False
-#         self.namespace = NamespaceMagics()
-#         self.namespace.shell = ipython.kernel.shell
+        get_ipython().user_ns_hidden['widgets'] = widgets
+        get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
+        VariableInspectorWindow.instance = self
+        self.closed = False
+        self.namespace = NamespaceMagics()
+        self.namespace.shell = ipython.kernel.shell
         
-#         self._box = widgets.Box()
-#         self._box.layout.overflow_y = 'scroll'
-#         self._table = widgets.HTML(value = 'Not hooked')
-#         self._box.children = [self._table]
+        self._box = widgets.Box()
+        self._box.layout.overflow_y = 'scroll'
+        self._table = widgets.HTML(value = 'Not hooked')
+        self._box.children = [self._table]
         
-#         self._ipython = ipython
-#         self._ipython.events.register('post_run_cell', self._fill)
+        self._ipython = ipython
+        self._ipython.events.register('post_run_cell', self._fill)
         
-#     def close(self):
-#         """Close and remove hooks."""
-#         if not self.closed:
-#             self._ipython.events.unregister('post_run_cell', self._fill)
-#             self._box.close()
-#             self.closed = True
-#             VariableInspectorWindow.instance = None
+    def close(self):
+        """Close and remove hooks."""
+        if not self.closed:
+            self._ipython.events.unregister('post_run_cell', self._fill)
+            self._box.close()
+            self.closed = True
+            VariableInspectorWindow.instance = None
 
-#     def _fill(self):
-#         """Fill self with variable information."""
-#         values = self.namespace.who_ls()
-#         self._table.value = '<div class="rendered_html jp-RenderedHTMLCommon"><table><thead><tr><th>Name</th><th>Type</th><th>Value</th></tr></thead><tr><td>' + \
-#             '</td></tr><tr><td>'.join(['{0}</td><td>{1}</td><td>{2}'.format(v, type(eval(v)).__name__, str(eval(v))) for v in values]) + \
-#             '</td></tr></table></div>'
+    def _fill(self):
+        """Fill self with variable information."""
+        values = self.namespace.who_ls()
+        self._table.value = '<div class="rendered_html jp-RenderedHTMLCommon"><table><thead><tr><th>Name</th><th>Type</th><th>Value</th></tr></thead><tr><td>' + \
+            '</td></tr><tr><td>'.join(['{0}</td><td>{1}</td><td>{2}'.format(v, type(eval(v)).__name__, str(eval(v))) for v in values]) + \
+            '</td></tr></table></div>'
 
-#     def _ipython_display_(self):
-#         """Called when display() or pyout is used to display the Variable 
-#         Inspector."""
-#         self._box._ipython_display_()
+    def _ipython_display_(self):
+        """Called when display() or pyout is used to display the Variable 
+        Inspector."""
+        self._box._ipython_display_()
 
 
-# def inspect_variables():
-#     ### https://github.com/jupyter-widgets/ipywidgets/blob/master/docs/source/examples/Variable%20Inspector.ipynb
-#     import ipywidgets as widgets # Loads the Widget framework.
-#     from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
-#     from Ipython import get_ipython
-#     # For this example, hide these names, just to avoid polluting the namespace further
-#     get_ipython().user_ns_hidden['widgets'] = widgets
-#     get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
-#     inspector = VariableInspectorWindow(get_ipython())
-#     return inspector
+def inspect_variables():
+    ### https://github.com/jupyter-widgets/ipywidgets/blob/master/docs/source/examples/Variable%20Inspector.ipynb
+    import ipywidgets as widgets # Loads the Widget framework.
+    from IPython.core.magics.namespace import NamespaceMagics # Used to query namespace.
+    from IPython import get_ipython
+    # For this example, hide these names, just to avoid polluting the namespace further
+    get_ipython().user_ns_hidden['widgets'] = widgets
+    get_ipython().user_ns_hidden['NamespaceMagics'] = NamespaceMagics 
+    inspector = VariableInspectorWindow(get_ipython())
+    return inspector
 
 
 
@@ -426,11 +426,11 @@ def display_df_dict_menu(dict_to_display, selected_key=None):
     return widgets.VBox([widgets.HBox([w]),output])#out])
 
 def quick_ref_pandas_freqs():
-    from IPython.display import Markdown
+    from IPython.display import Markdown, display
     mkdwn_notes = """
-    - **Pandas Frequency Abbreviations**
-
-    |Alias|	Description|
+    - **Pandas Frequency Abbreviations**<br><br>
+    
+    | Alias | 	Description |
     |----|-----|
     |B|	business day frequency|
     |C|	custom business day frequency|
@@ -459,36 +459,38 @@ def quick_ref_pandas_freqs():
     |L|, ms	milliseconds|
     |U|, us	microseconds|
     |N|	nanoseconds|
-
-    - **Time/data properties of Timestamps**
-
-    |Property|	Description|
-    |---|---|
-    |year|	The year of the datetime|
-    |month|	The month of the datetime|
-    |day|	The days of the datetime|
-    |hour|	The hour of the datetime|
-    |minute|	The minutes of the datetime|
-    |second|	The seconds of the datetime|
-    |microsecond|	The microseconds of the datetime|
-    |nanosecond|	The nanoseconds of the datetime|
-    |date|	Returns datetime.date (does not contain timezone information)|
-    |time|	Returns datetime.time (does not contain timezone information)|
-    |timetz|	Returns datetime.time as local time with timezone information|
-    |dayofyear|	The ordinal day of year|
-    |weekofyear|	The week ordinal of the year|
-    |week|	The week ordinal of the year|
-    |dayofweek|	The number of the day of the week with Monday=0, Sunday=6|
-    |weekday|	The number of the day of the week with Monday=0, Sunday=6|
-    |weekday_name|	The name of the day in a week (ex: Friday)|
-    |quarter|	Quarter of the date: Jan-Mar = 1, Apr-Jun = 2, etc.|
-    |days_in_month|	The number of days in the month of the datetime|
-    |is_month_start|	Logical indicating if first day of month (defined by frequency)|
-    |is_month_end|	Logical indicating if last day of month (defined by frequency)|
-    |is_quarter_start|	Logical indicating if first day of quarter (defined by frequency)|
-    |is_quarter_end|	Logical indicating if last day of quarter (defined by frequency)|
-    |is_year_start|	Logical indicating if first day of year (defined by frequency)|
-    |is_year_end|	Logical indicating if last day of year (defined by frequency)|
-    |is_leap_year|	Logical indicating if the date belongs to a leap year|
     """
-    return Markdown(mkdwn_notes)
+
+    # **Time/data properties of Timestamps**<br><br>
+
+    # |Property|	Description|
+    # |---|---|
+    # |year|	The year of the datetime|
+    # |month|	The month of the datetime|
+    # |day|	The days of the datetime|
+    # |hour|	The hour of the datetime|
+    # |minute|	The minutes of the datetime|
+    # |second|	The seconds of the datetime|
+    # |microsecond|	The microseconds of the datetime|
+    # |nanosecond|	The nanoseconds of the datetime|
+    # |date|	Returns datetime.date (does not contain timezone information)|
+    # |time|	Returns datetime.time (does not contain timezone information)|
+    # |timetz|	Returns datetime.time as local time with timezone information|
+    # |dayofyear|	The ordinal day of year|
+    # |weekofyear|	The week ordinal of the year|
+    # |week|	The week ordinal of the year|
+    # |dayofweek|	The number of the day of the week with Monday=0, Sunday=6|
+    # |weekday|	The number of the day of the week with Monday=0, Sunday=6|
+    # |weekday_name|	The name of the day in a week (ex: Friday)|
+    # |quarter|	Quarter of the date: Jan-Mar = 1, Apr-Jun = 2, etc.|
+    # |days_in_month|	The number of days in the month of the datetime|
+    # |is_month_start|	Logical indicating if first day of month (defined by frequency)|
+    # |is_month_end|	Logical indicating if last day of month (defined by frequency)|
+    # |is_quarter_start|	Logical indicating if first day of quarter (defined by frequency)|
+    # |is_quarter_end|	Logical indicating if last day of quarter (defined by frequency)|
+    # |is_year_start|	Logical indicating if first day of year (defined by frequency)|
+    # |is_year_end|	Logical indicating if last day of year (defined by frequency)|
+    # |is_leap_year|	Logical indicating if the date belongs to a leap year|
+    # """
+    display(Markdown(mkdwn_notes))
+    return 
