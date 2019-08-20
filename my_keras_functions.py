@@ -467,7 +467,7 @@ def evaluate_model_plot_history(model, train_generator, test_generator, plot=Tru
 
 
 from function_widgets import *
-def save_model_weights_params(model,model_params=None, filename_prefix = 'models/model', check_if_exists = True,
+def save_model_weights_params(model,model_params=None, filename_prefix = 'models/model', filename_suffix='', check_if_exists = True,
  auto_increment_name=True, auto_filename_suffix=True, save_model_layer_config_xlsx=True, sep='_', suffix_time_format = '%m-%d-%Y_%I%M%p'):
     """Saves a fit Keras model and its weights as a .json file and a .h5 file, respectively.
     auto_filename_suffix will use the date and time to give the model a unique name (avoiding overwrites).
@@ -481,7 +481,10 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
     if auto_filename_suffix:
         filename = auto_filename_time(prefix=filename_prefix, sep=sep,timeformat=suffix_time_format )
     
-    full_filename = filename+'.json'
+
+    ## Add suffix to filename
+    full_filename = filename + filename_suffix
+    full_filename = full_filename+'.json'
 
 
     ## check if file exists

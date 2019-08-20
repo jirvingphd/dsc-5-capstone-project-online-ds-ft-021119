@@ -1,5 +1,6 @@
 from my_keras_functions import *
 from function_widgets import *
+from functions_classes import TEXT
 # def import_packages(import_list_of_tuples = None,  display_table=True): #append_to_default_list=True, imports_have_description = True):
 #     """Uses the exec function to load in a list of tuples with:
 #     [('module','md','example generic tuple item')] formatting.
