@@ -2488,6 +2488,7 @@ def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21'
     # if len(train_price)>0:
     df=stock_df
     fig = plotly_time_series(df,x_col=x_col,y_col=plot_indicators, as_figure=True)
+    return fig
 
 #BOOKMARK    
 def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, verbose=0,figsize=(14,4)):
@@ -3415,7 +3416,7 @@ def preview_dict(d, n=5,print_or_menu='print',return_list=False):
 
 
 
-def df_head_tail(df,n_head=3, n_tail=3,head_capt='df.head',tail_capt='df.tail'):
+def disp_df_head_tail(df,n_head=3, n_tail=3,head_capt='df.head',tail_capt='df.tail'):
     """Displays the df.head(n_head) and df.tail(n_tail) and sets captions using df.style"""
     from IPython.display import display
     import pandas as pd
