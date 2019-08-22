@@ -1,0 +1,50 @@
+/* table.dataframe th{
+    text-align: center;
+    vertical-align: middle;
+} */
+/* table.dataframe td, table.dataframe th { 
+    border-collapse:collapse;
+} */
+table.dataframe th {
+    text-align: center;
+    background-color: rgb(5, 74, 74);
+    color: #ffffff;
+    font-weight: bold;
+    font-family: serif;
+
+    font-size: 1.2em;
+    border-color: blueviolet;
+    border: 2px;
+    /* border-bottom: 3em; */
+
+    /* font-size: 10pt; */
+    /* padding: 0.5em 0.5em; */
+}
+
+table.dataframe td:not(th){
+    text-align: center;
+    font-family: serif;
+    background-color: blanchedalmond;
+    font-size: 1.2em;
+    border: 2px;
+    border-color: blueviolet;
+}
+/*
+table.dataframe td:not(:th){
+    background-color: gainsboro;
+    font-size: 10pt;
+    padding: 0.7em 1em;
+}
+table.dataframe tr:not(:last-child) {
+    border-bottom: 1px solid gainsboro;
+}
+table.dataframe {
+    background-color: gainsboro; 
+    border: 2px solid black;
+}
+table.dataframe th:not(:empty), table.dataframe td{
+    border-right: 1px solid white;
+}
+table.dataframe td:not(:empty){
+    text-align: center
+} */

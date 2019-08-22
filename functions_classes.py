@@ -4,7 +4,7 @@ class TEXT(object):
     creating FreqDists and an embedding_layer for Kera's models.
     TEXT = TEXT(text_data, text_labels, word2vecmodel)"""
     
-    def __init__(self,df, text_data_col,text_labels_col=None,word2vec_model=None):
+    def __init__(self,df, text_data_col,text_labels_col=None,word2vec_model=None,fit_model=False,verbose=0):
         """Initializes the class with the text_data (series), text_labels (y data), and a word2vecmodel.
         Performs all processing steps on entire body of text to generate corupus-wide analyses. 
         i.e. FreqDist, word2vec models, fitting tokenzier
@@ -16,7 +16,8 @@ class TEXT(object):
         import pandas as pd
         ## Save text_data
         text_data = df[text_data_col].copy()
-        self._text_data_ = text_data        
+        self._text_data_ = text_data
+        self._verbose_=verbose        
         
         ## Save or create empty text_labels
         if text_labels_col is not None:
@@ -34,29 +35,53 @@ class TEXT(object):
         ## SAVE TO INTERNAL DATAFRAME
         self.df = pd.concat([df[text_data_col],df[text_labels_col]],axis=1)
         self.df.columns=['input_text_data','raw_text_labels']
+
         ## CALL ON PREPARE_DATA FUNCTIONS
 
         ## Prepare text_body for corpus-wide operations
         self.prepare_text_body()
 
         ## Fit word2vec model if not provided
-        if word2vec_model is None:
-            self.fit_word2vec(self.tokenized_text_body)
-        else:
+        if word2vec_model is not None:
             self.wv= word2vec_model.wv 
-            self._word2vec_model_ = word2vec_model        
+            self._word2vec_model_ = word2vec_model      
 
-        wv = word2vec_model.wv
+        else:
+            if self._verbose_ >0:
+                print('no word2vec model provided.')
+
+            # if fit_model:
+            #     self.fit_word2vec(text_data=self._text_data_)#self.tokenized_text_body)
+            else:
+                self.wv = None
+                self._word2vec_model_ = None
         
+        if fit_model:
+            self.fit_models()
+            # ## Fit keras tokenizer
+            # self.fit_tokenizer()
+            
+            # ## Get FreqDist
+            # self.make_freq_dist()
+            
+            # ## Create Embedding Layer
+            # self.get_embedding_layer(return_layer=False)
+
+    def fit_models(self):
+        
+        ## Fit Word2Vec
+        if self.wv is None:
+            self.fit_word2vec(text_data=self._text_data_)#self.tokenized_text_body)
+
         ## Fit keras tokenizer
         self.fit_tokenizer()
         
         ## Get FreqDist
         self.make_freq_dist()
-        
+
         ## Create Embedding Layer
         self.get_embedding_layer(return_layer=False)
-        
+    
 
         
     def prepare_text_body(self,text_data_to_prep=None,delim=','):
@@ -68,24 +93,55 @@ class TEXT(object):
 
         if text_data_to_prep is None:
             text_data_to_prep = self._text_data_
+            delim.join(text_data_to_prep)
 
 
         if isinstance(text_data_to_prep,list) | isinstance(text_data_to_prep, np.ndarray) \
         | isinstance(text_data_to_prep,pd.Series):
-        #             text_joined = delim.join(text_data)
-            print('prepare_text: type=',type(text_data_to_prep))
-        #             print(text_data_to_prep)
-            text_data_to_prep =  delim.join([str(x) for x in text_data_to_prep])
+            # print('prepare_text: type=',type(text_data_to_prep))
+            # print(text_data_to_prep)
+            text_joined = delim.join(text_data_to_prep)
+            # text_data_to_prep =  delim.join([str(x) for x in text_data_to_prep])
         else:
-            print('prepare_text: text not list, array, or series')
+            text_joined = text_data_to_prep
+            # print('prepare_text: text not list, array, or series')
 
-        self._text_body_for_processing_ = text_data_to_prep
+        self._text_body_for_processing_ = text_joined#text_data_to_prep
 
-        tokenized_text =  self.regexp_tokenize(text_data_to_prep)
+        tokenized_text =  self.regexp_tokenize(text_joined)
         self.tokenized_text_body = tokenized_text
-        print('Text processed and saved as TEXT.tokenized_text')       
 
+        if self._verbose_>0:
+            print('Text processed and saved as TEXT.tokenized_text')       
+
+
+    def fit_word2vec(self,text_data=None,vector_size=300, window=5, min_count=2, workers=3, epochs=10):
+        """Fits a word2vec model on text_data and saves the model.wv object as TEXT.wv and the full model
+        as ._word2vec_model_"""
+        from gensim.models import Word2Vec
+        import numpy as np
+        import pandas as pd
+
+        if text_data is None:
+            text_data = self.tokenized_text_body
+        elif isinstance(text_data, np.ndarray):
+            text_data = pd.Series(text_data)
         
+        elif isinstance(text_data,pd.Series):
+            text_data = text_data.apply(lambda x: self.regexp_tokenize(x))
+        else:
+            if self._verbose_ >0:
+                print('Using raw text_data to fit_word2vec')
+
+        # text_data = ' '.join(text_data)
+        wv_keras = Word2Vec(text_data, size=vector_size, window=window, min_count=min_count, workers=workers)
+        wv_keras.train(text_data,total_examples=wv_keras.corpus_count, epochs=epochs)
+                       
+        self._word2vec_model_ =  wv_keras                       
+        self.wv =  wv_keras.wv
+#         vocab_size = len(wv_keras.wv.vocab)
+        print(f'There are {len(self.wv.vocab)} words in the word2vec vocabulary (TEXT.wv), with a vector size {vector_size}.')
+
 
     def make_stopwords_list(self, incl_punc=True, incl_nums=True, 
                             add_custom= ['http','https','...','…','``','co','“','’','‘','”',
@@ -118,7 +174,7 @@ class TEXT(object):
             text_data = self._text_data_
             
         if tokenize==True:
-            tokenized_text = self.regexp_tokenize()
+            tokenized_text = self.regexp_tokenize(text_data)
             text_data = tokenized_text
 
 
@@ -131,20 +187,7 @@ class TEXT(object):
         
         
         
-    def fit_word2vec(self,text_data,vector_size=300, window=5, min_count=2, workers=3, epochs=10):
-        """Fits a word2vec model on text_data and saves the model.wv object as TEXT.wv and the full model
-        as ._word2vec_model_"""
-        from gensim.models import Word2Vec
-#         vector_size = 300
-        wv_keras = Word2Vec(text_data, size=vector_size, window=window, min_count=min_count, workers=workers)
-        wv_keras.train(text_data,total_examples=wv_keras.corpus_count, epochs=epochs)
-                       
-        self._word2vec_model_ =  wv_keras                       
-        self.wv =  wv_keras.wv
-#         vocab_size = len(wv_keras.wv.vocab)
-        
-        
-        print(f'There are {len(self.wv.vocab)} words in the word2vec vocabulary (TEXT.wv), with a vector size {vector_size}.')
+
     
     def fit_tokenizer(self,text_data=None,labels=None):
         """Fits Keras Tokenizer using tokenizer.fit_on_texts to create TEXT.X_sequences and 
@@ -171,7 +214,8 @@ class TEXT(object):
         
         y = text_labels
         self.y = y
-        print('tokenizer fit and TEXT.X_sequences, TEXT.y created')
+        if self._verbose_ >0:
+            print('tokenizer fit and TEXT.X_sequences, TEXT.y created')
 
     # def text_to_sequences(self, text_data, save_to_model=False, regexp_tokenize=False):
     #     X_seq = self._text_to_sequences_(self, text_data=text_data,save_to_model=save_to_model,regexp_tokenize=regexp_tokenize)
@@ -205,11 +249,13 @@ class TEXT(object):
         X_sequences = sequence.pad_sequences(X)
 
         if save_to_model:
-            print("saving to self.X_sequences()")
+            if self._verbose_ >0:
+                print("saving to self.X_sequences()")
             self.X_sequences = X_sequences
 
         else:
-            print("X_sequences returned, not save_to_model.")
+            if self._verbose_ >0:
+                print("X_sequences returned, not save_to_model.")
 
         return X_sequences
 
@@ -222,10 +268,10 @@ class TEXT(object):
         text_from_seq = tokenizer.sequences_to_texts(sequences)
         return text_from_seq
     
-    def regexp_tokenize(self,text_data=None,pattern="([a-zA-Z]+(?:'[a-z]+)?)"):
+    def regexp_tokenize(self,text_data,pattern="([a-zA-Z]+(?:'[a-z]+)?)"):
         """Apply nltk's regex_tokenizer using pattern"""
-        if text_data is None:
-            text_data = self._text_body_for_processing_ # self._text_data_
+        # if text_data is None:
+        #     text_data = self._text_body_for_processing_ # self._text_data_
 
         if pattern is None:
             pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
@@ -235,12 +281,15 @@ class TEXT(object):
         from nltk import regexp_tokenize
         try:
             tokenized_data = regexp_tokenize(text_data, pattern)
-        except:
-            print('Error using regexp_tokenize')
-            print(f"Data Type:\t{type(text_data)}")
-            print(text_data)#[:100])
+        except TypeError:
+            print('TypeError: text_data is already tokenized.')
+            tokenized_data = text_data
+            # print('Error using regexp_tokenize')
+            # print(f"Data Type:\t{type(text_data)}")
+            # print(text_data[:100])
 #         self.tokens = tokenized_data
-            return None
+            # return None
+
         return tokenized_data
 
     def get_embedding_layer(self,X_sequences = None,input_size=None, return_matrix=False, return_layer=True):
@@ -458,3 +507,119 @@ class TEXT(object):
         new_model = model_from_json(string_model)
         
         return new_model
+
+
+########################################################################################    
+
+
+## NEW FUNCTIONS FOR WORD2VEC AND KERAS TOKENIZATION/SEQUENCE GENERATION
+def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a-zA-Z]+(?:'[a-z]+)?)",
+                       vector_size=300,window=3,min_count=1,workers=3,epochs=10,summary=True, return_full=False):
+    
+    ## Regexp_tokenize text_column
+    from nltk import regexp_tokenize
+    text_data = df[text_column].apply(lambda x: regexp_tokenize(x, regex_pattern))
+
+    ## Instantiate Word2Vec Model
+    from gensim.models import Word2Vec
+    vector_size = 300
+    wv_keras = Word2Vec(text_data, size=vector_size, window=window, min_count=min_count, workers=workers)
+    
+    # Train Word2Vec Model
+    wv_keras.train(text_data,total_examples=wv_keras.corpus_count, epochs=epochs)
+
+    
+    ## Display summary
+    if summary:
+        wv = wv_keras.wv
+        vocab_size = len(wv_keras.wv.vocab)
+        print(f'Word2Vec model trained using:   min_count={min_count}, window={window}, over {epochs} epochs.')
+        print(f'There are {vocab_size} words the vocabulary, with a vector size {vector_size}.')
+        if return_full:
+            ans = 'full model'
+        else:
+            ans = 'model.wv'
+        
+        print(f'- output is {ans}')
+        
+    if return_full:
+        return wv_keras
+    else:
+        return wv_keras.wv
+    
+def get_wv_from_word2vec(word2vec_model):
+    """Checks if model is full word2vec or .wv attribute. 
+    Returns wv."""
+    import gensim 
+    if isinstance(word2vec_model,gensim.models.word2vec.Word2Vec):
+        wv = word2vec_model.wv
+    elif isinstance(word2vec_model,gensim.models.keyedvectors.Word2VecKeyedVectors):
+        wv = word2vec_model
+    return wv
+
+
+
+def make_embedding_matrix(word2vec_model,verbose=1):#,X_sequences = None,input_size=None):#, return_matrix=False, return_layer=True):
+        """Uses the word2vec model to construct an embedding_layer for Keras models.
+        To override the default size of the input for the embedding layer, provide an input_size value
+        (which will likely be the size of hte vocabulary being fed in for predictions)."""
+        import numpy as np
+        import pandas as pd     
+        
+        wv = get_wv_from_word2vec(word2vec_model)
+        vocab_size = len(wv.vocab)
+        vector_size = wv.vector_size
+            
+        ## Create the embedding matrix from the vectors in wv model 
+        embedding_matrix = np.zeros((vocab_size + 1, vector_size))
+        for i, vec in enumerate(wv.vectors):
+            embedding_matrix[i] = vec
+            embedding_matrix.shape
+            
+        if verbose:
+            print(f'embedding_matrix.shape = {embedding_matrix.shape}')
+        
+        return embedding_matrix
+
+def make_keras_embedding_layer(word2vec_model,X_sequences,embedding_matrix= None):
+        """Creates an embedding layer for Kera's neural networks using the 
+        embedding matrix and text X_sequences"""
+        if embedding_matrix is None:
+            embedding_matrix = make_embedding_matrix(word2vec_model,verbose=0)
+        
+        wv = get_wv_from_word2vec(word2vec_model)
+        vocab_size = len(wv.vocab)
+        vector_size = wv.vector_size
+                
+        from keras import layers         
+        embedding_layer =layers.Embedding(vocab_size+1,
+                                          vector_size,
+                                          input_length=X_sequences.shape[1],
+                                          weights=[embedding_matrix],
+                                          trainable=False)
+        return embedding_layer
+
+    
+def get_tokenizer_and_text_sequences(word2vec_model,text_data):    
+    # sentences_train =text_data # df_tokenize['tokens'].values
+    from keras.preprocessing.text import Tokenizer
+    wv = get_wv_from_word2vec(word2vec_model)
+
+    tokenizer = Tokenizer(num_words=len(wv.vocab))
+    
+    ## FIGURE OUT WHICH VERSION TO USE WITH SERIES:
+    tokenizer.fit_on_texts(text_data)
+#     tokenizer.fit_on_texts(list(text_data)) 
+
+    word_index = tokenizer.index_word
+    reverse_index = {v:k for k,v in word_index.items()}
+    
+    # return integer-encoded sentences
+    from keras.preprocessing import text, sequence
+    X = tokenizer.texts_to_sequences(text_data)
+    X = sequence.pad_sequences(X)
+    return tokenizer, X
+
+
+########################################################################################    
+    

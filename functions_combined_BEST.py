@@ -1927,7 +1927,7 @@ def plot_keras_history_custom(history,metrics=[('acc','loss'),('val_acc','val_lo
     x_len = len(history.history[metrics[0][0]])
     x = range(1,x_len)
     
-    fig,ax = plt.subplots(nrows=metrics.shape[0], ncols=1, figsize=figsize)
+    fig,ax = plt.subplots(nrows=len(metrics), ncols=1, figsize=figsize) #metrics.shape[0], ncols=1, figsize=figsize)
     
     for p in plot_dict.keys():
         
@@ -2479,7 +2479,10 @@ def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):
     return fig
 
 def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21', '26ema', '12ema', 
-'upper_band', 'lower_band', 'ema', 'momentum'],x_col=None, subplots=False,theme='solar', verbose=0,figsize=(14,4)):
+'upper_band', 'lower_band', 'ema', 'momentum'],x_col=None, theme='solar', verbose=0,figsize=(14,4)):
+
+    from plotly.offline import init_notebook_mode, plot, iplot, iplot_mpl
+
     if theme=='solar':
         my_layout = def_my_layout_solar_theme()
     else:
@@ -2487,8 +2490,32 @@ def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21'
     
     # Plot train_price if it is not empty.
     # if len(train_price)>0:
-    df=stock_df
+    df=stock_df[plot_indicators].copy()
+    df.dropna(inplace=True)
     fig = plotly_time_series(df,x_col=x_col,y_col=plot_indicators, as_figure=True)
+
+    # FIND THE PRICE TRACE AND CHANGE ITS PROPERTIES, PUT IT ON TOP
+    temp_data = list(fig['data'])
+
+    ## search traces for correct name
+    for i,trace in enumerate(temp_data):#fig['data']):
+
+        if 'price' in trace['name']:
+
+            temp_price = temp_data.pop(i)
+
+            temp_price['line']['width'] = 3
+            temp_price['line']['color'] = 'orange'
+            # temp_price['line']['dash'] = 'dot'
+
+            temp_data.append(temp_price)
+            break
+
+    fig['data'] = tuple(temp_data)
+    # Reverse legend so last entry (price) is on top
+    fig['layout']['legend']['traceorder'] = 'reversed'
+
+    iplot(fig)
     return fig
 
 #BOOKMARK    
@@ -2619,8 +2646,11 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
         return fig, ax1
 
 
-def plotly_true_vs_preds_subplots(true_vs_preds_df, true_train_col ,true_test_col, pred_test_columns,
-theme='solar', verbose=0,figsize=(14,4)):
+def plotly_true_vs_preds_subplots(df_model_preds, true_train_col, true_test_col,
+                                  pred_test_columns, x_col=None, y_col = None,
+                                  subplot_mode='lines+markers',
+                                  subplots=True,theme='solar', 
+                                  verbose=0,figsize=(1000,500)):
     """y_col_kws={'col_name':line_color}"""
 
     import pandas as pd
@@ -2634,7 +2664,7 @@ theme='solar', verbose=0,figsize=(14,4)):
     
     import functions_combined_BEST as ji
     import bs_ds as bs
-
+    
     from sklearn.metrics import mean_squared_error
     import matplotlib.pyplot as plt
     import matplotlib as mpl
@@ -2643,59 +2673,140 @@ theme='solar', verbose=0,figsize=(14,4)):
     import cufflinks as cf
     cf.go_offline()
 
-    df = true_vs_preds_df
-    # true_train = true_vs_preds_df[true_train_col].dropna().rename('true_train')
-    # pred_train = true_vs_preds_df[pred_train_col].dropna().rename('pred_train')
-    # true_test =  true_vs_preds_df[true_test_col].dropna().rename('true_test')
-    # pred_test =  true_vs_preds_df[pred_test_col].dropna().rename('pred_test')
-    
-        
-    # # ## Define plot styles by train/test/pred data type
-    # style_dict = {'true_train':{},'pred_train':{},'true_test':{},'pred_test':{}}
-    # style_dict['true_train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
-    # style_dict['true_train']={'lw':2,'color':'blue','ls':'-', 'alpha':1}
-    # style_dict['true_test']={'lw':1,'color':'orange','ls':'-', 'alpha':1}
-    # style_dict['pred_test']={'lw':2,'color':'green','ls':'--', 'alpha':0.7}
-    
+    ## Get my_layout
     if theme=='solar':
-        my_layout = def_my_layout_solar_theme()
+        my_layout = ji.def_my_layout_solar_theme()
     else:
-        my_layout = def_my_plotly_stock_layout()
+        my_layout = ji.def_my_plotly_stock_layout()
+        
     
-    ## FIGURE 1- TRAINING DATA + TEST DATA
-    true_train_trace = go.Scatter(x=df.index, y=df[true_train_col].dropna())
-    true_test_trace = go.Scatter(x=df.index, y= df[true_test_col].dropna())
+    ## Copy and split dataframe
+    df = df_model_preds.copy()
+    df.sort_index(inplace=True)    
+
+    ## Separate out train vs test data and dropna for correct indices
+    df_train = df.pop(true_train_col)#[true_train_col].dropna()
+    df_train.dropna(inplace=True)
+
+    df_test = df
+    df_test.dropna(inplace=True)
+    
+
+    ## FIGURE 1- TRAINING DATA + TEST DATA    
+    true_train_trace = go.Scatter(name='Training Price Data',
+                                  mode='lines', 
+                                  x=df_train.index, #df.index, 
+                                  y= df_train, #df[true_train_col].dropna(),
+                                 line={'color':'orange'})
+    
+    true_test_trace = go.Scatter(name = 'True Test Price',
+                                 mode='lines',
+                                 x=df_test.index,
+                                 y= df_test[true_test_col],
+                                line={'color':'blue'})
     
     fig1_data = []
     fig1_data.append(true_train_trace)
     fig1_data.append(true_test_trace)
     
-    fig2_data = [true_test_trace]
+    
+    ## FIGURE 2 - PREDICTED DATA    
+    true_test_trace_subplot = go.Scatter(name = 'True Test Price',
+                             mode=subplot_mode,
+                             x=df_test.index,
+                             y= df_test[true_test_col],
+                            line={'color':'blue'})
+    
+    fig2_data = [true_test_trace_subplot]
+    
     
     if isinstance(pred_test_columns,list)==False:
+        pred_test_trace = go.Scatter(name='Predicted Price',
+                                     mode=subplot_mode,
+                                     x=df_test.index,
+                                     y=df_test[pred_test_columns].dropna(),
+                                     line={'color':'green'})
         
-        pred_test_trace = go.Scatter(x=df.index, y=df[pred_test_columns].dropna())
+        pred_test_trace_lines = go.Scatter(name='Predicted Price',
+                                           mode='lines', 
+                                           x=df_test.index,
+                                           y=df_test[pred_test_columns].dropna(),
+                                           line={'color':'green'})
         
-        fig1_data.append(pred_test_trace)
         fig2_data.append(pred_test_trace)
+        fig1_data.append(pred_test_trace_lines)
         
     else:
+
         for i,col in enumerate(pred_test_columns):
-            eval(f"pred_trace{i} = go.Scatter(x=df.index, y=df[{pred_test_columns[i]}].dropna())")
             
-            fig1_data.append(eval(f"pred_trace{i}"))
-            fig2_data.append(eval(f"pred_trace{i}"))
+            eval(f"pred_trace{i} = go.Scatter(mode='{subplot_mode}', x=df_test.index, y=df_test['{col}'])")
+            
+            eval(f"pred_trace{i}_lines = go.Scatter(mode='lines',x=df_test.index, y=df_test['{col}'])")
+            
+            eval(f"fig1_data.append(pred_trace{i}_lines")
+            eval(f"fig2_data.append(pred_trace{i}")
+            # fig2_data.append(eval(f"pred_trace{i}"))
 
-
+    
+    ## CREATE FIGURES
+    # Create fig_1 and fig_2
     fig_1 = go.Figure(data = fig1_data,layout=my_layout)
     fig_2 = go.Figure(data = fig2_data, layout=my_layout)
     
-    my_range_selector = ji.def_range_selector()
+    # Create combined figure with uneven-sized plots
+    specs= [[{'colspan':3},None,None,{'colspan':2},None]]#specs= [[{'colspan':2},None,{'colspan':1}]]
+    big_fig = cf.subplots(theme='solar',
+                          figures=[fig_1,fig_2],
+                          horizontal_spacing=0.1,
+                          shape=[1,5],
+                          specs=specs) #shape=[1,3],specs=specs)
+    
+    
+    
+    ## UPDATE LAYOUTS FOR SUBPLOTS FROM my_layout
+    temp_ax_layout = big_fig['layout']
+    
+    # Update both xaxes and yaxes to match the my_layout's single x and y axis
+    for k,v in my_layout['xaxis'].items():
+        temp_ax_layout['xaxis'][k] = my_layout['xaxis'][k]
+        
+        # don't add range_selector to xaxis2
+        if ('rangeselector' not in k) & ('rangeslider' not in k) :
+            temp_ax_layout['xaxis2'][k] = my_layout['xaxis'][k]
+        
+    for k,v in my_layout['yaxis'].items():
+        temp_ax_layout['yaxis'][k] = my_layout['yaxis'][k]
+        temp_ax_layout['yaxis2'][k] = my_layout['yaxis'][k]
+        
+    temp_ax_layout['yaxis2']['title'] = 'Predicted Price'
+    
+    
+    ## Add general fields from my_layout  
+    layout_fields_copy = ['paper_bgcolor','plot_bgcolor','legend', 'titlefont', 'plot_bgcolor', 'title']
+    for field in layout_fields_copy:
+        temp_ax_layout[field] = my_layout[field]
+    
+    ## Update legend layout to save space
+    temp_ax_layout['legend']['orientation']='h'
+    temp_ax_layout['legend']['y']=1
+    
+    ## Update spacing/position for rangeselector
+    temp_ax_layout['xaxis']['rangeselector']['y']=-0.06
 
-    specs= [[{'colspan':2},None,{'colspan':1}]]
-    big_fig = cf.subplots(theme='solar',figures=[fig_1,fig_2],shape=[1,3],specs=specs) #,specs=)
-    iplot(big_fig)    
+#     temp_ax_layout['legend']['y'] = -0.1
+        
+    ## Replace big_fig's layout with temp_ax_layout
+    big_fig['layout'] = temp_ax_layout
+    
+    
+    # Set graph size 
+    big_fig['layout']['width'] = figsize[0]
+    big_fig['layout']['height'] = figsize[1]
+
+    iplot(big_fig)
     return big_fig
+    
     
 
 
@@ -3424,3 +3535,244 @@ def disp_df_head_tail(df,n_head=3, n_tail=3,head_capt='df.head',tail_capt='df.ta
     df_h = df.head(n_head).style.set_caption(head_capt)
     df_t = df.tail(n_tail).style.set_caption(tail_capt)
     display(df_h, df_t)
+
+
+def create_required_folders(full_filenamepath,folder_delim='/',verbose=1):
+    """Accepts a full file name path include folders with '/' as default delimiter.
+    Recursively checks for all sub-folders in filepath and creates those that are missing."""
+    import os
+    ## Creating folders needed
+    check_for_folders = full_filenamepath.split(folder_delim)#'/')
+    
+    # if the splits creates more than 1 filepath:
+    if len(check_for_folders)==1:
+        return print('No folders detected in provided full_filenamepath')
+    else:# len(check_for_folders) >1:
+
+        # set first foler to check 
+        check_path = check_for_folders[0]
+
+        if check_path not in os.listdir():
+            print(f'- creating folder "{check_path}"')
+            os.mkdir(check_path)
+
+        ## handle multiple subfolders
+        if len(check_for_folders)>2:
+
+            ## for each subfolder:      
+            for folder in check_for_folders[1:-1]:
+                base_folder_contents = os.listdir(check_path)
+
+                # add the subfolder to prior path
+                check_path = check_path + '/' + folder
+
+                if folder not in base_folder_contents:#os.listdir():
+                    print(f'- creating folder "{check_path}"')
+                    os.mkdir(check_path)            
+        if verbose>0:
+            return print('Finished. All required folders have been created.')
+        else:
+            return
+
+
+
+def df2png(df, filename_prefix = 'results/summary_table',sep='_',filename_suffix='',file_ext='.png',
+           auto_filename_suffix=True, check_if_exists=True,save_excel=True, auto_increment_name=True,CSS=''):
+    '''Accepts a dataframe and a filename (without extention). Saves an image of the stylized table.'''
+    # Now save the css and html dataframe to the same text file before conversion
+    import imgkit
+    import os 
+    import time
+    import functions_combined_BEST as ji
+    
+
+    
+    ## Specify file_format for imgkit
+    if '.png' not in file_ext:
+        file_format = file_ext.replace('.','')
+        imgkitoptions = {'format':file_format}
+    else:
+        imgkitoptions = {'format':'png'}
+     
+    ## Provide path to required wkhtmltoimage.exe
+    exe_path = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
+    imgconfig = imgkit.config(wkhtmltoimage = exe_path) #'C:/Users/james/Anaconda3/envs/learn-env-ext/Lib/site-packages/wkhtmltopdf/bin/wkhtmltoimage.exe')
+
+    ## CREATE ANY MISSING FOLDERS FOR DESIRED FOLDERPATH
+    ji.create_required_folders(filename_prefix)
+    
+    ## CREATING FILENAMES
+    # add auto suffix
+    if auto_filename_suffix:
+        suffix_time_format = '%m-%d-%Y_%I%M%p'
+        filename = ji.auto_filename_time(prefix=filename_prefix, sep=sep, timeformat=suffix_time_format )
+    else:
+        filename = filename_prefix
+
+    ## Add suffix to filename
+    full_filename = filename + sep + filename_suffix + file_ext
+
+
+    ## CHECK_IF_FILE_EXISTS
+    if check_if_exists:
+        import os
+        import pandas as pd
+        current_files = os.listdir()
+        
+        # check if file already exists and raise errror if no auto_increment_name
+        if full_filename in current_files and auto_increment_name==False:
+            raise Exception('Filename already exists')
+        
+        # if file already exists, find version number and increase by 1 
+        elif full_filename in current_files and auto_increment_name==True:
+        
+            # check if filename ends in version #
+            import re
+            num_ending = re.compile(r'[vV].?(\d+)')#.json')
+            
+            curr_file_num = num_ending.findall(full_filename)
+            if len(curr_file_num)==0:
+                v_num = '_v01'
+            else:
+                v_num = f"_{int(curr_file_num)+1}"
+
+            ## CHANGE FOR FILE EXTENTSION TYPE
+            full_filename = filename +sep+ v_num +file_ext
+            print(f'{filename} already exists... incrementing filename to {full_filename}.')
+
+    
+    
+    ## Make temp filename for css/html text file export
+    base_filename = full_filename.split('.')[0]
+    text_file_name = base_filename +'_to_convert.html'
+    
+    ## Add text_file_name to Path [cant remmeber why?]
+    from pathlib import Path
+    config = Path(text_file_name)    
+    if config.is_file():
+        # Store configuration file values
+        os.remove(text_file_name)
+
+    
+    ### GET HTML TABLE TO OUTPUT
+    # Check df is styler or normal df
+    if isinstance(df,pd.io.formats.style.Styler):
+        html_df = df.render()
+        
+        if save_excel == True:
+            df.to_excel(base_filename+'.xlsx')
+            
+    elif isinstance(df, pd.DataFrame):
+        html_df = df.to_html()
+        
+        if save_excel == True:
+            df.to_excel(base_filename+'.xlsx')
+    
+    ## Create text file with CSS and dataframe as cs
+    with open(text_file_name,'a') as text_file:
+        text_file.write(CSS)
+        text_file.write(html_df)
+        text_file.close()
+
+    ## Create image filename and produce figure from text file
+    imagename = base_filename+file_ext
+    imgkit.from_file(text_file_name, imagename, options = imgkitoptions, config=imgconfig)
+    
+    # report
+    print('')
+
+    ## delete temporary text file
+    os.remove(text_file_name)
+    
+    return 
+
+
+# from __future__ import print_function  # for Python2
+def inspect_variables(local_vars = locals(),top_n=None):
+    """Displays a dataframe of all variables and their size in memory, with the
+    largest variables at the top."""
+    import sys
+    import inspect
+    import pandas as pd
+    
+    glob_vars= [k for k in globals().keys()]
+    loc_vars = [k for k in local_vars.keys()]
+
+    all_vars = glob_vars+loc_vars
+    all_vars = [x for x in all_vars if '_' not in x]
+
+    var_df = pd.DataFrame(columns=['variable','size','type'])
+
+    exclude = ['In','Out']
+    var_list = [x for x in var_list if '_' not in x and x not in exclude]
+    
+    i=0
+    for var in var_list:#globals().items():#locals().items():
+        
+        if var in loc_vars:
+            real_var = local_vars[var]
+        elif var in glob_vars:
+            real_var = globals()[var]
+    
+        var_size = sys.getsizeof(real_var)
+        
+        var_type = []
+        if inspect.isfunction(real_var):
+            var_type = 'function'
+        elif inspect.ismodule(real_var):
+            var_type = 'module'
+        elif inspect.isbuiltin(real_var):
+            var_type = 'builtin'
+        elif inspect.isclass(real_var):
+            var_type = 'class'
+        else:
+            var_type = 'misc'
+        
+        
+        var_row = pd.Series({'variable':var,'size':var_size,'type':var_type})
+        var_df.loc[i] = var_row#pd.concat([var_df,var_row],axis=0)#.join(var_row,)
+        i+=1
+        
+    var_df.sort_values('size',ascending=False,inplace=True)
+    var_df.reset_index(inplace=True,drop=True)
+    var_df.set_index('variable',inplace=True)
+    var_df = var_df[['type','size']]
+    
+    if top_n is not None:
+        var_df = var_df.iloc[:top_n]
+        
+    return var_df
+
+
+def display_random_tweet_by_column(df_sampled,i=None,columns = ['content' ,'content_min_clean',
+                                                                 'clean_content', 'clean_content_stop',
+                                                                 'clean_content_stop_tokens'], as_df = False):
+    """Displays the contents each column for a specific index = i; 
+    If i=None then defaults to randomly selected row."""
+    import pandas as pd
+    import numpy as np
+    from IPython.display import display
+    
+    
+    if i is None:
+        i = np.random.choice(range(len(df_sampled)))
+    
+    if as_df == False:
+        print(f'* TWEETED ON {df_sampled.index[i]}')
+        for col in columns:
+            print(f"\n- col='{col}'':")
+            print('\n     ',df_sampled[col][i],'\n')
+            
+    else:
+        df = pd.DataFrame(columns=['tweet'],index=columns)
+        df.index.name = 'column'
+        for col in columns:
+            df['tweet'].loc[col] = df_sampled[col][i]
+        with pd.option_context('display.max_colwidth',0):#,'colheader_justify','left'):
+            caption = f'Displayed Index = {df_sampled.index[i]}'
+            dfs = df.style.set_caption(caption)
+            display(dfs)
+        return 
+    
+
+

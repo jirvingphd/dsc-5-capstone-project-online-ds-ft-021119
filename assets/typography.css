@@ -1,6 +1,66 @@
-body {
-    font-family: sans-serif;
+h1 {
+    color: blue;
+    width: 100%;
+    text-align: center;
+    font-size: 3.5em;
+    font-weight: bold;
 }
-h1, h2, h3, h4, h5, h6 {
-    color: hotpink
+
+#my_name {
+    color: white;
+    font-size: 1em;
+    text-align: right;
+    padding-left: 50%;
+    line-height: 95%;
+    padding-bottom: 3%;
+}
+
+
+body {
+    font-family: serif;
+    background-color: black;
+    color : white;
+    font-size: 1.01em;
+    padding-left:15%;
+    width: 70%;
+}
+
+ol,ul {
+    margin-left: 5%;
+    margin-top: 1%;
+    font-size: 1.02em;
+    /* font-size: 1.05em; */
+}
+
+blockquote{
+    margin-left: 5%;
+    margin-right: 20%;
+    font-style: italic;
+    border-color: white;
+    line-height: 110%;
+}
+
+
+h2 {
+    color: blue;
+    font-size: 2.5em;
+    line-height: 1.1em;
+    /* font-style: italic; */
+    padding-top: 3%;
+}
+
+h3{
+    padding-top:1%;
+    font-style: italic;
+    color: lightblue;
+    font-size: 1.8em;
+    padding-left: 2%;
+}
+
+h4, h5, h6 {
+    padding-top:1%;
+    font-style: italic;
+    color: lightblue;
+    font-size: 1.8em;
+    padding-left: 2%;
 }

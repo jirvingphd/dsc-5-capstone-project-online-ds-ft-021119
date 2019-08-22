@@ -2,6 +2,8 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+dash.Dash(assets_ignore='z_external_stylesheet')
+
 import pandas as pd
 from dash.dependencies import Input, Output
 import functions_combined_BEST as ji
@@ -34,17 +36,29 @@ warnings.filterwarnings('ignore')
 stock_df = ji.load_processed_stock_data()
 
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__)#, external_stylesheets=external_stylesheets)
+fig = ji.plotly_time_series(stock_df,y_col='price', as_figure=True)
+fig_indicators = ji.plotly_technical_indicators(stock_df)
 
-fig = ji.plotly_technical_indicators(stock_df)
+
 
 app.layout = html.Div(children=[
-    html.H1(children='Hello Dash'),
 
-    html.Div(children=dcc.Markdown('''
-    # PROJECT OVERVIEW
+    html.H1(children="Predicting Stock Market Fluctuations With Donald Trump's Tweets"),
+    html.P(id='my_name', children=dcc.Markdown('''
+    James M. Irving, Ph.D.
+
+    https://github.com/jirvingphd
+
+    [LinkedIn](https://www.linkedin.com/in/james-irving-4246b571/)
+
+    ''')),
+
+    html.Div(className='main',children=[dcc.Markdown('''
+    ___
+    
     ## PROJECT GOAL:
     * **Use President Trump's tweets (NLP and other features) to predict fluctuations in the stock market (using S&P 500 as index).**
 
@@ -52,65 +66,83 @@ app.layout = html.Div(children=[
     ### DATA USED:
 
     * **All Donald Trump tweets from inaugaration day 2017 to today (for now) - 06/20/19**
-        *          Extracted from http://www.trumptwitterarchive.com/
-    *     **Minute-resolution data for the S&P500 covering the same time period.**
-        *         IVE S&P500 Index from - http://www.kibot.com/free_historical_data.aspx
+        * Extracted from http://www.trumptwitterarchive.com/
+    * **Minute-resolution data for the S&P500 covering the same time period.**
+        * IVE S&P500 Index from - http://www.kibot.com/free_historical_data.aspx
         
     ### MAJOR REFERENCES / INSPIRATION / PRIOR WORK IN FIELD:
-    1. **Stanford Scientific Poster Using NLP ALONE to predict if stock prices increase or decrease 5 mins after Trump tweets.**  [Poster PDF LINK](http://cs229.stanford.edu/proj2017/final-posters/5140843.pdf)
+    1. **Stanford Scientific Poster Using NLP ALONE to predict if stock prices increase or decrease 5 mins after Trump tweets.**  
+        - [Poster PDF LINK](http://cs229.stanford.edu/proj2017/final-posters/5140843.pdf)
         - [Evernote Summary Notes Link](https://www.evernote.com/l/AAoL1CyhPV1GoIzSgq59GO10x6xfEeVDo5s/)
-    2. **TowardsDataScience Blog Plost on "Using the latest advancements in deep learning to predict stock price movements."** [Blog Post link](https://towardsdatascience.com/aifortrading-2edd6fac689d)
+    2. **TowardsDataScience Blog Plost on "Using the latest advancements in deep learning to predict stock price movements."** 
+        - [Blog Post link](https://towardsdatascience.com/aifortrading-2edd6fac689d)
         - [Evernote Summary](https://www.evernote.com/l/AApvQ8Xh8b9GBLhrD0m8w4H1ih1oVM8wkEw/)
 
 
-    ### OUTLINE FOR DATA TO PRODUCE & MODEL FOR FINAL PROJECT:
+    ## DATA AND MODEL OUTLINE
 
-    #### TWITTER DATA:
+    ### Natural Language Processing for Twitter Data:
 
-    * [ENGINEER FEATURES] **Extract features from Trump's tweets: perform the NLP analysis to generate the features about his tweets to use in final model**
-
-        * [x] Tweet sentiment score
-        * [x] Tweet frequency per timebin
-        * [x] upper-to-lowercase-ratio
-        * [x] retweet-count
-        * [x] favorite-count
+    - **FEATURES ENGINEERED/USED:**
+        - Extract features from Trump's tweets: perform the NLP analysis to generate the features about his tweets to use in final model
+            * [x] Tweet sentiment score
+            * [x] Tweet frequency per timebin
+            * [x] upper-to-lowercase-ratio
+            * [x] retweet-count
+            * [x] favorite-count
         
-    * [PREDICTIVE MODEL] **Generate Binary Stock Market Predictions based on Trump's Tweets.**
-        * [x] Create a neural network model like the Stanford guys, where my model JUST uses the content of trump's tweets with word embeddings and a binary label (-1, 0,1) for direction of stock market change at a fixed time delta (they did 5 mins, I will do 1 hour) [ See reference #1 - stanford poster]
+    * **PREDICTIVE MODEL** 
+        - *Binary classification using Word2Vec Embeddings with an LSTM to predict +/- price change per tweet.*
+            * [x] Fit word2vec model on tweets, use vectors to create an embedding layer for model.
+            * [x] Feed in  X data = content of tweet, y = stock_price change 60 mins after tweet.
+            '''),
 
+            html.H2('PLACEHOLDER - TWEET NLP /MODELING'),
+            html.H3('Visuals from Twitter NLP anaylsis'),
+            html.H3('Model Details and Results'),
+            html.H2('PLACEHOLDER - Modeling Stock Price'),
+            dcc.Graph(figure=fig),
 
+            dcc.Markdown('''
+    ### STOCK MARKET PRICE DATA (S&P 500):
 
-    #### STOCK MARKET DATA (S&P 500):
+    - **ENGINEER FEATURES:** 
+        - *Extract features about the stock data -calculate the technical indices for the S&P 500 discussed in his article.*  [ see reference #2 - blog post ]
+            * [x] 7 days moving average 
+            * [x] 21 days moving average
+            * [x] exponential moving average
+            * [x] momentum
+            * [x] Bollinger bands
+            * [x] MACD
+            
+    * **PREDICTIVE MODELING:**
+        - *Generate stock price predictions based only historical data using....*
+            * [x] a binary classification using Tweet NLP to predict stock price up/down
+            * [x] a SARIMAX model using stock price alone
+            * [x] a LSTM neural network using price alone
+            * [x] a LSTM using price and technical indicators 
+            * [x] a LSTM using price, technical indicators, NLP-Model #1's predicitons, tweet-statistics
+            
+    ### FINAL MODEL - FEED ALL ABOVE FEATURES INTO:
 
-    * [ENGINEER FEATURES] **Extract features about the stock data -calculate the technical indices for the S&P 500 discussed in his article.**  [ see reference #2 - blog post ]
-
-        * [x] 7 days moving average 
-        * [x]  21 days moving average
-        * [x] exponential moving average
-        * [x] momentum
-        * [x] Bollinger bands
-        * [x] MACD
-        * (Maybe) FFT / time series decomp for trend lines
-        
-    * [PREDICTIVE MODEL] **Generate stock price predictions based only historical data using....**
-
-        * [x] a SARIMA model[?]
-        * [ ] a FB Prophet model[?] 
-        * [x] an LSTM neural network like other blog post?  [!!!] [Predicting the Stock Market Using Machine Learning and Deep Learning](https://www.evernote.com/l/AAq1azRmt2dANq_Oye-MBZQr-OU5lA5APl8/)
-        
-    #### FINAL MODEL - FEED ALL ABOVE FEATURES INTO:
-
-    - **Plan A: NEURAL NETWORK *REGRESSION* MODEL TO PREDICT *ACTUAL S&P 500 PRICE* AT 1 HOUR-1 DAY FOLLOWING TWEETS**
+    - **NEURAL NETWORK *REGRESSION* MODEL TO PREDICT *ACTUAL S&P 500 PRICE* AT 1 HOUR-1 DAY FOLLOWING TWEETS**
         - Final Model Target is based more on blog post's construction (ref#2), but takes output of model like ref#1
 
-    <img src="https://raw.githubusercontent.com/jirvingphd/dsc-5-capstone-project-online-ds-ft-021119/master/figures/annotated_GAN_for_stock_market.jpeg" width=600>
-
-    ''')
+    ''',
     ),
+    # html.Img(src="https://raw.githubusercontent.com/jirvingphd/dsc-5-capstone-project-online-ds-ft-021119/master/figures/annotated_GAN_for_stock_market.jpeg", width=650), #"/assets/annotated_GAN_for_stock_market.jpeg",width=700)
+    dcc.Markdown("___")
+    ]
+    ),
+
+
+
     html.Div(
         children = dcc.Markdown(
             """
-            ## DATA ANALYSIS DETAILS AND Equations/Code 
+            ___
+
+            ## DATA ANALYSIS DETAILS AND EQUATIONS 
             ### Technical Indicators - Explanation & Equations
             1. **7 and 21 day moving averages**
             ```python
@@ -134,10 +166,9 @@ app.layout = html.Div(children=[
             ```python
             dataset['ema'] = dataset['price'].ewm(com=0.5).mean()
             ```
-
             4. **Bollinger bands**
-                > "Bollinger Bands® are a popular technical indicators used by traders in all markets, including stocks, futures and currencies. There are a number of uses for Bollinger Bands®, including determining overbought and oversold levels, as a trend following tool, and monitoring for breakouts. There are also some pitfalls of the indicators. In this article, we will address all these areas."
-            > Bollinger bands are composed of three lines. One of the more common calculations of Bollinger Bands uses a 20-day simple moving average (SMA) for the middle band. The upper band is calculated by taking the middle band and adding twice the daily standard deviation, the lower band is the same but subtracts twice the daily std. - _[from Investopedia](https://www.investopedia.com/trading/using-bollinger-bands-to-gauge-trends/)_
+                > Bollinger Bands® are a popular technical indicators used by traders in all markets, including stocks, futures and currencies. There are a number of uses for Bollinger Bands®, including determining overbought and oversold levels, as a trend following tool, and monitoring for breakouts. There are also some pitfalls of the indicators. In this article, we will address all these areas.
+                > Bollinger bands are composed of three lines. One of the more common calculations of Bollinger Bands uses a 20-day simple moving average (SMA) for the middle band. The upper band is calculated by taking the middle band and adding twice the daily standard deviation, the lower band is the same but subtracts twice the daily std. - _[from Investopedia](https://www.investopedia.com/trading/using-bollinger-bands-to-gauge-trends/)_
 
                 - Boilinger Upper Band:<br>
                 $BOLU = MA(TP, n) + m * \sigma[TP, n ]$<br><br>
@@ -171,22 +202,13 @@ app.layout = html.Div(children=[
             dataset['momentum'] = dataset['price']-1
             ```
             """
-        )
+         ), 
+        #  style = body_style
     ),
 
     html.Div(
-    dcc.Graph(
-        
-        # id='example-graph',
-        # figure={
-            # 'data': [
-                # {'x': [1, 2, 3], 'y': [4, 1, 2], 'type': 'bar', 'name': 'SF'},
-                # {'x': [1, 2, 3], 'y': [2, 4, 5], 'type': 'bar', 'name': u'Montréal'},
-            # ],
-            # 'layout': {
-                # 'title': 'Dash Data Visualization'
-            # }
-        # }
+    dcc.Graph(id='stock-graph',
+    figure = fig_indicators
     )
 )])
 

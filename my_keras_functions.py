@@ -582,6 +582,8 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
                 pickle.dump(model_params_to_save, param_file) #sort_keys=True,indent=4)
         except:
             print('Pickling failed')
+    else:
+        model_params_filename=''
 
     return [filename, weight_filename, excel_filename, model_params_filename]
 
@@ -766,7 +768,7 @@ def res_dict_to_merged_df(dict_of_dfs, key_index_name='Prediction Source', old_c
     return res_df
 
 
-def get_evaluate_regression_dict(df,  metrics=['r2','RMSE','U'], show_results_dict = False, show_results_df=True, return_as_df =True): #, return_col_names=False):
+def get_evaluate_regression_dict(df,  metrics=['r2','RMSE','U'], show_results_dict = False, show_results_df=True,return_as_styled_df=False, return_as_df =True): #, return_col_names=False):
     """Calculates and displays any of the following evaluation metrics (passed as strings in metrics param) for each true/pred pair of columns in df:
     r2, MAE,MSE,RMSE,U """
     import re
@@ -855,16 +857,19 @@ def get_evaluate_regression_dict(df,  metrics=['r2','RMSE','U'], show_results_di
 
 
     if show_results_df:
-        display(res_df.style.set_caption('Evaluation Metrics'))# by Prediction Source'))
+        res_df_s = res_df.style.set_caption('Evaluation Metrics')# by Prediction Source'))
+        display(res_df_s)
 
-    if return_as_df:
+    if return_as_styled_df:
+        return res_df_s
+    elif return_as_df:
         return res_df
     else:
         return df_dict
         
 
 def compare_eval_metrics_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2], true_train_series_to_add=None,
-color_coded=True, return_results=False, return_shifted_df=True, display_results=True, display_U_info=False):
+color_coded=True, return_results=False, return_styled_df=False, return_shifted_df=True, display_results=True, display_U_info=False):
     
     ## SHIFT THE TRUE VALUES, PLOT, AND CALC THIEL's U
     import functions_combined_BEST as ji
@@ -943,8 +948,12 @@ color_coded=True, return_results=False, return_shifted_df=True, display_results=
     ## Return requested oututs
     return_list = []
 
+
     if return_results:
         return_list.append(df_results)
+
+    if return_styled_df:
+        return_list.append(dfs_results)
 
     if return_shifted_df:
         return_list.append(df_shifted)
@@ -1248,9 +1257,15 @@ preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=Tru
     else:
         df_out = df_all_preds
 
-    
+    # ## IPLOT
+    # if iplot:
+    #     fig = ji.plotly_true_vs_preds_subplots(df_out, true_train_col='true_train_price',
+    #     true_test_col='true_test_price',
+    #     pred_test_columns=['pred_from_gen','pred_from_test_preds','pred_from_train_preds'])
 
-        
+    # return df_out # added on 08/20 weird it was missing
+
+    
     def get_plot_df_with_one_true_series(df_out,train_data = true_train_series, include_train_data=include_train_data):
         
         # print(df_out.columns)
@@ -1311,20 +1326,21 @@ preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=Tru
 
 
     df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) 
-    
+    from IPython.display import display
+    display(df_plot.head())
     if iplot:
-
+        fig = ji.plotly_true_vs_preds_subplots(df_plot, true_train_col='true_train_price', true_test_col='true_test_price', pred_test_columns=['pred_from_gen','pred_from_test_preds','pred_from_train_preds'])
         # df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) #df_out.copy().drop(['true_from_test_preds','true_from_train_preds'],axis=1)
         # df_plot = df_plot.rename(mapper={'true_from_gen':'true price'},axis='columns')
-        if plot_with_train_data == False:
-            ji.plotly_time_series(df_plot.drop('true_train_price')) 
-        else:
+        # if plot_with_train_data == False:
+            # ji.plotly_time_series(df_plot.drop('true_train_price')) 
+        # else:
 
             # scaler = model_params['scaler_library']['price']
             # true_train_price = ji.transform_series(true_train_series,scaler=scaler,inverse=True)
             # print(type(true_train_price))
             # df_plot = pd.concat([true_train_price,df_plot],axis=1)
-            ji.plotly_time_series(df_plot)
+            # ji.plotly_time_series(df_plot)
 
     return df_plot
 
