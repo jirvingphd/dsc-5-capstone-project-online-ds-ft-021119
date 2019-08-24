@@ -696,6 +696,96 @@ def thiels_U(ys_true=None, ys_pred=None,display_equation=True,display_table=True
     return U
 
 
+def plot_confusion_matrix(conf_matrix, classes, normalize=False,
+                          title='Confusion Matrix', cmap=None,
+                          print_raw_matrix=False,fig_size=(5,5)):
+    """Check if Normalization Option is Set to True. If so, normalize the raw confusion matrix before visualizing
+    #Other code should be equivalent to your previous function.
+    Note: Taken from bs_ds and modified"""
+    import itertools
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    cm = conf_matrix
+    ## Set plot style properties
+    if cmap==None:
+        cmap = plt.get_cmap("Blues")
+
+    ## Text Properties
+    fmt = '.2f' if normalize else 'd'
+
+    fontDict = {
+        'title':{
+            'fontsize':16,
+            'fontweight':'semibold',
+            'ha':'center',
+            },
+        'xlabel':{
+            'fontsize':14,
+            'fontweight':'normal',
+            },
+        'ylabel':{
+            'fontsize':14,
+            'fontweight':'normal',
+            },
+        'xtick_labels':{
+            'fontsize':10,
+            'fontweight':'normal',
+            'rotation':45,
+            'ha':'right',
+            },
+        'ytick_labels':{
+            'fontsize':10,
+            'fontweight':'normal',
+            'rotation':0,
+            'ha':'right',   
+            },
+        'data_labels':{
+            'ha':'center',
+            'fontweight':'semibold',
+
+        }
+    }
+
+
+    ## Normalize data
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    # Create plot
+    fig,ax = plt.subplots(figsize=fig_size)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title,**fontDict['title'])
+    plt.colorbar()
+    
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, **fontDict['xtick_labels'])
+    plt.yticks(tick_marks, classes,**fontDict['ytick_labels'])
+
+    
+    # Determine threshold for b/w text
+    thresh = cm.max() / 2.
+
+    # fig,ax = plt.subplots()
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 color="white" if cm[i, j] > thresh else "black",**fontDict['data_labels'])
+
+    plt.tight_layout()
+    plt.ylabel('True label',**fontDict['ylabel'])
+    plt.xlabel('Predicted label',**fontDict['xlabel'])
+    fig = plt.gcf()
+    plt.show()
+    
+    if print_raw_matrix:
+        print_title = 'Raw Confusion Matrix Counts:'
+        print('\n',print_title)
+        print(conf_matrix)
+
+    return fig
+
+
 def evaluate_regression(y_true, y_pred, metrics=['r2','RMSE','U'], display_thiels_u_info=False):
     """Calculates and displays any of the following evaluation metrics: (passed as strings in metrics param)
     r2, MAE,MSE,RMSE,U """
@@ -744,8 +834,8 @@ def evaluate_regression(y_true, y_pred, metrics=['r2','RMSE','U'], display_thiel
 def res_dict_to_merged_df(dict_of_dfs, key_index_name='Prediction Source', old_col_index_name=None):
     import pandas as pd
     res_dict = dict_of_dfs
-    rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
-
+    # rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
+    rename_mapper = {'R_squared':'R^2','R Squared':'R^2','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
     if len(res_dict.keys())==1:
         
         res_df = res_dict[list(res_dict.keys())[0]]
@@ -830,7 +920,8 @@ def get_evaluate_regression_dict(df,  metrics=['r2','RMSE','U'], show_results_di
         def res_dict_to_merged_df(dict_of_dfs, key_index_name='Prediction Source', old_col_index_name=None):
 
             res_dict = dict_of_dfs
-            rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
+            # rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
+            rename_mapper = {'R_squared':'R^2','R Squared':'R^2','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
 
             if len(res_dict.keys())==1:
                 
@@ -850,14 +941,15 @@ def get_evaluate_regression_dict(df,  metrics=['r2','RMSE','U'], show_results_di
             
                 # rename_mapper = {'R_squared':f'R\N{SUPERSCRIPT TWO}','R Squared':f'R\N{SUPERSCRIPT TWO}','Root Mean Squared Error':'RMSE','Mean Absolute Error':'MAE',"Thiel's U":'U'}
                 res_df.rename(mapper= rename_mapper, axis='columns',inplace=True)
-
+            ## new to fix exporting for dash
+            res_df.reset_index(inplace=True)
             return res_df
 
         res_df = res_dict_to_merged_df(df_dict)
 
 
     if show_results_df:
-        res_df_s = res_df.style.set_caption('Evaluation Metrics')# by Prediction Source'))
+        res_df_s = res_df.style.hide_index().set_caption('Evaluation Metrics')# by Prediction Source'))
         display(res_df_s)
 
     if return_as_styled_df:
@@ -928,6 +1020,7 @@ color_coded=True, return_results=False, return_styled_df=False, return_shifted_d
 
     # Restructure DataFrame for ouput
     df_results = res_dict_to_merged_df(shift_results_dict, key_index_name='Pred Shifted')
+    df_results.reset_index(inplace=True)
 
     if display_results:
         
@@ -939,10 +1032,13 @@ color_coded=True, return_results=False, return_styled_df=False, return_shifted_d
         # Display dataframe results
         if color_coded is True:
             dfs_results = ji.color_cols(df_results, subset=['RMSE','U'], rev=True)
-            display(dfs_results.set_caption("Evaluation Metrics for Shifted Preds"))
+            dfs_results.set_caption("Evaluation Metrics for Shifted Preds")
 
         else:
-            display(df_results.style.set_caption('Evaluation Metrics for Shifted Preds'))
+            df_results.style.set_caption('Evaluation Metrics for Shifted Preds')
+
+        dfs_results.hide_index().set_properties(**{'text-align':'center'})
+        display(dfs_results)
 
 
     ## Return requested oututs
@@ -1714,3 +1810,75 @@ from_train_preds=False):
         df_model_out.columns = ['true','pred']
 
     return df_model_out 
+
+
+
+def evaluate_classification(model, history, X_train,X_test,y_train,y_test, 
+                            conf_matrix_classes= ['Increase','Decrease'],
+                            normalize_conf_matrix=True,conf_matrix_figsize=(8,4),
+                            save_conf_matrix_png=False, png_filename = 'results/confusion_matrix.png'):
+
+    """Evaluates kera's model's performance, plots model's history,displays classification report,
+    and plots a confusion matrix. 
+    Returns df of classification report and fig object for  confusion matrix's plot."""
+
+    from sklearn.metrics import roc_auc_score, roc_curve, classification_report,confusion_matrix
+    import bs_ds as bs
+    import functions_combined_BEST as ji
+    from IPython.display import display
+    import pandas as pd
+    import matplotlib as mpl
+    numFmt = '.4f'
+    num_dashes = 30
+
+    # results_list=[['Metric','Value']]
+    # metric_list = ['accuracy','precision','recall','f1']
+    print('---'*num_dashes)
+    print('\tTRAINING HISTORY:')
+    print('---'*num_dashes)
+    ji.plot_keras_history(history, title_text='')
+
+    print('\n')
+    print('---'*num_dashes)
+    print('\tEVALUATE MODEL:')
+    print('---'*num_dashes)
+
+    print('\n- Evaluating Training Data:')
+    loss_train, accuracy_train = model.evaluate(X_train, y_train, verbose=True)
+    print(f'    - Accuracy:{accuracy_train:{numFmt}}')
+    print(f'    - Loss:{loss_train:{numFmt}}')
+
+    print('\n- Evaluating Test Data:')
+    loss_test, accuracy_test = model.evaluate(X_test, y_test, verbose=True)
+    print(f'    - Accuracy:{accuracy_test:{numFmt}}')
+    print(f'    - Loss:{loss_test:{numFmt}}\n')
+
+    
+    print('---'*num_dashes)
+    print('\tCLASSIFICATION REPORT:')
+    print('---'*num_dashes)
+
+    ## Get model predictions
+    y_hat_train = model.predict_classes(X_train)
+    y_hat_test = model.predict_classes(X_test)
+
+    # get both versions of classification report output
+    report_str = classification_report(y_test,y_hat_test)
+    report_dict = classification_report(y_test,y_hat_test,output_dict=True)
+    
+
+    ## Create and display classification report
+    df_report =pd.DataFrame.from_dict(report_dict,orient='index')#class_rows,orient='index')
+    df_report.reset_index(inplace=True)
+    display(df_report.round(4).style.hide_index().set_caption('Classification Report'))
+    print('\n')
+    
+
+    ## Create and plot confusion_matrix
+    conf_mat = confusion_matrix(y_test, y_hat_test)
+    mpl.rcParams['figure.figsize'] = conf_matrix_figsize
+    fig = plot_confusion_matrix(conf_mat,classes=conf_matrix_classes,
+                                   normalize=normalize_conf_matrix, fig_size=conf_matrix_figsize)
+    if save_conf_matrix_png:
+        fig.savefig(png_filename,facecolor='white', format='png', frameon=True)
+    return df_report, fig

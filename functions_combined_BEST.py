@@ -291,7 +291,7 @@ def make_stopwords_list(incl_punc=True, incl_nums=True, add_custom= ['http','htt
         stopwords_list += list(string.punctuation)
     stopwords_list += add_custom #['http','https','...','…','``','co','“','’','‘','”',"n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]
     if incl_nums==True:
-        stopwords_list += [0,1,2,3,4,5,6,7,8,9]
+        stopwords_list += ['0','1','2','3','4','5','6','7','8','9']#[0,1,2,3,4,5,6,7,8,9]
     
     return  stopwords_list
 
@@ -319,7 +319,10 @@ def empty_lists_to_strings(x):
     else:
         return ' '.join(x) #' '.join(tokens)
 
-def load_raw_twitter_file(filename = 'data/trump_tweets_01202017_06202019.csv', date_as_index=True,rename_map={'text':'content','created_at':'date'}):
+def load_raw_twitter_file(filename ='data/trumptwitterarchive_export_08_23_2019.csv', date_as_index=True,rename_map={'text':'content','created_at':'date'}): 
+    """import raw copy and pasted to csv export from http://www.trumptwitterarchive.com/archive. 
+    Rename columns indicated in rename_map and sets the index to a datetimeindex copy of date column."""    
+    # old link'data/trump_tweets_01202017_06202019.csv'
     import pandas as pd
 
     df = pd.read_csv(filename, encoding='utf-8')
@@ -719,11 +722,27 @@ def check_null_times(x):
         return False
     
 ##################### DATASET LOADING FUNCTIONS #####################   
-def load_raw_stock_data_from_txt(filename='IVE_bidask1min.txt', 
+def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.txt', 
                                folderpath='data/',
-                               start_index = '2016-12-31',
+                               start_index = '2016-12-01',
                                  clean=True,fill_or_drop_null='drop',fill_method='ffill',
                                  freq='CBH',verbose=2):
+    """- Loads in the IVE_bidask1min data from text file, adds column headers.
+        - Original stock data file: 'IVE_bidask1min.txt'
+    - Creates datetimeindex from Date/Time cols, but keeps the 'datetime_index` column in the df.  
+        - Limits data to specified `start_index` date(defualt='2016-12-01').
+
+    - If clean=True, addresses rare occurance of '0' values for stock price using `fill_or_drop_null` param. 
+
+    - Sets the frequency of the data and handles null values with ji.set_timeindex_freq. 
+        - `freq` = any pandas frequency offset abbreviation (i.e. 'B','BD','H','T','BH',etc.)
+            - Default value of `CBH` creates custom business hour (market open @ 09:30am to 4:30pm
+        - `fill_method`= method used to resolve null values created during frequency resampling
+
+    - Verbose controls the level of detail regarding number datetimeindex creation, # of null value addressed, etc.
+        - Default = 2(maximum)
+        - Default >=1 will display stock_df.head()
+     """
     import pandas as pd
     import numpy as np
     from IPython.display import display
@@ -1891,22 +1910,72 @@ def train_test_val_split(X,y,test_size=0.20,val_size=0.1):
 
 
 
-def plot_keras_history(history):
+def plot_keras_history(history, title_text='',fig_size=(6,6)):
     """Plots the history['acc','val','val_acc','val_loss']"""
+
+    metrics = ['acc','loss','val_acc','val_loss']
+
     import matplotlib.pyplot as plt
-    acc = history.history['acc']
-    loss = history.history['loss']
-    val_acc = history.history['val_acc']
-    val_loss = history.history['val_loss']
-    x = range(1,len(acc)+1)
+    plot_metrics={}
+    for metric in metrics:
+        if metric in history.history.keys():
+            plot_metrics[metric] = history.history[metric]
+
+    # x = range(1,len(acc)+1)
+    ## CREATE SUBPLOTS
+    fig,ax = plt.subplots(nrows=2, ncols=1, figsize=fig_size, sharex=True)
     
-    fig,ax = plt.subplots(nrows=2, ncols=1, figsize=(6,8))
-    ax[0].plot(x, acc,'b',label='Training Acc')
-    ax[0].plot(x, val_acc,'r',label='Validation Acc')
-    ax[0].legend()
-    ax[1].plot(x, loss,'b',label='Training Loss')
-    ax[1].plot(x, val_loss, 'r', label='Validation Loss')
-    ax[1].legend()
+    # Set color scheme for data type
+    color_dict = {'val':'red','default':'b'}
+    
+    # Set font styles:
+    fontDict = {
+        'xlabel':{
+            'fontsize':14,
+            'fontweight':'normal',
+            },
+        'ylabel':{
+            'fontsize':14,
+            'fontweight':'normal',
+            },
+        'title':{
+            'fontsize':14,
+            'fontweight':'normal',
+            'ha':'center',
+            }
+        }
+
+    # Title Subplots
+    fig.suptitle(title_text,y=1.01,**fontDict['title'])
+    ax[1].set_xlabel('Training Epoch',**fontDict['xlabel'])
+
+    ## Set plot params by metric and data type
+    for metric, data in plot_metrics.items():
+        x = range(1,len(data)+1)
+        ## SET AXIS AND LABEL BY METRIC TYPE
+        if 'acc' in metric.lower():            
+            ax_i = 0
+            metric_title = 'Accuracy'
+        
+        elif 'loss' in metric.lower():
+            ax_i=1
+            metric_title = 'Loss'
+
+        ## SET COLOR AND LABEL PREFIX BY DATA TYPE
+        if 'val' in metric.lower():
+            color = color_dict['val']
+            data_label = 'Validation '+metric_title
+
+        else:
+            color = color_dict['default']
+            data_label='Training ' + metric_title
+        
+        ## PLOT THE CURRENT METRIC AND LABEL
+        ax[ax_i].plot(x, data, color=color,label=data_label)
+        ax[ax_i].set_ylabel(metric_title,**fontDict['ylabel'])
+        ax[ax_i].legend()
+
+    plt.tight_layout()
     plt.show()
     return fig, ax
 
@@ -1961,29 +2030,198 @@ def plot_auc_roc_curve(y_test, y_test_pred):
     plt.legend(loc="lower right")
     plt.show()
 
+def compare_freq_dists(text1,label1,text2,label2,top_n=20,figsize=(12,6),style='seaborn-poster', display_df=False):
+    from nltk import FreqDist
+    import pandas as pd
+    from IPython.display import display
+    freq_1 = FreqDist(text1)
+    freq_2 = FreqDist(text2)
 
-def compare_word_cloud(text1,label1,text2,label2):
-    """Compares the wordclouds from 2 sets of texts"""
+    df_compare=pd.DataFrame()
+    df_compare[label1] = freq_1.most_common(top_n)
+    df_compare[label2] = freq_2.most_common(top_n)
+    if display_df:
+        display(df_compare)
+
+    ## Plot dists
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl 
+
+    with plt.style.context(style):
+        mpl.rcParams['figure.figsize']=(12,6)
+        plt.title(f'{top_n} Most Frequent Words - {label1}')
+        freq_1.plot(25)
+        plt.title(f'{top_n} Most Frequent Words - {label2}')
+        freq_2.plot(25)
+
+# def compare_freq_dists_unique_words(text1,label1,text2,label2,top_n=20,figsize=(12,6)):
+
+
+
+
+def compare_word_clouds(text1,label1,text2,label2,suptitle_text='', cfg_dict=None, twitter_shaped=True,from_freq_dicts=False,
+fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=False, filepath_folder="figures/",**kwargs):
+    """Compares the wordclouds from 2 sets of texts. 
+    text1,text2:
+        If `from_freq_dicts`=False, texts must be non-tokenized form bodies of text.
+        If `from_freq_dicts`=True, texts must be a frequency dictionary with keys=words, value=count
+    
+    label1,label2:
+        string names/labels for the resulting wordcloud subplot titles
+    
+    cfg_dict:
+        a dictionary with altnerative parameters for creation of WordClouds
+        defaults are :
+                {'max_font_size':100, 'width':400, 'height':400,
+                'max_words':150, 'background_color':'white', 
+                'cloud_stopwords':make_stopwords_list(),
+                'collocations':False, 'contour_color':'cornflowerblue', 'contour_width':2}
+
+    twitter_shaped:
+        if true, local images of twitter logo will be used as a mask for the shape of the generated wordclouds. 
+        if false, wordclouds will be rectangular (shape=specified 'width' and 'height' config keys)
+
+    save_file:
+        if True, saves .png to filepath_folder using suptitle as name (if given), else filename='wordcloud_figure.png'
+
+    **kwargs:
+        valid keywords: 
+        - 'subplot_titles_fontdict':{any_matplotlib_text_kwds:values} # for ax.set_title() # passed as fontdict=fontdict
+        - 'suptitle_fontdict':{any_matplotlib_text_kwds:values} # fontdict for plt.suptitle() # passed as **fontdict 
+        - 'imshow':{'interpolation': #options are ['none', 'nearest', 'bilinear', 'bicubic', 'spline16',
+                    'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric', 'catrom',
+                     'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos'] }
+
+        """
+
     from wordcloud import WordCloud
     import matplotlib.pyplot as plt
+    from PIL import Image
+    import numpy as np
 
-    wordcloud1 = WordCloud(max_font_size=80, max_words=200, background_color='white').generate(' '.join(text1))
-    wordcloud2 = WordCloud(max_font_size=80, max_words=200, background_color='white').generate(' '.join(text2))
+    default_cfg={
+                'max_font_size':100, 'width':400, 'height':400,
+                'max_words':150, 'background_color':'white', 
+                'cloud_stopwords':make_stopwords_list(),
+                'collocations':False, 
+                'contour_color':'cornflowerblue',
+                'contour_width':2
+                }
+    ## Use default config if none provided
+    if cfg_dict is None:
+        cfg = default_cfg
+
+    else:
+        ## Fill in any default config keys that the user did not specify
+        for k,v in default_cfg.items():
+            if k not in cfg_dict.keys():
+                cfg_dict[k] = default_cfg[k]
+        cfg = cfg_dict
 
 
-    fig,ax = plt.subplots(nrows=1,ncols=2,figsize=(20,15))
-    ax[0].imshow(wordcloud1, interpolation='bilinear')
-    ax[0].set_aspect(1.5)
+    # instantiate the two word clouds using cfg dictionary parametrs
+    wordcloud1 = WordCloud(max_font_size = cfg['max_font_size'], width=cfg['width'], height=cfg['height'], max_words=cfg['max_words'],
+    background_color=cfg['background_color'], stopwords=cfg['cloud_stopwords'],collocations=cfg['collocations'],
+    contour_color=cfg['contour_color'], contour_width=cfg['contour_width'])
+
+
+
+    wordcloud2 = WordCloud(max_font_size = cfg['max_font_size'], width=cfg['width'], height=cfg['height'], max_words=cfg['max_words'],
+    background_color=cfg['background_color'], stopwords=cfg['cloud_stopwords'],collocations=cfg['collocations'], 
+    contour_color=cfg['contour_color'], contour_width=cfg['contour_width'])
+
+    ## Add .mask attribute to wordclouds if twitter_shaped==True
+    if twitter_shaped ==True:
+        ## Twitter Bird masks
+        mask_f_right = np.array(Image.open('figures/masks/twitter1.png'))
+        mask_f_left = np.array(Image.open('figures/masks/twitter1flip.png'))
+        
+        ## Assign the images to text1 and text2
+        mask1=mask_f_right
+        mask2=mask_f_left
+
+        # Hashtag and mentions mask 
+        # mask_at = np.array(Image.open('figures/masks/Hashtags and Ats Masks-04.jpg'))
+        # mask_hashtag = np.array(Image.open('figures/masks/Hashtags and Ats Masks-03.jpg'))
+
+        wordcloud1.mask=mask1
+        wordcloud2.mask=mask2
+
+
+    ## Fit wordclouds to text
+    if from_freq_dicts==False:
+        wordcloud1.generate(text1)                                          
+        wordcloud2.generate(text2)
+    
+    elif from_freq_dicts==True:
+        wordcloud1.generate_from_frequencies(text1)
+        wordcloud2.generate_from_frequencies(text2)
+
+
+
+    ## PLOTTING THE WORDCLOUDS
+
+    ## Fill in params dictionary with defaults
+    params= {}
+    params['subplot_titles_fontdict'] = {'fontsize':30}
+    params['suptitle_fontdict'] = {'fontsize':40}
+    params['imshow']= {'interpolation':'gaussian'}
+
+    ## Check for kwargs replacements to defaults
+    to_do = ['subplot_titles_fontdict','suptitle_fontdict','imshow']
+    for td in to_do:
+        if td in kwargs and kwargs[td] is not None:
+            params[td] = kwargs[td]
+
+    
+    ## CREATE SUBPLOTS
+    import matplotlib.pyplot as plt
+    fig,ax = plt.subplots(nrows=1,ncols=2,figsize=fig_size)
+    fig.suptitle(suptitle_text,y=suptitle_y_loc,**params['suptitle_fontdict'])
+
+    ## Left Subplot  
+    ax[0].imshow(wordcloud1, interpolation=params['imshow']['interpolation'])
     ax[0].axis("off")
-    ax[0].set_title(label1, fontsize=20)
+    ax[0].set_title(label1, y=subplot_titles_y_loc,fontdict=params['subplot_titles_fontdict'] )
 
-    ax[1].imshow(wordcloud2, interpolation='bilinear')
-    ax[1].set_aspect(1.5)
+    ## Right Subplot
+    ax[1].imshow(wordcloud2, interpolation=params['imshow']['interpolation'])
     ax[1].axis("off")
-    ax[1].set_title(label2, fontsize=20)
+    ax[1].set_title(label2, y=subplot_titles_y_loc,fontdict=params['subplot_titles_fontdict'] )
 
-    fig.tight_layout()
-    return fig,ax
+    plt.tight_layout()
+    plt.show()
+
+    if save_file:
+        if len(suptitle_text)==0:
+            filename = filepath_folder + 'wordcloud_figure.png'
+        
+        else:
+            title_for_filename = replace_bad_filename_chars(suptitle_text,replace_spaces=False, replace_with='_')
+            filename = filepath_folder + title_for_filename+'.png'
+
+        fig.savefig(filename,facecolor=cfg['background_color'], format='png', frameon=True)
+        print(f'figured saved as {filename}')
+
+    return fig, ax
+
+
+# def plot_fit_cloud(troll_cloud,contr_cloud,label1='Troll',label2='Control'):
+#     import matplotlib.pyplot as plt
+#     fig,ax = plt.subplots(nrows=1,ncols=2,figsize=(18,18))
+
+#     ax[0].imshow(troll_cloud, interpolation='gaussian')
+#     # ax[0].set_aspect(1.5)
+#     ax[0].axis("off")
+#     ax[0].set_title(label1, fontsize=40)
+
+#     ax[1].imshow(contr_cloud, interpolation='bilinear',)
+#     # ax[1].set_aspect(1.5)
+#     ax[1].axis("off")
+#     ax[1].set_title(label2, fontsize=40)
+#     plt.tight_layout()
+#     return fig, ax
+
 
 def transform_image_mask_white(val):
     """Will convert any pixel value of 0 (white) to 255 for wordcloud mask."""
@@ -2627,7 +2865,7 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
 
         # Minor X-Axis Ticks
         ax2.xaxis.set_minor_locator(mdates.DayLocator(interval=5))#,interval=5))
-        ax2.xaxis.set_minor_formatter(mdates.DateFormatter('%d')) #, fontDict={'weight':'bold'})
+        ax2.xaxis.set_minor_formatter(mdates.DateFormatter('%d')) #, fontdict={'weight':'bold'})
 
         # Changing Tick spacing and rotation.
         ax2.tick_params(axis='x',which='major',rotation=90, direction='inout',length=10, pad=5)
@@ -3688,23 +3926,26 @@ def df2png(df, filename_prefix = 'results/summary_table',sep='_',filename_suffix
 
 
 # from __future__ import print_function  # for Python2
-def inspect_variables(local_vars = locals(),top_n=None):
+def inspect_variables(local_vars = None,sort_col='size',exclude_funcs_mods=True, top_n=None):
     """Displays a dataframe of all variables and their size in memory, with the
     largest variables at the top."""
     import sys
     import inspect
     import pandas as pd
     
+    if local_vars is None:
+        raise Exception('Must pass "locals()" in function call. i.e. inspect_variables(locals())')
+
+    
     glob_vars= [k for k in globals().keys()]
     loc_vars = [k for k in local_vars.keys()]
 
-    all_vars = glob_vars+loc_vars
-    all_vars = [x for x in all_vars if '_' not in x]
+    var_list = glob_vars+loc_vars
 
     var_df = pd.DataFrame(columns=['variable','size','type'])
 
     exclude = ['In','Out']
-    var_list = [x for x in var_list if '_' not in x and x not in exclude]
+    var_list = [x for x in var_list if (x.startswith('_') == False) and (x not in exclude)]
     
     i=0
     for var in var_list:#globals().items():#locals().items():
@@ -3713,27 +3954,37 @@ def inspect_variables(local_vars = locals(),top_n=None):
             real_var = local_vars[var]
         elif var in glob_vars:
             real_var = globals()[var]
+        else:
+            print(f"{var} not found.")
     
         var_size = sys.getsizeof(real_var)
         
         var_type = []
         if inspect.isfunction(real_var):
             var_type = 'function'
+            if exclude_funcs_mods:
+                continue
         elif inspect.ismodule(real_var):
             var_type = 'module'
+            if exclude_funcs_mods:
+                continue
         elif inspect.isbuiltin(real_var):
             var_type = 'builtin'
         elif inspect.isclass(real_var):
             var_type = 'class'
         else:
-            var_type = 'misc'
+            
+            var_type = real_var.__class__.__name__
         
         
         var_row = pd.Series({'variable':var,'size':var_size,'type':var_type})
         var_df.loc[i] = var_row#pd.concat([var_df,var_row],axis=0)#.join(var_row,)
         i+=1
+
+    # if exclude_funcs_mods:
+    #     var_df = var_df.loc[var_df['type'] not in ['function', 'module'] ]
         
-    var_df.sort_values('size',ascending=False,inplace=True)
+    var_df.sort_values(sort_col,ascending=False,inplace=True)
     var_df.reset_index(inplace=True,drop=True)
     var_df.set_index('variable',inplace=True)
     var_df = var_df[['type','size']]
@@ -3776,3 +4027,16 @@ def display_random_tweet_by_column(df_sampled,i=None,columns = ['content' ,'cont
     
 
 
+def replace_bad_filename_chars(filename,replace_spaces=False, replace_with='_'):
+    """removes any characters not allowed in Windows filenames"""
+    bad_chars= ['<','>','*','/',':','\\','|','?']
+    if replace_spaces:
+        bad_chars.append(' ')
+
+    for char in bad_chars:
+        filename=filename.replace(char,replace_with)
+
+    # verify name is not too long for windows
+    if len(filename)>255:
+        filename = filename[:256]
+    return filename
