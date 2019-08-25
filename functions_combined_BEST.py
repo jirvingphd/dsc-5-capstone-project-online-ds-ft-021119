@@ -1,6 +1,38 @@
+import my_keras_functions as jik
+import function_widgets as jiw
+import functions_nlp as jin
+
 from my_keras_functions import *
 from function_widgets import *
-from functions_classes import TEXT
+from functions_nlp import *
+
+def reload(mod,verbose=False):
+    """Reloads the module from file. 
+    Mod may be 1 mod or a list of mods [mod1,mod2]
+    Example:
+    import my_functions_from_file as mf
+    # after editing the source file:
+    # mf.reload(mf)
+    # or mf.reload([mf1,mf2])"""
+    from importlib import reload
+    import sys
+    def print_info(mod):
+        print(f'Reloading {mod.__name__}...')
+    # print('your mom')
+    if type(mod)==list:
+        for m in mod:
+            reload(m)
+            if verbose:
+                print_info(m)        
+        return
+    else:
+        if verbose:
+            print_info(mod)
+        reload(mod)
+        return 
+
+reload([jin,jiw,jik])
+
 # def import_packages(import_list_of_tuples = None,  display_table=True): #append_to_default_list=True, imports_have_description = True):
 #     """Uses the exec function to load in a list of tuples with:
 #     [('module','md','example generic tuple item')] formatting.
@@ -205,28 +237,6 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
 #         globals()[shortname] = eval(modulename + "." + shortname)
 
 
-def reload(mod,verbose=True):
-    """Reloads the module from file. 
-    Mod may be 1 mod or a list of mods [mod1,mod2]
-    Example:
-    import my_functions_from_file as mf
-    # after editing the source file:
-    # mf.reload(mf)
-    # or mf.reload([mf1,mf2])"""
-    from importlib import reload
-    import sys
-    def print_info(mod):
-        print(f'Reloading {mod.__name__}...')
-    # print('your mom')
-    if type(mod)==list:
-        for m in mod:
-            print_info(m)
-            reload(m)
-        
-        return
-    else:
-        print_info(mod)
-        return  reload(mod)
 
 
 def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,colab=False,file_location=False): 
@@ -278,264 +288,6 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
         return source_DF
 
 
-
-
-################################################### ADDITIONAL NLP #####################################################
-## Adding in stopword removal to the actual dataframe
-def make_stopwords_list(incl_punc=True, incl_nums=True, add_custom= ['http','https','...','…','``','co','“','’','‘','”',"n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]):
-    from nltk.corpus import stopwords
-    import string
-
-    stopwords_list = stopwords.words('english')
-    if incl_punc==True:
-        stopwords_list += list(string.punctuation)
-    stopwords_list += add_custom #['http','https','...','…','``','co','“','’','‘','”',"n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]
-    if incl_nums==True:
-        stopwords_list += ['0','1','2','3','4','5','6','7','8','9']#[0,1,2,3,4,5,6,7,8,9]
-    
-    return  stopwords_list
-
-
-def apply_stopwords(stopwords_list,  text, tokenize=True,return_tokens=False, pattern = "([a-zA-Z]+(?:'[a-z]+)?)"):
-    """EX: df['text_stopped'] = df['content'].apply(lambda x: apply_stopwords(stopwords_list,x))"""
-    from nltk import regexp_tokenize
-    pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
-    if tokenize==True:
-        from nltk import regexp_tokenize
-        
-        text = regexp_tokenize(text,pattern)
-        
-    stopped = [x.lower() for x in text if x.lower() not in stopwords_list]
-
-    if return_tokens==True:
-        return regexp_tokenize(' '.join(stopped),pattern)
-    else:
-        return ' '.join(stopped)
-
-def empty_lists_to_strings(x):
-    """Takes a series and replaces any empty lists with an empty string instead."""
-    if len(x)==0:
-        return ' '
-    else:
-        return ' '.join(x) #' '.join(tokens)
-
-def load_raw_twitter_file(filename ='data/trumptwitterarchive_export_08_23_2019.csv', date_as_index=True,rename_map={'text':'content','created_at':'date'}): 
-    """import raw copy and pasted to csv export from http://www.trumptwitterarchive.com/archive. 
-    Rename columns indicated in rename_map and sets the index to a datetimeindex copy of date column."""    
-    # old link'data/trump_tweets_01202017_06202019.csv'
-    import pandas as pd
-
-    df = pd.read_csv(filename, encoding='utf-8')
-    mapper=rename_map
-    df.rename(axis=1,mapper=mapper,inplace=True)
-    df['date']=pd.to_datetime(df['date'])
-    if date_as_index==True:
-        df.set_index('date',inplace=True,drop=False)
-    # df.head()
-    return df
-
-
-
-
-## NEW 07/11/19 - function for all sentiment analysis
-
-def full_sentiment_analysis(twitter_df, source_column='content_min_clean',separate_cols=True):#, plot_results=True):
-    from nltk.sentiment.vader import SentimentIntensityAnalyzer
-    sid = SentimentIntensityAnalyzer()
-
-    source_column='content_min_clean'
-    twitter_df['sentiment_scores'] = twitter_df[source_column].apply(lambda x: sid.polarity_scores(x))
-    twitter_df['compound_score'] = twitter_df['sentiment_scores'].apply(lambda dict: dict['compound'])
-    twitter_df['sentiment_class'] = twitter_df['compound_score'].apply(lambda score: 'pos' if score >=0 else 'neg')
-    
-    
-    # Separate result dictionary into columns  (optional)
-    if separate_cols==True:
-        # Separate Scores into separate columns in df
-        twitter_df_out = get_group_sentiment_scores(twitter_df)
-    else:
-        twitter_df_out = twitter_df
-        
-    
-#     # plot results (optional)
-#     if plot_results==True:
-        
-#         print("RESULTS OF SENTIMENT ANALYSIS BINARY CLASSIFICATION:\n",'-'*60)
-#         # Normalized % of troll sentiment classes
-#         plot_sent_class = twitter_df_out['sentiment_class'].value_counts()
-#         plot_sent_class_norm = plot_sent_class/(sum(plot_sent_class))
-#         print('\tNormalized Troll Classes:\n',plot_sent_class_norm)
-
-
-#         with plt.style.context('seaborn-notebook'):
-#             boxplot = df_sents.boxplot(column=['neg','neu','pos'],notch=True,figsize=(6,4))
-#             boxplot.set_xticklabels(['Negative','Neutral','Positive']);
-#             boxplot.set_title('Sentiment Scores By Word Type')
-#             boxplot.set_ylabel('Sentiment Score')
-    
-    return twitter_df_out
-        
-        
-
-# Write a function to extract the group scores from the dataframe
-def get_group_sentiment_scores(df, score_col='sentiment_scores'):
-    import pandas as pd
-    series_df = df[score_col]
-    series_neg = series_df.apply(lambda x: x['neg'])
-    series_pos = series_df.apply(lambda x: x['pos'])
-    series_neu = series_df.apply(lambda x: x['neu'])
-    
-    series_neg.name='neg'
-    series_pos.name='pos'
-    series_neu.name='neu'
-    
-    df = pd.concat([df,series_neg,series_neu,series_pos],axis=1)
-    return df
-
-
-
-
-
-
-def full_twitter_df_processing(df,raw_tweet_col='content', cleaned_tweet_col='content', case_ratio_col='content_min_clean', 
-sentiment_analysis_col='content_min_clean', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
-    """Accepts df_full, which contains the raw tweets to process, the raw_col name, the column to fill.
-    If force=False, returns error if the fill_content_col already exists.
-    Processing Workflow:1) Create has_RT, starts_RT columns. 2) Creates [fill_content_col,`content_min_clean`] cols after removing 'RT @mention:' and urls.
-    3) Removes hashtags from fill_content_col and saves hashtags in new col. 4) Removes mentions from fill_content_col and saves to new column."""
-    # Save 'hashtags' column containing all hastags
-    import re
-    from nltk import regexp_tokenize
-    pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
-    track_fill_content_col=0
-
-    fill_content_col = cleaned_tweet_col
-
-    if force==False:
-        if cleaned_tweet_col in df.columns:
-            raise Exception(f'{fill_content_col} already exists. To overwrite, set force=True.')
-
-    # if raw_tweet_col == cleaned_tweet_col:
-    #     raw_tweets = 'content_raw'
-    #     df[raw_tweets] = df[tweet_col].copy()
-
-
-    if RT ==True:
-
-        # Creating columns for tweets that `has_RT` or `starts_RT`
-        df['has_RT']=df[raw_tweet_col].str.contains('RT')
-        df['starts_RT']=df[raw_tweet_col].str.contains('^RT')
-
-        ## FIRST REMOVE THE RT HEADERS
-
-        # Remove `RT @Mentions` FIRST:
-        re_RT = re.compile('RT [@]?\w*:')
-
-        check_content_col = raw_tweet_col
-        fill_content_col = cleaned_tweet_col
-
-        df['content_starts_RT'] = df[check_content_col].apply(lambda x: re_RT.findall(x))
-        df[fill_content_col] =  df[check_content_col].apply(lambda x: re_RT.sub(' ',x))
-        track_fill_content_col+=1
-
-
-    if urls==True:
-        ## SECOND REMOVE URLS
-        # Remove urls with regex
-        urls = re.compile(r"(http[s]?://\w*\.\w*/+\w+)")
-        
-        if track_fill_content_col==0:
-            check_content_col = raw_tweet_col
-        else:
-            check_content_col = fill_content_col
-
-        fill_content_col = fill_content_col
-
-        # df_full['content_urls'] = df_full[check_content_col].apply(lambda x: urls.findall(x))
-        df[fill_content_col] =  df[check_content_col].apply(lambda x: urls.sub(' ',x))
-
-        ## SAVE THIS MINIMALLY CLEANED CONTENT AS 'content_min_clean'
-        df['content_min_clean'] =  df[fill_content_col]
-        track_fill_content_col+=1
-
-    if hashtags==True:
-
-        if track_fill_content_col==0:
-            check_content_col = raw_tweet_col
-        else:
-            check_content_col = fill_content_col
-
-        fill_content_col = fill_content_col
-
-        ## REMOVE AND SAVE HASHTAGS, MENTIONS
-        # Remove and save Hashtags
-        hashtags = re.compile(r'\#\w*')
-
-        df['content_hashtags'] =  df[check_content_col].apply(lambda x: hashtags.findall(x))
-        df[fill_content_col] =  df[check_content_col].apply(lambda x: hashtags.sub(' ',x))
-        track_fill_content_col+=1
-        
-        if str_tags_mentions==True: 
-            df['hashtag_strings'] = df['content_hashtags'].apply(lambda x: empty_lists_to_strings(x))
-        
-
-    if mentions==True:
-
-        if track_fill_content_col==0:
-            check_content_col = raw_tweet_col
-        else:
-            check_content_col = fill_content_col
-
-        fill_content_col = fill_content_col
-
-        # Remove and save mentions (@)'s
-        mentions = re.compile(r'\@\w*')
-
-
-        df['content_mentions'] =  df[check_content_col].apply(lambda x: mentions.findall(x))
-        df[fill_content_col] =  df[check_content_col].apply(lambda x: mentions.sub(' ',x))
-        track_fill_content_col+=1
-
-        if str_tags_mentions==True: 
-            df['mention_strings'] = df['content_mentions'].apply(lambda x: empty_lists_to_strings(x))
-
-
-    # Creating content_stopped columns and then tokens_stopped column
-    stop_col_name = fill_content_col+'_stop'
-    stop_tok_col_name =  fill_content_col+'_stop_tokens'
-
-    if len(stopwords_list)==0:
-        stopwords_list=make_stopwords_list()
-
-    df[stop_col_name] = df[fill_content_col].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=False, pattern=pattern))
-    df[stop_tok_col_name] = df[stop_col_name].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=True, pattern=pattern))
-
-    
-    ## Case Ratio Calculation (optional)
-    if case_ratio_col is not None:
-        df['case_ratio'] = df[case_ratio_col].apply(lambda x: case_ratio(x))
-
-    ## Sentiment Analysis (optional)
-    if sentiment_analysis_col is not None:
-        df = full_sentiment_analysis(df,source_column=sentiment_analysis_col,separate_cols=True)
-    
-    df.sort_index(inplace=True)
-    return df
-
-
-
-def case_ratio(msg):
-    """Accepts a twitter message (or used with .apply(lambda x:)).
-    Returns the ratio of capitalized characters out of the total number of characters.
-    
-    EX:
-    df['case_ratio'] = df['text'].apply(lambda x: case_ratio(x))"""
-    import numpy as np
-    msg_length = len(msg)
-    test_upper = [1 for x in msg if x.isupper()]
-    test_lower = [1 for x in msg if x.islower()]
-    test_ratio = np.round(sum(test_upper)/msg_length,5)
-    return test_ratio
 
 
 #################################################### STOCK ##############################################################
@@ -746,17 +498,25 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.txt',
     import pandas as pd
     import numpy as np
     from IPython.display import display
+    import functions_combined_BEST as ji
 
     # Load in the text file and set headers
     fullfilename= folderpath+filename
     headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
     stock_df = pd.read_csv(fullfilename, names=headers,parse_dates=True)
+
+
     
     # Create datetime index
     date_time_index = (stock_df['Date']+' '+stock_df['Time']).rename('date_time_index')
     stock_df['date_time_index'] = pd.to_datetime(date_time_index)
     stock_df.set_index('date_time_index', inplace=True, drop=False)
-    
+
+
+    # Add _metadata to stock_df
+    stock_df._metadata={'filename':fullfilename, 'original_index':ji.index_report(stock_df,return_index_dict=True)}
+
+
     # Select only the days after start_index
     stock_df = stock_df[start_index:]
     # print(f'\nRestricting stock_df to index {start_index}-forward')
@@ -2030,181 +1790,6 @@ def plot_auc_roc_curve(y_test, y_test_pred):
     plt.legend(loc="lower right")
     plt.show()
 
-def compare_freq_dists(text1,label1,text2,label2,top_n=20,figsize=(12,6),style='seaborn-poster', display_df=False):
-    from nltk import FreqDist
-    import pandas as pd
-    from IPython.display import display
-    freq_1 = FreqDist(text1)
-    freq_2 = FreqDist(text2)
-
-    df_compare=pd.DataFrame()
-    df_compare[label1] = freq_1.most_common(top_n)
-    df_compare[label2] = freq_2.most_common(top_n)
-    if display_df:
-        display(df_compare)
-
-    ## Plot dists
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl 
-
-    with plt.style.context(style):
-        mpl.rcParams['figure.figsize']=(12,6)
-        plt.title(f'{top_n} Most Frequent Words - {label1}')
-        freq_1.plot(25)
-        plt.title(f'{top_n} Most Frequent Words - {label2}')
-        freq_2.plot(25)
-
-# def compare_freq_dists_unique_words(text1,label1,text2,label2,top_n=20,figsize=(12,6)):
-
-
-
-
-def compare_word_clouds(text1,label1,text2,label2,suptitle_text='', cfg_dict=None, twitter_shaped=True,from_freq_dicts=False,
-fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=False, filepath_folder="figures/",**kwargs):
-    """Compares the wordclouds from 2 sets of texts. 
-    text1,text2:
-        If `from_freq_dicts`=False, texts must be non-tokenized form bodies of text.
-        If `from_freq_dicts`=True, texts must be a frequency dictionary with keys=words, value=count
-    
-    label1,label2:
-        string names/labels for the resulting wordcloud subplot titles
-    
-    cfg_dict:
-        a dictionary with altnerative parameters for creation of WordClouds
-        defaults are :
-                {'max_font_size':100, 'width':400, 'height':400,
-                'max_words':150, 'background_color':'white', 
-                'cloud_stopwords':make_stopwords_list(),
-                'collocations':False, 'contour_color':'cornflowerblue', 'contour_width':2}
-
-    twitter_shaped:
-        if true, local images of twitter logo will be used as a mask for the shape of the generated wordclouds. 
-        if false, wordclouds will be rectangular (shape=specified 'width' and 'height' config keys)
-
-    save_file:
-        if True, saves .png to filepath_folder using suptitle as name (if given), else filename='wordcloud_figure.png'
-
-    **kwargs:
-        valid keywords: 
-        - 'subplot_titles_fontdict':{any_matplotlib_text_kwds:values} # for ax.set_title() # passed as fontdict=fontdict
-        - 'suptitle_fontdict':{any_matplotlib_text_kwds:values} # fontdict for plt.suptitle() # passed as **fontdict 
-        - 'imshow':{'interpolation': #options are ['none', 'nearest', 'bilinear', 'bicubic', 'spline16',
-                    'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric', 'catrom',
-                     'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos'] }
-
-        """
-
-    from wordcloud import WordCloud
-    import matplotlib.pyplot as plt
-    from PIL import Image
-    import numpy as np
-
-    default_cfg={
-                'max_font_size':100, 'width':400, 'height':400,
-                'max_words':150, 'background_color':'white', 
-                'cloud_stopwords':make_stopwords_list(),
-                'collocations':False, 
-                'contour_color':'cornflowerblue',
-                'contour_width':2
-                }
-    ## Use default config if none provided
-    if cfg_dict is None:
-        cfg = default_cfg
-
-    else:
-        ## Fill in any default config keys that the user did not specify
-        for k,v in default_cfg.items():
-            if k not in cfg_dict.keys():
-                cfg_dict[k] = default_cfg[k]
-        cfg = cfg_dict
-
-
-    # instantiate the two word clouds using cfg dictionary parametrs
-    wordcloud1 = WordCloud(max_font_size = cfg['max_font_size'], width=cfg['width'], height=cfg['height'], max_words=cfg['max_words'],
-    background_color=cfg['background_color'], stopwords=cfg['cloud_stopwords'],collocations=cfg['collocations'],
-    contour_color=cfg['contour_color'], contour_width=cfg['contour_width'])
-
-
-
-    wordcloud2 = WordCloud(max_font_size = cfg['max_font_size'], width=cfg['width'], height=cfg['height'], max_words=cfg['max_words'],
-    background_color=cfg['background_color'], stopwords=cfg['cloud_stopwords'],collocations=cfg['collocations'], 
-    contour_color=cfg['contour_color'], contour_width=cfg['contour_width'])
-
-    ## Add .mask attribute to wordclouds if twitter_shaped==True
-    if twitter_shaped ==True:
-        ## Twitter Bird masks
-        mask_f_right = np.array(Image.open('figures/masks/twitter1.png'))
-        mask_f_left = np.array(Image.open('figures/masks/twitter1flip.png'))
-        
-        ## Assign the images to text1 and text2
-        mask1=mask_f_right
-        mask2=mask_f_left
-
-        # Hashtag and mentions mask 
-        # mask_at = np.array(Image.open('figures/masks/Hashtags and Ats Masks-04.jpg'))
-        # mask_hashtag = np.array(Image.open('figures/masks/Hashtags and Ats Masks-03.jpg'))
-
-        wordcloud1.mask=mask1
-        wordcloud2.mask=mask2
-
-
-    ## Fit wordclouds to text
-    if from_freq_dicts==False:
-        wordcloud1.generate(text1)                                          
-        wordcloud2.generate(text2)
-    
-    elif from_freq_dicts==True:
-        wordcloud1.generate_from_frequencies(text1)
-        wordcloud2.generate_from_frequencies(text2)
-
-
-
-    ## PLOTTING THE WORDCLOUDS
-
-    ## Fill in params dictionary with defaults
-    params= {}
-    params['subplot_titles_fontdict'] = {'fontsize':30}
-    params['suptitle_fontdict'] = {'fontsize':40}
-    params['imshow']= {'interpolation':'gaussian'}
-
-    ## Check for kwargs replacements to defaults
-    to_do = ['subplot_titles_fontdict','suptitle_fontdict','imshow']
-    for td in to_do:
-        if td in kwargs and kwargs[td] is not None:
-            params[td] = kwargs[td]
-
-    
-    ## CREATE SUBPLOTS
-    import matplotlib.pyplot as plt
-    fig,ax = plt.subplots(nrows=1,ncols=2,figsize=fig_size)
-    fig.suptitle(suptitle_text,y=suptitle_y_loc,**params['suptitle_fontdict'])
-
-    ## Left Subplot  
-    ax[0].imshow(wordcloud1, interpolation=params['imshow']['interpolation'])
-    ax[0].axis("off")
-    ax[0].set_title(label1, y=subplot_titles_y_loc,fontdict=params['subplot_titles_fontdict'] )
-
-    ## Right Subplot
-    ax[1].imshow(wordcloud2, interpolation=params['imshow']['interpolation'])
-    ax[1].axis("off")
-    ax[1].set_title(label2, y=subplot_titles_y_loc,fontdict=params['subplot_titles_fontdict'] )
-
-    plt.tight_layout()
-    plt.show()
-
-    if save_file:
-        if len(suptitle_text)==0:
-            filename = filepath_folder + 'wordcloud_figure.png'
-        
-        else:
-            title_for_filename = replace_bad_filename_chars(suptitle_text,replace_spaces=False, replace_with='_')
-            filename = filepath_folder + title_for_filename+'.png'
-
-        fig.savefig(filename,facecolor=cfg['background_color'], format='png', frameon=True)
-        print(f'figured saved as {filename}')
-
-    return fig, ax
-
 
 # def plot_fit_cloud(troll_cloud,contr_cloud,label1='Troll',label2='Control'):
 #     import matplotlib.pyplot as plt
@@ -3049,7 +2634,7 @@ def plotly_true_vs_preds_subplots(df_model_preds, true_train_col, true_test_col,
 
 
 
-def load_processed_stock_data(processed_data_filename = '_stock_df_with_technical_indicators.csv', force_from_raw=False, verbose=0):
+def load_processed_stock_data(processed_data_filename = 'data/_stock_df_with_technical_indicators.csv', force_from_raw=False, verbose=0):
     import functions_combined_BEST as ji
     import os
     import pandas as pd
@@ -3420,9 +3005,9 @@ def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins',date_ti
 
 
 
-def load_stock_price_series(filename='IVE_bidask1min.txt', 
+def load_stock_price_series(filename='IVE_bidask1min_08_23_2019.txt', 
                                folderpath='data/',
-                               start_index = '2017-01-20', freq='T'):
+                               start_index = '2016-12-01', freq='T'):
     import pandas as pd
     import numpy as np
     from IPython import display
@@ -3653,7 +3238,15 @@ def unpack_match_stocks(stock_dict):
 ## twitter_df, stock_price = load_twitter_df_stock_price()
 ## twitter_df = get_stock_prices_for_twitter_data(twitter_df, stock_prices)
 #  
-def load_twitter_df_stock_price():# del stock_price
+def load_twitter_df_stock_price(twitter_df = None, get_stock_prices_per_tweet=False,price_mins_after_tweet=60):# del stock_price
+    """Loads in stock_price data from original text souce in minute frequency using load_stock_price_series(filename='IVE_bidask1min_08_23_2019)
+    if twitter_df not provided, it is created from scratch using processing functions. 
+    if get_stock_prices_per_tweet == True, runs the follow-up function to add several stock_price columns matched to each tweet.
+    price_mins_after_tweet = how many minutes after the tweet should the change in stock price be calculated. 
+    
+    Returns twitter_df only if `get_stock_prices_per_tweet`==True.
+    Returns twitter_df, stock_price_series if it is False
+    """
     from IPython.display import display
     try: stock_price
     except NameError: stock_price = None
@@ -3670,12 +3263,10 @@ def load_twitter_df_stock_price():# del stock_price
 
     ## LOAD TWEETS, SELECT THE PROPER DATE RANGE AND COLUMNS
     # twitter_df = load_twitter_df(verbose=0)
-    try: twitter_df
-    except NameError: twitter_df=None
-    if twitter_df is None:
-        print('Loading twitter_df')
+    if twitter_df is None: 
+        print('Creating twitter_df using `load_raw_twitter_file()`, `full_twitter_df_processing`')
         twitter_df= load_raw_twitter_file()
-        twitter_df = full_twitter_df_processing(twitter_df,cleaned_tweet_col='clean_content')
+        twitter_df = full_twitter_df_processing(twitter_df)
 
     stock_price.sort_index(inplace=True)
     twitter_df.sort_index(inplace=True)
@@ -3684,7 +3275,17 @@ def load_twitter_df_stock_price():# del stock_price
     print(stock_price.index[0],stock_price.index[-1])
     print(twitter_df.index[0],twitter_df.index[-1])
     
-    return twitter_df, stock_price
+    if get_stock_prices_per_tweet:
+        print('Adding stock_price data for tweets using `get_stock_prices_for_twitter_data`...')
+        print('Limiting twitter_df timeindex to match stock_price.')
+        twitter_df = twitter_df.loc[stock_price.index[0]:stock_price.index[-1]]
+
+        twitter_df = get_stock_prices_for_twitter_data(twitter_df=twitter_df, stock_prices=stock_price,
+        time_after_tweet=price_mins_after_tweet)
+        return twitter_df
+
+    else:
+        return twitter_df, stock_price
 
 
 def get_stock_prices_for_twitter_data(twitter_df, stock_prices, time_after_tweet=60):
@@ -3734,12 +3335,29 @@ def get_stock_prices_for_twitter_data(twitter_df, stock_prices, time_after_tweet
 
 
 
-def index_report(df):
+def index_report(df, time_fmt = '%Y-%m-%d %T', return_index_dict=False):
+    """Sorts dataframe index, prints index's start and end points and its datetime frequency.
+    if return_index_dict=True then it returns these values in a dictionary as well as printing them."""
+    import pandas as pd
     df.sort_index(inplace=True)
-    time_fmt = '%Y-%m-%d %T'
+
+    index_info = {'index_start': df.index[0].strftime(time_fmt), 'index_end':df.index[-1].strftime(time_fmt),
+                'index_freq':df.index.freq}
+
+    if df.index.freq is None:
+        try:
+            index_info['inferred_index_freq'] = pd.infer_freq(df.index)
+        except:
+            index_info['inferred_index_freq'] = 'error'
+
+
     print(f"* Index Endpoints:\n\t{df.index[0].strftime(time_fmt)} -- to -- {df.index[-1].strftime(time_fmt)}")
     print(f'* Index Freq:\n\t{df.index.freq}')
-    return 
+
+    if return_index_dict == True:
+        return index_info
+    else:
+        return
 
 
 def preview_dict(d, n=5,print_or_menu='print',return_list=False):
@@ -3995,36 +3613,125 @@ def inspect_variables(local_vars = None,sort_col='size',exclude_funcs_mods=True,
     return var_df
 
 
-def display_random_tweet_by_column(df_sampled,i=None,columns = ['content' ,'content_min_clean',
-                                                                 'clean_content', 'clean_content_stop',
-                                                                 'clean_content_stop_tokens'], as_df = False):
+def display_same_tweet_diff_cols(df_sampled,index=None,columns = ['content' ,'content_min_clean',
+                                                                'clean_content', 'clean_content_stop',
+                                                                'clean_content_stop_tokens'],
+                                                                 as_df = False, as_md=False,
+                                                                 time_format='%m-%d-%Y %T'):
     """Displays the contents each column for a specific index = i; 
     If i=None then defaults to randomly selected row."""
     import pandas as pd
     import numpy as np
-    from IPython.display import display
+    from IPython.display import display, Markdown, HTML
+    
+    ## Check for provided i index, if None, then randomly select from provided df.index
+
+    # check if i=str is
+    if index is not None:
+        if isinstance(index,str) and  check_if_str_is_date(index, fuzzy=True):
+            try:
+                # i = pd.to_datetime(index)
+                i=index
+                tweet = df_sampled.loc[i]
+            except:
+                print('ERROR')
+                print(index,'. type= ',type(i))
+                # else:
+                #     raise Exception('string is not valid date index')
+
+        elif isinstance(index, int):
+            i = index
+            tweet = df_sampled.iloc[i]
+
+    else: #index is None:
+        i = np.random.choice(df_sampled.index.to_series()) #range(len(df_sampled)))
+        print(i)
+        tweet = df_sampled.loc[i]
+
+    ## setup parameters to use if df or series
+    if tweet.ndim==1: # if seires
+        is_series =True
+        num_tweets = 1
+        # index_series = tweet.name
+        print_index = [pd.to_datetime(tweet.name).strftime(time_format)]
+
+    else: #if dataframe
+        is_series=False
+        num_tweets = tweet.shape[0]
+        # Make the index a series
+        index_series = tweet.index.to_series()
+        # Make print-formmated list of indices
+        print_index = list(index_series.apply(lambda x: x.strftime(time_format)))#'%m-%d-%Y %T')))
     
     
-    if i is None:
-        i = np.random.choice(range(len(df_sampled)))
-    
-    if as_df == False:
-        print(f'* TWEETED ON {df_sampled.index[i]}')
-        for col in columns:
-            print(f"\n- col='{col}'':")
-            print('\n     ',df_sampled[col][i],'\n')
+    if as_df == False and as_md==False:
+
+        ## for each tweet:
+        for i in range(num_tweets):
+
+            print(f'\n>> TWEETED ON {print_index[i] }') ##tweet.index[i]}')
+            if is_series:
+                tweet_to_print = tweet
+            else:
+                tweet_to_print=tweet.loc[print_index[i]]
+
+            # print each column for dataframes
+            for col in columns:
+                print(f"\n\t[col='{col}']:")
+                # col_text = tweet.loc[col] 
+                print('\t\t"',tweet_to_print[col],'"')
+
+            if num_tweets>1:
+                print('\n','---'*10)
+
+
+    elif as_md:
+
+        for ii in range(len(print_index)):#range(num_tweets):
+            i = print_index[ii]
+            tweet_to_print = df_sampled.loc[i]
+
+            if num_tweets>1:
+                display(Markdown("<br>"))
+                display(Markdown(f'### Tweet #{ii+1} of {len(print_index)}: sent @ *{i}*:'))#index[i]
+            else:
+                display(Markdown(f'#### TWEET FROM {i}:'))#index[i]
+            # print(f'* TWEETED ON {df_sampled.index[i]}')
+            for col in columns:
+
+                col_name = f'* **["{col}"] column:**<p><blockquote>***"{tweet_to_print[col]}"***'
+                
+                display(Markdown(col_name))
+
             
-    else:
-        df = pd.DataFrame(columns=['tweet'],index=columns)
-        df.index.name = 'column'
-        for col in columns:
-            df['tweet'].loc[col] = df_sampled[col][i]
-        with pd.option_context('display.max_colwidth',0):#,'colheader_justify','left'):
-            caption = f'Displayed Index = {df_sampled.index[i]}'
-            dfs = df.style.set_caption(caption)
-            display(dfs)
-        return 
+    elif as_df:
+
+        # for i in range(num_tweets):
+        for ii in range(len(print_index)):#range(num_tweets):
+            i = print_index[ii]
+            tweet_to_print = df_sampled.loc[i]
+
+            df = pd.DataFrame(columns=['tweet'],index=columns)
+            df.index.name = 'column'
+            for col in columns:
+                df['tweet'].loc[col] = tweet_to_print[col]#[i]
+            
+            with pd.option_context('display.max_colwidth',0, 'display.colheader_justify','left'):#,'colheader_justify','left'):
+                # caption = f'Tweet #{ii+1}  = {i}'
+                capt_text  = f'Tweet #{ii+1} of {len(print_index)}: sent @ *{i}*:'
+                table_style =[{'selector':'caption',
+                'props':[('font-size','1.2em'),('color','darkblue'),('font-weight','bold'),
+                ('vertical-align','0%')]}]
+                dfs = df.style.set_caption(capt_text).set_properties(subset=['tweet'],
+                **{'width':'600px',
+                'text-align':'center',
+                'padding':'1em',
+                'font-size':'1.2em'}).set_table_styles(table_style)
+                display(dfs)
+    return 
     
+
+
 
 
 def replace_bad_filename_chars(filename,replace_spaces=False, replace_with='_'):
@@ -4040,3 +3747,18 @@ def replace_bad_filename_chars(filename,replace_spaces=False, replace_with='_'):
     if len(filename)>255:
         filename = filename[:256]
     return filename
+
+
+def check_if_str_is_date(string, fuzzy=False):
+    """
+    Use dateutil.parser to check if string is a valid date
+    -string: str, string to check for date
+    -fuzzy: bool, if True, ignore unknown text
+    """
+    from dateutil.parser import parse
+    try: 
+        parse(string, fuzzy=fuzzy)
+        return True
+
+    except ValueError:
+        return False

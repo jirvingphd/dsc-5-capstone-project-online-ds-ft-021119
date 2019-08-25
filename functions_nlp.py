@@ -1,0 +1,1143 @@
+
+class TEXT(object):
+    """Class intended for preprocessing text for use with Word2Vec vectors, Kera's Tokenizer, 
+    creating FreqDists and an embedding_layer for Kera's models.
+    TEXT = TEXT(text_data, text_labels, word2vecmodel)"""
+    
+    def __init__(self,df, text_data_col,text_labels_col=None,word2vec_model=None,fit_model=False,verbose=0):
+        """Initializes the class with the text_data (series), text_labels (y data), and a word2vecmodel.
+        Performs all processing steps on entire body of text to generate corupus-wide analyses. 
+        i.e. FreqDist, word2vec models, fitting tokenzier
+        
+        - if no word2vec model is provided, one is fit on the text_data using TEXT.fit_word2vec()
+        - calls on fit_tokenizer() to fit keras tokenizer to text_sequences.
+        text_data and text_labels are saved as TEXT._text_data_ and TEXT._text_labels_"""
+        import numpy as np
+        import pandas as pd
+        ## Save text_data
+        text_data = df[text_data_col].copy()
+        self._text_data_ = text_data
+        self._verbose_=verbose        
+        
+        ## Save or create empty text_labels
+        if text_labels_col is not None:
+            text_labels = df[text_labels_col].copy()
+        else:
+            text_labels = np.empty(len(text_data))
+            text_labels[:] = pd.Series(np.nan)
+            
+            text_labels_col='text_labels'
+            df[text_labels_col] = text_labels
+            
+        self._text_labels_ = text_labels
+        
+        
+        ## SAVE TO INTERNAL DATAFRAME
+        self.df = pd.concat([df[text_data_col],df[text_labels_col]],axis=1)
+        self.df.columns=['input_text_data','raw_text_labels']
+
+        ## CALL ON PREPARE_DATA FUNCTIONS
+
+        ## Prepare text_body for corpus-wide operations
+        self.prepare_text_body()
+
+        ## Fit word2vec model if not provided
+        if word2vec_model is not None:
+            self.wv= word2vec_model.wv 
+            self._word2vec_model_ = word2vec_model      
+
+        else:
+            if self._verbose_ >0:
+                print('no word2vec model provided.')
+
+            # if fit_model:
+            #     self.fit_word2vec(text_data=self._text_data_)#self.tokenized_text_body)
+            else:
+                self.wv = None
+                self._word2vec_model_ = None
+        
+        if fit_model:
+            self.fit_models()
+            # ## Fit keras tokenizer
+            # self.fit_tokenizer()
+            
+            # ## Get FreqDist
+            # self.make_freq_dist()
+            
+            # ## Create Embedding Layer
+            # self.get_embedding_layer(return_layer=False)
+
+    def fit_models(self):
+        
+        ## Fit Word2Vec
+        if self.wv is None:
+            self.fit_word2vec(text_data=self._text_data_)#self.tokenized_text_body)
+
+        ## Fit keras tokenizer
+        self.fit_tokenizer()
+        
+        ## Get FreqDist
+        self.make_freq_dist()
+
+        ## Create Embedding Layer
+        self.get_embedding_layer(return_layer=False)
+    
+
+        
+    def prepare_text_body(self,text_data_to_prep=None,delim=','):
+        """Joins, regexp_tokenizes text_data"""
+        #         text_data_to_prep=[]
+
+        import numpy as np
+        import pandas as pd
+
+        if text_data_to_prep is None:
+            text_data_to_prep = self._text_data_
+            delim.join(text_data_to_prep)
+
+
+        if isinstance(text_data_to_prep,list) | isinstance(text_data_to_prep, np.ndarray) \
+        | isinstance(text_data_to_prep,pd.Series):
+            # print('prepare_text: type=',type(text_data_to_prep))
+            # print(text_data_to_prep)
+            text_joined = delim.join(text_data_to_prep)
+            # text_data_to_prep =  delim.join([str(x) for x in text_data_to_prep])
+        else:
+            text_joined = text_data_to_prep
+            # print('prepare_text: text not list, array, or series')
+
+        self._text_body_for_processing_ = text_joined#text_data_to_prep
+
+        tokenized_text =  self.regexp_tokenize(text_joined)
+        self.tokenized_text_body = tokenized_text
+
+        if self._verbose_>0:
+            print('Text processed and saved as TEXT.tokenized_text')       
+
+
+    def fit_word2vec(self,text_data=None,vector_size=300, window=5, min_count=2, workers=3, epochs=10):
+        """Fits a word2vec model on text_data and saves the model.wv object as TEXT.wv and the full model
+        as ._word2vec_model_"""
+        from gensim.models import Word2Vec
+        import numpy as np
+        import pandas as pd
+
+        if text_data is None:
+            text_data = self.tokenized_text_body
+        elif isinstance(text_data, np.ndarray):
+            text_data = pd.Series(text_data)
+        
+        elif isinstance(text_data,pd.Series):
+            text_data = text_data.apply(lambda x: self.regexp_tokenize(x))
+        else:
+            if self._verbose_ >0:
+                print('Using raw text_data to fit_word2vec')
+
+        # text_data = ' '.join(text_data)
+        wv_keras = Word2Vec(text_data, size=vector_size, window=window, min_count=min_count, workers=workers)
+        wv_keras.train(text_data,total_examples=wv_keras.corpus_count, epochs=epochs)
+                       
+        self._word2vec_model_ =  wv_keras                       
+        self.wv =  wv_keras.wv
+#         vocab_size = len(wv_keras.wv.vocab)
+        print(f'There are {len(self.wv.vocab)} words in the word2vec vocabulary (TEXT.wv), with a vector size {vector_size}.')
+
+
+    def make_stopwords_list(self, incl_punc=True, incl_nums=True, 
+                            add_custom= ['http','https','...','…','``','co','“','’','‘','”',
+                                         "n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]):
+        from nltk.corpus import stopwords
+        import string
+
+        stopwords_list = stopwords.words('english')
+        if incl_punc==True:
+            stopwords_list += list(string.punctuation)
+        stopwords_list += add_custom #['http','https','...','…','``','co','“','’','‘','”',"n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]
+        if incl_nums==True:
+            stopwords_list += [0,1,2,3,4,5,6,7,8,9]
+            
+        self._stopwords_list_ = stopwords_list
+
+        return  stopwords_list
+
+
+    def apply_stopwords(self, text_data, stopwords_list=None, tokenize=True,
+                        pattern = "([a-zA-Z]+(?:'[a-z]+)?)",return_tokens=False):
+        """EX: df['text_stopped'] = df['content'].apply(lambda x: apply_stopwords(stopwords_list,x))"""
+        print('return to .apply_stopwords and verify saved vs unused variables')
+        from nltk import regexp_tokenize
+
+        if stopwords_list is None:
+            stopwords_list = self.make_stopwords_list()
+            
+        if text_data is None:
+            text_data = self._text_data_
+            
+        if tokenize==True:
+            tokenized_text = self.regexp_tokenize(text_data)
+            text_data = tokenized_text
+
+
+        stopped_text = [x.lower() for x in text_data if x.lower() not in stopwords_list]
+
+        if return_tokens==True:
+            return regexp_tokenize(' '.join(stopped_text),pattern)
+        else:
+            return ' '.join(stopped_text)
+        
+        
+        
+
+    
+    def fit_tokenizer(self,text_data=None,labels=None):
+        """Fits Keras Tokenizer using tokenizer.fit_on_texts to create TEXT.X_sequences and 
+        also saves the labels as TEXT.y
+        Tokenizer is saved as TEXT._tokenizer_. 
+        Word Index (tokenizer.index_word)  is saved as TEXT.word_index
+        Reverse dictionary is saved as TEXT.reverse_index"""
+        if text_data is None:
+            text_data = self.tokenized_text_body #_text_data_
+        if labels is None:
+            text_labels = self._text_labels_
+            
+        from keras.preprocessing.text import Tokenizer                   
+        tokenizer = Tokenizer(num_words=len(self.wv.vocab))
+        tokenizer.fit_on_texts(list(text_data) )#tokenizer.fit_on_texts(text_data)
+
+        self._tokenizer_ = tokenizer
+        self.word_index = tokenizer.index_word
+        self.reverse_index =  {v:k for k,v in self.word_index.items()}
+        
+        ## GET SEQUENCES FROM TOKENIZER
+        X_sequences = self.text_to_sequences(text_data = text_data)
+        self.X_sequences  = X_sequences
+        
+        y = text_labels
+        self.y = y
+        if self._verbose_ >0:
+            print('tokenizer fit and TEXT.X_sequences, TEXT.y created')
+
+    # def text_to_sequences(self, text_data, save_to_model=False, regexp_tokenize=False):
+    #     X_seq = self._text_to_sequences_(self, text_data=text_data,save_to_model=save_to_model,regexp_tokenize=regexp_tokenize)
+    #     return X_seq 
+    # def text_to_sequences(self,text_data, save_to_model=False, regexp_tokenize=False):
+    #     """Calls on internval _text_to_sequences_ to return use the fit self._tokenizer 
+    #     to make sequences via self._tokenizer_.texts_to_sequences()"""
+    #     _text_to_sequences_ = self._text_to_sequences_
+    #     X_seq = self._text_to_sequences_(self, text_data= text_data, save_to_model=False, regexp_tokenize=False)
+    #     return X_seq
+
+    def text_to_sequences(self, text_data = None, save_to_model=True, regexp_tokenize=False):        
+        """Uses fit _tokenzier_ to create X_sequences
+        from tokenzier.texts_to_sequences"""
+        import numpy as np
+        import pandas as pd
+
+        if text_data is None:
+            text_data = self.tokenized_text_body #_text_data_
+            
+        elif regexp_tokenize:
+                if isinstance(text_data,pd.Series) | isinstance(text_data, pd.DataFrame):
+                    text_data = text_data.apply(lambda x: self.regexp_tokenize(x))
+                else:
+                    text_data = self.regexp_tokenize(text_data)
+            
+        tokenizer = self._tokenizer_
+        
+        from keras.preprocessing import text, sequence
+        X = tokenizer.texts_to_sequences(text_data)
+        X_sequences = sequence.pad_sequences(X)
+
+        if save_to_model:
+            if self._verbose_ >0:
+                print("saving to self.X_sequences()")
+            self.X_sequences = X_sequences
+
+        else:
+            if self._verbose_ >0:
+                print("X_sequences returned, not save_to_model.")
+
+        return X_sequences
+
+    def sequences_to_text(self,sequences=None):
+        """Return generated sequences back to original text"""
+        if sequences is None:
+            sequences = self.X_sequences
+        
+        tokenizer = self._tokenizer_
+        text_from_seq = tokenizer.sequences_to_texts(sequences)
+        return text_from_seq
+    
+    def regexp_tokenize(self,text_data,pattern="([a-zA-Z]+(?:'[a-z]+)?)"):
+        """Apply nltk's regex_tokenizer using pattern"""
+        # if text_data is None:
+        #     text_data = self._text_body_for_processing_ # self._text_data_
+
+        if pattern is None:
+            pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
+        self._pattern_ = pattern
+
+        # CREATING TEXT DICT FOR FREQUENCY DISTRIBUTIONS
+        from nltk import regexp_tokenize
+        try:
+            tokenized_data = regexp_tokenize(text_data, pattern)
+        except TypeError:
+            print('TypeError: text_data is already tokenized.')
+            tokenized_data = text_data
+            # print('Error using regexp_tokenize')
+            # print(f"Data Type:\t{type(text_data)}")
+            # print(text_data[:100])
+#         self.tokens = tokenized_data
+            # return None
+
+        return tokenized_data
+
+    def get_embedding_layer(self,X_sequences = None,input_size=None, return_matrix=False, return_layer=True):
+        """Uses the word2vec model to construct an embedding_layer for Keras models.
+        To override the default size of the input for the embedding layer, provide an input_size value
+        (which will likely be the size of hte vocabulary being fed in for predictions)."""
+        import numpy as np
+        import pandas as pd        
+
+        if X_sequences is None:
+            X_sequences = self.X_sequences
+
+        if input_size is not None:
+            print('[!] RETURN TO get_embedding_layer to verify when to override vocab_size / input size if input_size is not None')
+        vocab_size = len(self.wv.vocab)
+        vector_size = self.wv.vector_size
+            
+        ## Create the embedding matrix from the vectors in wv model 
+        embedding_matrix = np.zeros((vocab_size + 1, vector_size))
+        for i, vec in enumerate(self.wv.vectors):
+            embedding_matrix[i] = vec
+            embedding_matrix.shape
+        self._embedding_matrix_ = embedding_matrix
+        
+        from keras import layers 
+
+        
+        embedding_layer =layers.Embedding(vocab_size+1,
+                                          vector_size,
+                                          input_length=X_sequences.shape[1],
+                                          weights=[embedding_matrix],
+                                          trainable=False)
+        self.embedding_layer = embedding_layer
+        
+        ## Return outputs
+        return_list=[]
+        if return_matrix:
+            return_list.append(embedding_matrix)
+        if return_layer:
+            return_list.append(embedding_layer)
+        return return_list[:]
+        
+    def make_freq_dist(self, plot=False):
+        """ Fits nltk's FreqDist on tokenized text and saved as .freq_dist"""
+        from nltk import FreqDist
+        freq_dist = FreqDist(self.tokenized_text_body)
+        self.FreqDist = freq_dist
+        
+        if plot==True:
+            self.freq_dist_plot()
+        
+    def freq_dist_plot(self, top_n_words=25):
+        """Create FreqDist plot of top_n_words"""
+        import matplotlib.pyplot as plt
+        try:
+            self.FreqDist
+        except:
+            self.make_freq_dist()
+
+        with plt.style.context('seaborn-notebook'):
+            self.FreqDist.plot(top_n_words)
+        
+    
+    def summary_report(self):
+        """Print summary info about word2vec vocab, vectors, tokenized_text and embedding matrix"""
+        print(f"Word2Vec Vocabulary Size = {len(self.wv.vocab)}")
+        print(f"Word2Vec vector size = {self.wv.vector_size}")
+        print(f"\nLength of tokenized_text = {len(self.tokenized_text_body)}")
+        print(f"_embedding_matrix_ size = {self._embedding_matrix_.shape}")
+        
+        
+    def prepare_text_sequences(self, process_as_tweets=True, tweet_final_col='cleaned_tweets'):
+        """Individually process each entry in text_data for stopword removal and tokenization:
+        stopwords_list = TEXT.make_stopwords_list()"""
+        self.make_stopwords_list()
+
+        if process_as_tweets:
+            self.tweet_specific_processing(tweet_final_col='cleaned_tweets')
+            text_to_process = self.df[tweet_final_col]
+            colname_base = tweet_final_col
+        else:
+            text_to_process = self.df['input_text_data']
+            colname_base = 'text'
+        
+        # Get stopped, non-tokenzied text
+        proc_text_series = text_to_process.apply(lambda x: self.apply_stopwords(x,
+                                                                                stopwords_list=None,
+                                                                                tokenize=True,
+                                                                                return_tokens=False))
+        self.df[colname_base+'_stopped'] = proc_text_series
+        
+        # Get stopped-tokenized text
+        proc_text_tokens = text_to_process.apply(lambda x: self.apply_stopwords(x,
+                                                                        stopwords_list=None,
+                                                                        tokenize=True,
+                                                                        return_tokens=True))
+        self.df[colname_base+'_stopped_tokens'] = proc_text_tokens
+
+        
+    def tweet_specific_processing(self,tweet_final_col='cleaned_tweets'):
+        import re
+        # Get initiial df
+        df = self.df
+        
+        raw_tweet_col = 'input_text_data'
+        fill_content_col = tweet_final_col
+
+        ## PROCESS RETWEETS
+        df['has_RT']=df[raw_tweet_col].str.contains('RT')
+        df['starts_RT']=df[raw_tweet_col].str.contains('^RT')
+        
+        re_RT = re.compile('RT [@]?\w*:')
+
+        df['content_starts_RT'] = df[raw_tweet_col].apply(lambda x: re_RT.findall(x))
+        df[fill_content_col] =  df[raw_tweet_col].apply(lambda x: re_RT.sub(' ',x))
+        
+        
+        ## PROCESS URLS
+        urls = re.compile(r"(http[s]?://\w*\.\w*/+\w+)")
+        
+        check_content_col = fill_content_col
+        df['content_urls'] = df[check_content_col].apply(lambda x: urls.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: urls.sub(' ',x))
+
+        ## PROCESS HASHTAGS
+        hashtags = re.compile(r'\#\w*')
+
+        df['content_hashtags'] =  df[check_content_col].apply(lambda x: hashtags.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: hashtags.sub(' ',x))
+        
+        ## PROCESS MENTIONS
+        # Remove and save mentions (@)'s
+        mentions = re.compile(r'\@\w*')
+        df['content_mentions'] =  df[check_content_col].apply(lambda x: mentions.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: mentions.sub(' ',x))
+
+        
+        self.df = df 
+        def empty_lists_to_strings(x):
+            """Takes a series and replaces any empty lists with an empty string instead."""
+            if len(x)==0:
+                return ' '
+            else:
+                return ' '.join(x) #' '.join(tokens)
+        
+        def help(self):
+            """
+            Initialize TEXT with a df containing the text_data, text_labels(for classificaiton),
+            and a word2vec model.
+            >> txt = TEXT(df_combined,'content_stop',None,word_model)
+            
+            ## FOR GETTING X SEQUENCES FOR NEW INPUT TEXT
+            * To get sequences for each row in a series:
+            >> text_series = df_combined['content_min_clean']
+            >> X_seq = txt.text_to_sequences(text_series,regexp_tokenize=True)
+            
+            * To revert generated sequneces back to text:
+            >> text_from_seq = txt.sequences_to_text(X_seq)
+            
+            ## TO GET CORPUS-WIDE NLP PROCESSING:
+            * for word frequencies:
+            >> txt.freq_dist.#[anything you can get from nltk's FreqDist]
+            """
+
+
+    def replace_embedding_layer(self, twitter_model, input_text_series, verbose=2):
+        """Takes the original Keras model with embedding_layer, a series of new text, a TEXT object,
+        and replaces the embedding_layer (layer[0]) with a new embedding layer with the correct size for new text"""
+        ## CONVERT MODEL TO JSON, REPLACE OLD INPUT LAYER WITH NEW ONE FROM TEXT object
+        json_model = twitter_model.to_json()
+
+        import functions_combined_BEST as ji
+        # pprint(json_model)
+        import json
+        json_model = json.loads(json_model)
+        # ji.display_dict_dropdown(json_model)
+
+        if verbose>0:## Find the exact parameters for shape size that need to change
+            print('---'*10,'\n',"json_model['config']['layers'][0]:")
+            print('\t','batch_input_shape: ',json_model['config']['layers'][0]['config']['batch_input_shape'])
+            print('\t','input_dim: ',json_model['config']['layers'][0]['config']['input_dim'])
+            print('\t','input_length:',json_model['config']['layers'][0]['config']['input_length'])
+
+
+        # Save layer 0 as separate variable to edit, and then replace in the dict
+        layer_0 = json_model['config']['layers'][0]
+        if verbose>0:
+            ji.display_dict_dropdown(layer_0)
+            
+            
+        ## FOR SEQUENCES FROM EXTERNAL NEW TEXT (tweets):
+        X_seq = self.text_to_sequences(text_data = input_text_series,regexp_tokenize=True)
+
+        if verbose>0:
+            ## To get Text back from X_seq:
+            # text_from_seq = TEXT.sequences_to_text(X_seq)
+            print('(num_rows_in_df, num_words_in_vocab)')
+            print(X_seq.shape)
+            
+        ## Get new embedding layer's config  (that is fit to new text)
+        output = self.get_embedding_layer(X_sequences=X_seq,input_size=X_seq.shape[1])
+        new_emb_config = output[0].get_config()
+        
+        ## Copy original model
+        new_json_model = json_model
+        
+        ## Replace old layer 0  config with new_emb_config
+        new_json_model['config']['layers'][0]['config'] = new_emb_config
+        
+        # convert model to string (json.dumps) so can use model_from_json
+        string_model = json.dumps(json_model)    
+        
+        ## Make model from json to return 
+        from keras.models import model_from_json
+        new_model = model_from_json(string_model)
+        
+        return new_model
+
+
+########################################################################################    
+
+
+## NEW FUNCTIONS FOR WORD2VEC AND KERAS TOKENIZATION/SEQUENCE GENERATION
+def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a-zA-Z]+(?:'[a-z]+)?)",
+                       vector_size=300,window=3,min_count=1,workers=3,epochs=10,summary=True, return_full=False):
+    
+    ## Regexp_tokenize text_column
+    from nltk import regexp_tokenize
+    text_data = df[text_column].apply(lambda x: regexp_tokenize(x, regex_pattern))
+
+    ## Instantiate Word2Vec Model
+    from gensim.models import Word2Vec
+    vector_size = 300
+    wv_keras = Word2Vec(text_data, size=vector_size, window=window, min_count=min_count, workers=workers)
+    
+    # Train Word2Vec Model
+    wv_keras.train(text_data,total_examples=wv_keras.corpus_count, epochs=epochs)
+
+    
+    ## Display summary
+    if summary:
+        wv = wv_keras.wv
+        vocab_size = len(wv_keras.wv.vocab)
+        print(f'Word2Vec model trained using:   min_count={min_count}, window={window}, over {epochs} epochs.')
+        print(f'There are {vocab_size} words the vocabulary, with a vector size {vector_size}.')
+        if return_full:
+            ans = 'full model'
+        else:
+            ans = 'model.wv'
+        
+        print(f'- output is {ans}')
+        
+    if return_full:
+        return wv_keras
+    else:
+        return wv_keras.wv
+    
+def get_wv_from_word2vec(word2vec_model):
+    """Checks if model is full word2vec or .wv attribute. 
+    Returns wv."""
+    import gensim 
+    if isinstance(word2vec_model,gensim.models.word2vec.Word2Vec):
+        wv = word2vec_model.wv
+    elif isinstance(word2vec_model,gensim.models.keyedvectors.Word2VecKeyedVectors):
+        wv = word2vec_model
+    return wv
+
+
+
+def make_embedding_matrix(word2vec_model,verbose=1):#,X_sequences = None,input_size=None):#, return_matrix=False, return_layer=True):
+        """Uses the word2vec model to construct an embedding_layer for Keras models.
+        To override the default size of the input for the embedding layer, provide an input_size value
+        (which will likely be the size of hte vocabulary being fed in for predictions)."""
+        import numpy as np
+        import pandas as pd     
+        
+        wv = get_wv_from_word2vec(word2vec_model)
+        vocab_size = len(wv.vocab)
+        vector_size = wv.vector_size
+            
+        ## Create the embedding matrix from the vectors in wv model 
+        embedding_matrix = np.zeros((vocab_size + 1, vector_size))
+        for i, vec in enumerate(wv.vectors):
+            embedding_matrix[i] = vec
+            embedding_matrix.shape
+            
+        if verbose:
+            print(f'embedding_matrix.shape = {embedding_matrix.shape}')
+        
+        return embedding_matrix
+
+def make_keras_embedding_layer(word2vec_model,X_sequences,embedding_matrix= None):
+        """Creates an embedding layer for Kera's neural networks using the 
+        embedding matrix and text X_sequences"""
+        if embedding_matrix is None:
+            embedding_matrix = make_embedding_matrix(word2vec_model,verbose=0)
+        
+        wv = get_wv_from_word2vec(word2vec_model)
+        vocab_size = len(wv.vocab)
+        vector_size = wv.vector_size
+                
+        from keras import layers         
+        embedding_layer =layers.Embedding(vocab_size+1,
+                                          vector_size,
+                                          input_length=X_sequences.shape[1],
+                                          weights=[embedding_matrix],
+                                          trainable=False)
+        return embedding_layer
+
+    
+def get_tokenizer_and_text_sequences(word2vec_model,text_data):    
+    # sentences_train =text_data # df_tokenize['tokens'].values
+    from keras.preprocessing.text import Tokenizer
+    wv = get_wv_from_word2vec(word2vec_model)
+
+    tokenizer = Tokenizer(num_words=len(wv.vocab))
+    
+    ## FIGURE OUT WHICH VERSION TO USE WITH SERIES:
+    tokenizer.fit_on_texts(text_data)
+#     tokenizer.fit_on_texts(list(text_data)) 
+
+    word_index = tokenizer.index_word
+    reverse_index = {v:k for k,v in word_index.items()}
+    
+    # return integer-encoded sentences
+    from keras.preprocessing import text, sequence
+    X = tokenizer.texts_to_sequences(text_data)
+    X = sequence.pad_sequences(X)
+    return tokenizer, X
+
+
+########################################################################################    
+    
+
+def search_for_tweets_with_word(twitter_df,word, from_column='content_min_clean',n=50, ascending=False,
+                                return_index=False, display_df=True, display_cols = [
+                                    'retweet_count','favorite_count','source',
+                                    'compound_score','sentiment_class']):
+    """Searches the df's `from_column` for the specified `word`.
+    - if display_df: Displays first `n` rows of styled dataframe with, columns=`display_cols`.
+        - display the most-recent or oldest tweets using `ascending` parameter.
+    - if return_index: return the datetimeindex of the tweets containing the word."""
+    import pandas as pd
+    import functions_combined_BEST as ji
+    from IPython.display import display
+    import numpy as np
+
+    ## Make list of cols starting with from_column and adding display_cols
+    select_cols = [from_column]
+    [select_cols.append(x) for x in display_cols]
+    
+    # Create new df copy with select_cols
+    df = twitter_df[select_cols].copy()
+    
+    ## Check from_column for word.lower() in text.lower()
+    check_word = df[from_column].apply(lambda x: True if word.lower() in x.lower() else False)
+    # Tally number of tweets containing word
+    found_words = np.sum([1 for x in check_word if x ==True])
+    
+    ## Get rows with the searched word
+    res_df_ = df.loc[check_word]
+    
+    # Save datetime index to output before changing
+    output_index = res_df_.index
+    
+    ## Sort res_df_ by datetime index, before resetting index
+    res_df_.sort_index(inplace=True, ascending=ascending)
+    res_df_.reset_index(inplace=True)
+    
+    
+    # Take n # of rows from the top of the dataframe
+    if n is None:
+        n=res_df_.shape[0]-1
+        
+    res_df = res_df_.iloc[:n,:]
+    
+    
+    ## Set table_style for display df.styler
+    table_style =[{'selector':'caption',
+                'props':[('font-size','1.3em'),
+                         ('color','darkblue'),
+                         ('font-weight','semibold'),
+                        ('text-align','left')]},
+                 {'selector':'th',
+                  'props':[('font-size','1.1em'),('text-align','center')]}]
+#                  {'selector':'td','props':[('pad','0.1em')]}]
+    
+    ## Caption for df
+    capt_text = f'Tweets Containing "{word}" ({res_df.shape[0]} of {found_words})'
+    
+    ## Create styled df with caption, table_style, hidden index, and text columns formatted
+    dfs = res_df.style.hide_index().\
+    set_caption(capt_text).set_properties(subset=[from_column],
+                                          **{'width':'400px',
+                                            'text-align':'center',
+                                            'padding':'2em',
+                                            'font-size':'1.2em'}).set_table_styles(table_style)
+    ## Display dataframe if display_df
+    if display_df:
+        display(dfs)
+        remaining_tweets = found_words - n
+        next_index = res_df_['date'].iloc[n+1]
+
+        print(f'\t * there are {remaining_tweets} tweets not shown. Next index = {next_index}')
+    
+    ## Return datetimeindex of all found tweets with the word
+    if return_index==True:
+        return output_index
+
+    
+
+
+
+def compare_freq_dists(text1,label1,text2,label2,top_n=20,figsize=(12,6),style='seaborn-poster', display_df=False):
+    from nltk import FreqDist
+    import pandas as pd
+    from IPython.display import display
+    freq_1 = FreqDist(text1)
+    freq_2 = FreqDist(text2)
+
+    df_compare=pd.DataFrame()
+    df_compare[label1] = freq_1.most_common(top_n)
+    df_compare[label2] = freq_2.most_common(top_n)
+    if display_df:
+        display(df_compare)
+
+    ## Plot dists
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl 
+
+    with plt.style.context(style):
+        mpl.rcParams['figure.figsize']=(12,6)
+        plt.title(f'{top_n} Most Frequent Words - {label1}')
+        freq_1.plot(25)
+        plt.title(f'{top_n} Most Frequent Words - {label2}')
+        freq_2.plot(25)
+
+# def compare_freq_dists_unique_words(text1,label1,text2,label2,top_n=20,figsize=(12,6)):
+
+
+
+
+def compare_word_clouds(text1,label1,text2,label2,suptitle_text='', cfg_dict=None, twitter_shaped=True,from_freq_dicts=False,
+fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=False, filepath_folder="figures/",**kwargs):
+    """Compares the wordclouds from 2 sets of texts. 
+    text1,text2:
+        If `from_freq_dicts`=False, texts must be non-tokenized form bodies of text.
+        If `from_freq_dicts`=True, texts must be a frequency dictionary with keys=words, value=count
+    
+    label1,label2:
+        string names/labels for the resulting wordcloud subplot titles
+    
+    cfg_dict:
+        a dictionary with altnerative parameters for creation of WordClouds
+        defaults are :
+                {'max_font_size':100, 'width':400, 'height':400,
+                'max_words':150, 'background_color':'white', 
+                'cloud_stopwords':make_stopwords_list(),
+                'collocations':False, 'contour_color':'cornflowerblue', 'contour_width':2}
+
+    twitter_shaped:
+        if true, local images of twitter logo will be used as a mask for the shape of the generated wordclouds. 
+        if false, wordclouds will be rectangular (shape=specified 'width' and 'height' config keys)
+
+    save_file:
+        if True, saves .png to filepath_folder using suptitle as name (if given), else filename='wordcloud_figure.png'
+
+    **kwargs:
+        valid keywords: 
+        - 'subplot_titles_fontdict':{any_matplotlib_text_kwds:values} # for ax.set_title() # passed as fontdict=fontdict
+        - 'suptitle_fontdict':{any_matplotlib_text_kwds:values} # fontdict for plt.suptitle() # passed as **fontdict 
+        - 'imshow':{'interpolation': #options are ['none', 'nearest', 'bilinear', 'bicubic', 'spline16',
+                    'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric', 'catrom',
+                     'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos'] }
+
+        """
+    import functions_combined_BEST as ji
+    from wordcloud import WordCloud
+    import matplotlib.pyplot as plt
+    from PIL import Image
+    import numpy as np
+
+    default_cfg={
+                'max_font_size':100, 'width':400, 'height':400,
+                'max_words':150, 'background_color':'white', 
+                'cloud_stopwords':make_stopwords_list(),
+                'collocations':False, 
+                'contour_color':'cornflowerblue',
+                'contour_width':2
+                }
+    ## Use default config if none provided
+    if cfg_dict is None:
+        cfg = default_cfg
+
+    else:
+        ## Fill in any default config keys that the user did not specify
+        for k,v in default_cfg.items():
+            if k not in cfg_dict.keys():
+                cfg_dict[k] = default_cfg[k]
+        cfg = cfg_dict
+
+
+    # instantiate the two word clouds using cfg dictionary parametrs
+    wordcloud1 = WordCloud(max_font_size = cfg['max_font_size'], width=cfg['width'], height=cfg['height'], max_words=cfg['max_words'],
+    background_color=cfg['background_color'], stopwords=cfg['cloud_stopwords'],collocations=cfg['collocations'],
+    contour_color=cfg['contour_color'], contour_width=cfg['contour_width'])
+
+
+
+    wordcloud2 = WordCloud(max_font_size = cfg['max_font_size'], width=cfg['width'], height=cfg['height'], max_words=cfg['max_words'],
+    background_color=cfg['background_color'], stopwords=cfg['cloud_stopwords'],collocations=cfg['collocations'], 
+    contour_color=cfg['contour_color'], contour_width=cfg['contour_width'])
+
+    ## Add .mask attribute to wordclouds if twitter_shaped==True
+    if twitter_shaped ==True:
+        ## Twitter Bird masks
+        mask_f_right = np.array(Image.open('figures/masks/twitter1.png'))
+        mask_f_left = np.array(Image.open('figures/masks/twitter1flip.png'))
+        
+        ## Assign the images to text1 and text2
+        mask1=mask_f_right
+        mask2=mask_f_left
+
+        # Hashtag and mentions mask 
+        # mask_at = np.array(Image.open('figures/masks/Hashtags and Ats Masks-04.jpg'))
+        # mask_hashtag = np.array(Image.open('figures/masks/Hashtags and Ats Masks-03.jpg'))
+
+        wordcloud1.mask=mask1
+        wordcloud2.mask=mask2
+
+
+    ## Fit wordclouds to text
+    if from_freq_dicts==False:
+        wordcloud1.generate(text1)                                          
+        wordcloud2.generate(text2)
+    
+    elif from_freq_dicts==True:
+        wordcloud1.generate_from_frequencies(text1)
+        wordcloud2.generate_from_frequencies(text2)
+
+
+
+    ## PLOTTING THE WORDCLOUDS
+
+    ## Fill in params dictionary with defaults
+    params= {}
+    params['subplot_titles_fontdict'] = {'fontsize':30}
+    params['suptitle_fontdict'] = {'fontsize':40}
+    params['imshow']= {'interpolation':'gaussian'}
+
+    ## Check for kwargs replacements to defaults
+    to_do = ['subplot_titles_fontdict','suptitle_fontdict','imshow']
+    for td in to_do:
+        if td in kwargs and kwargs[td] is not None:
+            params[td] = kwargs[td]
+
+    
+    ## CREATE SUBPLOTS
+    import matplotlib.pyplot as plt
+    fig,ax = plt.subplots(nrows=1,ncols=2,figsize=fig_size)
+    fig.suptitle(suptitle_text,y=suptitle_y_loc,**params['suptitle_fontdict'])
+
+    ## Left Subplot  
+    ax[0].imshow(wordcloud1, interpolation=params['imshow']['interpolation'])
+    ax[0].axis("off")
+    ax[0].set_title(label1, y=subplot_titles_y_loc,fontdict=params['subplot_titles_fontdict'] )
+
+    ## Right Subplot
+    ax[1].imshow(wordcloud2, interpolation=params['imshow']['interpolation'])
+    ax[1].axis("off")
+    ax[1].set_title(label2, y=subplot_titles_y_loc,fontdict=params['subplot_titles_fontdict'] )
+
+    plt.tight_layout()
+    plt.show()
+
+    if save_file:
+        if len(suptitle_text)==0:
+            filename = filepath_folder + 'wordcloud_figure.png'
+        
+        else:
+            title_for_filename = ji.replace_bad_filename_chars(suptitle_text,replace_spaces=False, replace_with='_')
+            filename = filepath_folder + title_for_filename+'.png'
+
+        fig.savefig(filename,facecolor=cfg['background_color'], format='png', frameon=True)
+        print(f'figured saved as {filename}')
+
+    return fig, ax
+
+
+
+################################################### ADDITIONAL NLP #####################################################
+## Adding in stopword removal to the actual dataframe
+def make_stopwords_list(incl_punc=True, incl_nums=True, add_custom= ['http','https','...','…','``','co','“','’','‘','”',"n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]):
+    from nltk.corpus import stopwords
+    import string
+
+    stopwords_list = stopwords.words('english')
+    if incl_punc==True:
+        stopwords_list += list(string.punctuation)
+    stopwords_list += add_custom #['http','https','...','…','``','co','“','’','‘','”',"n't","''",'u','s',"'s",'|','\\|','amp',"i'm"]
+    if incl_nums==True:
+        stopwords_list += ['0','1','2','3','4','5','6','7','8','9']#[0,1,2,3,4,5,6,7,8,9]
+    
+    return  stopwords_list
+
+
+def apply_stopwords(stopwords_list,  text, tokenize=True,return_tokens=False, pattern = "([a-zA-Z]+(?:'[a-z]+)?)"):
+    """EX: df['text_stopped'] = df['content'].apply(lambda x: apply_stopwords(stopwords_list,x))"""
+    from nltk import regexp_tokenize
+    pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
+    if tokenize==True:
+        from nltk import regexp_tokenize
+        
+        text = regexp_tokenize(text,pattern)
+        
+    stopped = [x.lower() for x in text if x.lower() not in stopwords_list]
+
+    if return_tokens==True:
+        return regexp_tokenize(' '.join(stopped),pattern)
+    else:
+        return ' '.join(stopped)
+
+def empty_lists_to_strings(x):
+    """Takes a series and replaces any empty lists with an empty string instead."""
+    if len(x)==0:
+        return ' '
+    else:
+        return ' '.join(x) #' '.join(tokens)
+
+def load_raw_twitter_file(filename ='data/trumptwitterarchive_export_08_23_2019.csv', date_as_index=True,rename_map={'text':'content','created_at':'date'}): 
+    """import raw copy and pasted to csv export from http://www.trumptwitterarchive.com/archive. 
+    Rename columns indicated in rename_map and sets the index to a datetimeindex copy of date column."""    
+    # old link'data/trump_tweets_01202017_06202019.csv'
+    import pandas as pd
+
+    df = pd.read_csv(filename, encoding='utf-8')
+    mapper=rename_map
+    df.rename(axis=1,mapper=mapper,inplace=True)
+    df['date']=pd.to_datetime(df['date'])
+    if date_as_index==True:
+        df.set_index('date',inplace=True,drop=False)
+    # df.head()
+    return df
+
+
+
+
+## NEW 07/11/19 - function for all sentiment analysis
+
+def full_sentiment_analysis(twitter_df, source_column='content_min_clean',separate_cols=True):#, plot_results=True):
+    from nltk.sentiment.vader import SentimentIntensityAnalyzer
+    sid = SentimentIntensityAnalyzer()
+
+    source_column='content_min_clean'
+    twitter_df['sentiment_scores'] = twitter_df[source_column].apply(lambda x: sid.polarity_scores(x))
+    twitter_df['compound_score'] = twitter_df['sentiment_scores'].apply(lambda dict: dict['compound'])
+    twitter_df['sentiment_class'] = twitter_df['compound_score'].apply(lambda score: 'pos' if score >=0 else 'neg')
+    
+    
+    # Separate result dictionary into columns  (optional)
+    if separate_cols==True:
+        # Separate Scores into separate columns in df
+        twitter_df_out = get_group_sentiment_scores(twitter_df)
+    else:
+        twitter_df_out = twitter_df
+        
+    
+#     # plot results (optional)
+#     if plot_results==True:
+        
+#         print("RESULTS OF SENTIMENT ANALYSIS BINARY CLASSIFICATION:\n",'-'*60)
+#         # Normalized % of troll sentiment classes
+#         plot_sent_class = twitter_df_out['sentiment_class'].value_counts()
+#         plot_sent_class_norm = plot_sent_class/(sum(plot_sent_class))
+#         print('\tNormalized Troll Classes:\n',plot_sent_class_norm)
+
+
+#         with plt.style.context('seaborn-notebook'):
+#             boxplot = df_sents.boxplot(column=['neg','neu','pos'],notch=True,figsize=(6,4))
+#             boxplot.set_xticklabels(['Negative','Neutral','Positive']);
+#             boxplot.set_title('Sentiment Scores By Word Type')
+#             boxplot.set_ylabel('Sentiment Score')
+    
+    return twitter_df_out
+        
+        
+
+# Write a function to extract the group scores from the dataframe
+def get_group_sentiment_scores(df, score_col='sentiment_scores'):
+    import pandas as pd
+    series_df = df[score_col]
+    series_neg = series_df.apply(lambda x: x['neg'])
+    series_pos = series_df.apply(lambda x: x['pos'])
+    series_neu = series_df.apply(lambda x: x['neu'])
+    
+    series_neg.name='neg'
+    series_pos.name='pos'
+    series_neu.name='neu'
+    
+    df = pd.concat([df,series_neg,series_neu,series_pos],axis=1)
+    return df
+
+
+
+
+
+
+def full_twitter_df_processing(df,raw_tweet_col='content', name_for_cleaned_tweet_col='content_cleaned', name_for_stopped_col=None,
+name_for_tokenzied_stopped_col = None, use_col_for_case_ratio='content_min_clean', use_col_for_sentiment='content_min_clean', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
+    """Accepts df_full, which contains the raw tweets to process, the raw_col name, the column to fill.
+    If force=False, returns error if the fill_content_col already exists.
+    Processing Workflow:1) Create has_RT, starts_RT columns. 2) Creates [fill_content_col,`content_min_clean`] cols after removing 'RT @mention:' and urls.
+    3) Removes hashtags from fill_content_col and saves hashtags in new col. 4) Removes mentions from fill_content_col and saves to new column."""
+    # Save 'hashtags' column containing all hastags
+    import re
+    from nltk import regexp_tokenize
+    pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
+    track_fill_content_col=0
+    cleaned_tweet_col = name_for_cleaned_tweet_col
+    fill_content_col = cleaned_tweet_col
+
+    if force==False:
+        if cleaned_tweet_col in df.columns:
+            raise Exception(f'{fill_content_col} already exists. To overwrite, set force=True.')
+
+    if RT ==True:
+
+        # Creating columns for tweets that `has_RT` or `starts_RT`
+        df['has_RT']=df[raw_tweet_col].str.contains('RT')
+        df['starts_RT']=df[raw_tweet_col].str.contains('^RT')
+
+        ## FIRST REMOVE THE RT HEADERS
+
+        # Remove `RT @Mentions` FIRST:
+        re_RT = re.compile('RT [@]?\w*:')
+
+        check_content_col = raw_tweet_col
+        fill_content_col = cleaned_tweet_col
+
+        df['content_starts_RT'] = df[check_content_col].apply(lambda x: re_RT.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: re_RT.sub(' ',x))
+        track_fill_content_col+=1
+
+
+    if urls==True:
+        ## SECOND REMOVE URLS
+        # Remove urls with regex
+        urls = re.compile(r"(http[s]?://\w*\.\w*/+\w+)")
+        
+        if track_fill_content_col==0:
+            check_content_col = raw_tweet_col
+        else:
+            check_content_col = fill_content_col
+
+        fill_content_col = fill_content_col
+
+        # df_full['content_urls'] = df_full[check_content_col].apply(lambda x: urls.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: urls.sub(' ',x))
+
+        ## SAVE THIS MINIMALLY CLEANED CONTENT AS 'content_min_clean'
+        df['content_min_clean'] =  df[fill_content_col]
+        track_fill_content_col+=1
+
+    if hashtags==True:
+
+        if track_fill_content_col==0:
+            check_content_col = raw_tweet_col
+        else:
+            check_content_col = fill_content_col
+
+        fill_content_col = fill_content_col
+
+        ## REMOVE AND SAVE HASHTAGS, MENTIONS
+        # Remove and save Hashtags
+        hashtags = re.compile(r'\#\w*')
+
+        df['content_hashtags'] =  df[check_content_col].apply(lambda x: hashtags.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: hashtags.sub(' ',x))
+        track_fill_content_col+=1
+        
+        if str_tags_mentions==True: 
+            df['hashtag_strings'] = df['content_hashtags'].apply(lambda x: empty_lists_to_strings(x))
+        
+
+    if mentions==True:
+
+        if track_fill_content_col==0:
+            check_content_col = raw_tweet_col
+        else:
+            check_content_col = fill_content_col
+
+        fill_content_col = fill_content_col
+
+        # Remove and save mentions (@)'s
+        mentions = re.compile(r'\@\w*')
+
+
+        df['content_mentions'] =  df[check_content_col].apply(lambda x: mentions.findall(x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: mentions.sub(' ',x))
+        track_fill_content_col+=1
+
+        if str_tags_mentions==True: 
+            df['mention_strings'] = df['content_mentions'].apply(lambda x: empty_lists_to_strings(x))
+
+
+    ## Creating content_stopped columns and then tokens_stopped column
+    if name_for_stopped_col is None:
+        stop_col_name = fill_content_col+'_stop'
+    else: 
+        stop_col_name = name_for_stopped_col
+    print('[i] stopped text column: ',stop_col_name)
+
+    if name_for_tokenzied_stopped_col is None:
+        stopped_tok_col_name =  fill_content_col+'_stop_tokens'
+    else:
+        stopped_tok_col_name = name_for_tokenzied_stopped_col
+    print('[i] tokenized stopped text column: ',stopped_tok_col_name)
+
+    if len(stopwords_list)==0:
+        stopwords_list=make_stopwords_list()
+
+    df[stop_col_name] = df[fill_content_col].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=False, pattern=pattern))
+    df[stopped_tok_col_name] = df[stop_col_name].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=True, pattern=pattern))
+
+    
+    ## Case Ratio Calculation (optional)
+    if use_col_for_case_ratio is not None:
+        df['case_ratio'] = df[use_col_for_case_ratio].apply(lambda x: case_ratio(x))
+
+    ## Sentiment Analysis (optional)
+    if use_col_for_sentiment is not None:
+        df = full_sentiment_analysis(df,source_column=use_col_for_sentiment,separate_cols=True)
+    
+    df.sort_index(inplace=True)
+    return df
+
+
+
+def case_ratio(msg):
+    """Accepts a twitter message (or used with .apply(lambda x:)).
+    Returns the ratio of capitalized characters out of the total number of characters.
+    
+    EX:
+    df['case_ratio'] = df['text'].apply(lambda x: case_ratio(x))"""
+    import numpy as np
+    msg_length = len(msg)
+    test_upper = [1 for x in msg if x.isupper()]
+    test_lower = [1 for x in msg if x.islower()]
+    test_ratio = np.round(sum(test_upper)/msg_length,5)
+    return test_ratio
+
