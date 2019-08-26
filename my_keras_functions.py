@@ -696,9 +696,9 @@ def thiels_U(ys_true=None, ys_pred=None,display_equation=True,display_table=True
     return U
 
 
-def plot_confusion_matrix(conf_matrix, classes, normalize=False,
+def plot_confusion_matrix(conf_matrix, classes = None, normalize=False,
                           title='Confusion Matrix', cmap=None,
-                          print_raw_matrix=False,fig_size=(5,5)):
+                          print_raw_matrix=False,fig_size=(5,5), show_help=False):
     """Check if Normalization Option is Set to True. If so, normalize the raw confusion matrix before visualizing
     #Other code should be equivalent to your previous function.
     Note: Taken from bs_ds and modified"""
@@ -759,7 +759,12 @@ def plot_confusion_matrix(conf_matrix, classes, normalize=False,
     plt.title(title,**fontDict['title'])
     plt.colorbar()
     
+    if classes is None:
+        classes = ['negative','positive']
+        
     tick_marks = np.arange(len(classes))
+
+
     plt.xticks(tick_marks, classes, **fontDict['xtick_labels'])
     plt.yticks(tick_marks, classes,**fontDict['ytick_labels'])
 
@@ -769,8 +774,7 @@ def plot_confusion_matrix(conf_matrix, classes, normalize=False,
 
     # fig,ax = plt.subplots()
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 color="white" if cm[i, j] > thresh else "black",**fontDict['data_labels'])
+        plt.text(j, i, format(cm[i, j], fmt), color='darkgray',**fontDict['data_labels'])#color="white" if cm[i, j] > thresh else "black"
 
     plt.tight_layout()
     plt.ylabel('True label',**fontDict['ylabel'])
@@ -782,6 +786,15 @@ def plot_confusion_matrix(conf_matrix, classes, normalize=False,
         print_title = 'Raw Confusion Matrix Counts:'
         print('\n',print_title)
         print(conf_matrix)
+
+    if show_help:
+        print('''For binary classifications:
+        [[0,0(true_neg),  0,1(false_pos)]
+        [1,0(false_neg), 1,1(true_pos)] ]
+        
+        to get vals as vars:
+        >>  tn,fp,fn,tp=confusion_matrix(y_test,y_hat_test).ravel()
+                ''')
 
     return fig
 
@@ -1814,12 +1827,13 @@ from_train_preds=False):
 
 
 def evaluate_classification(model, history, X_train,X_test,y_train,y_test, 
-                            conf_matrix_classes= ['Increase','Decrease'],
+                            conf_matrix_classes= ['Decrease','Increase'],
                             normalize_conf_matrix=True,conf_matrix_figsize=(8,4),
                             save_conf_matrix_png=False, png_filename = 'results/confusion_matrix.png'):
 
     """Evaluates kera's model's performance, plots model's history,displays classification report,
     and plots a confusion matrix. 
+    conf_matrix_classes are the labels for the matrix. [negative, positive]
     Returns df of classification report and fig object for  confusion matrix's plot."""
 
     from sklearn.metrics import roc_auc_score, roc_curve, classification_report,confusion_matrix
@@ -1853,10 +1867,6 @@ def evaluate_classification(model, history, X_train,X_test,y_train,y_test,
     print(f'    - Accuracy:{accuracy_test:{numFmt}}')
     print(f'    - Loss:{loss_test:{numFmt}}\n')
 
-    
-    print('---'*num_dashes)
-    print('\tCLASSIFICATION REPORT:')
-    print('---'*num_dashes)
 
     ## Get model predictions
     y_hat_train = model.predict_classes(X_train)
@@ -1870,6 +1880,12 @@ def evaluate_classification(model, history, X_train,X_test,y_train,y_test,
     ## Create and display classification report
     df_report =pd.DataFrame.from_dict(report_dict,orient='index')#class_rows,orient='index')
     df_report.reset_index(inplace=True)
+
+        
+    print('---'*num_dashes)
+    print('\tCLASSIFICATION REPORT:')
+    print('---'*num_dashes)
+
     display(df_report.round(4).style.hide_index().set_caption('Classification Report'))
     print('\n')
     

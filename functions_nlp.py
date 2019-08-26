@@ -514,8 +514,9 @@ class TEXT(object):
 
 ## NEW FUNCTIONS FOR WORD2VEC AND KERAS TOKENIZATION/SEQUENCE GENERATION
 def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a-zA-Z]+(?:'[a-z]+)?)",
-                       vector_size=300,window=3,min_count=1,workers=3,epochs=10,summary=True, return_full=False):
+                       vector_size=300,window=3,min_count=1, workers=3,epochs=10,summary=True, return_full=False,**kwargs):
     
+
     ## Regexp_tokenize text_column
     from nltk import regexp_tokenize
     text_data = df[text_column].apply(lambda x: regexp_tokenize(x, regex_pattern))
@@ -523,7 +524,20 @@ def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a
     ## Instantiate Word2Vec Model
     from gensim.models import Word2Vec
     vector_size = 300
-    wv_keras = Word2Vec(text_data, size=vector_size, window=window, min_count=min_count, workers=workers)
+
+    w2v_params = {'sg':1, #skip-gram=1
+    'hs':0, #1=heirarchyical softmarx, if 0, and 'negative' is non-zero, use negative sampling
+    'negative': 5, # number of 'noisy" words to remove by negative sampling
+    'ns_exponent': 0.75, # value between -1 to 1. 0.0 samples all words equaly, 1.0 samples proportional to frequency, negative value=lowfrequency words sampled more
+    }
+
+    for k,v in kwargs.items():
+        if k in w2v_params:
+            w2v_params[k] = v
+
+    print(w2v_params)
+    wv_keras = Word2Vec(text_data, size=vector_size, window=window, min_count=min_count, sg=w2v_params['sg'],
+     hs=w2v_params['hs'], negative=w2v_params['negative'], ns_exponent=w2v_params['ns_exponent'], workers=workers)
     
     # Train Word2Vec Model
     wv_keras.train(text_data,total_examples=wv_keras.corpus_count, epochs=epochs)
@@ -727,7 +741,40 @@ def compare_freq_dists(text1,label1,text2,label2,top_n=20,figsize=(12,6),style='
         plt.title(f'{top_n} Most Frequent Words - {label2}')
         freq_2.plot(25)
 
-# def compare_freq_dists_unique_words(text1,label1,text2,label2,top_n=20,figsize=(12,6)):
+def compare_freq_dists_unique_words(text1,label1,text2, label2,top_n=20, display_dfs=True, return_as_dicts=False):
+    from nltk import FreqDist
+    import bs_ds as bs
+    import pandas as pd
+    text1_dist = FreqDist(text1)#twitter_df_groups['text1']['text_tokens'])
+    text1_words = list(text1_dist.keys())
+    
+    text2_dist = FreqDist(text2)#twitter_df_groups['text2']['text_tokens'])
+    text2_words = list(text2_dist.keys())
+
+    text2_not_text1 = {k:v for k,v in text2_dist.items() if k not in text1_dist.keys()}
+    text1_not_text2 = {k:v for k,v in text1_dist.items() if k not in text2_dist.keys()}
+
+    df_text2_words = pd.DataFrame.from_dict(text2_not_text1,orient='index',columns=['Frequency'])
+    df_text1_words = pd.DataFrame.from_dict(text1_not_text2,orient='index',columns=['Frequency'])
+
+    dfs = ['df_text2_words','df_text1_words']
+    for df in dfs:
+        df_ = eval(df)
+        df_.sort_values('Frequency',ascending=False,inplace=True)
+        name= df.split('_')[1].title()
+
+        df_.index.name=f'Unique {name} Words'
+        df_.reset_index(inplace=True)
+
+    if display_dfs:
+        dfs_1 = df_text1_words.head(top_n).style.hide_index().set_caption(label1)
+        dfs_2 = df_text2_words.head(top_n).style.hide_index().set_caption(label2)
+        bs.display_side_by_side(dfs_1,dfs_2)
+
+    if return_as_dicts == False:
+        return  df_text1_words, df_text2_words
+    else:
+        return  text1_not_text2, text2_not_text1
 
 
 
@@ -919,7 +966,7 @@ def empty_lists_to_strings(x):
     else:
         return ' '.join(x) #' '.join(tokens)
 
-def load_raw_twitter_file(filename ='data/trumptwitterarchive_export_08_23_2019.csv', date_as_index=True,rename_map={'text':'content','created_at':'date'}): 
+def load_raw_twitter_file(filename ='data/trumptwitterarchive_export_iphone_only__08_23_2019.csv', date_as_index=True,rename_map={'text':'content','created_at':'date'}): 
     """import raw copy and pasted to csv export from http://www.trumptwitterarchive.com/archive. 
     Rename columns indicated in rename_map and sets the index to a datetimeindex copy of date column."""    
     # old link'data/trump_tweets_01202017_06202019.csv'
@@ -1053,6 +1100,10 @@ name_for_tokenzied_stopped_col = None, use_col_for_case_ratio='content_min_clean
         df['content_min_clean'] =  df[fill_content_col]
         track_fill_content_col+=1
 
+
+    ## 08/25 ADDING REMOVAL OF @ And # SYMBOLS FOR MIN CLEAN
+    df['content_min_clean'] =   df['content_min_clean'].apply(lambda x: x.replace('@',' ').replace('#',' '))
+
     if hashtags==True:
 
         if track_fill_content_col==0:
@@ -1141,3 +1192,34 @@ def case_ratio(msg):
     test_ratio = np.round(sum(test_upper)/msg_length,5)
     return test_ratio
 
+
+def get_group_texts_for_word_cloud(twitter_df, text_column='content_min_clean', groupby_column='delta_price_class'):
+    
+    groups = twitter_df.groupby(groupby_column).groups
+    group_df_dict = {}
+    for group in groups.keys():
+        group_df = twitter_df.groupby(groupby_column).get_group(group)
+        group_df_dict[group]= {'df':group_df}
+        
+    
+    group_text_dict = {}
+    for k,v in group_df_dict.items():
+        df = v['df']
+        
+        from nltk import regexp_tokenize
+        pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
+        text = df[text_column] #.apply(lambda x: regexp_tokenize(x,pattern))
+        text = ','.join(text.values)
+        
+        text_tokens = regexp_tokenize(text, pattern)
+        
+        group_text_dict[k]={}
+        group_df_dict[k]['text_tokens']= text_tokens
+        group_text_dict[k]['tokens']=text_tokens
+        
+        text_joined = ' '.join(text_tokens)
+        
+        group_df_dict[k]['joined']=text_joined
+        group_text_dict[k]['joined']=text_joined
+        
+    return group_df_dict, group_text_dict

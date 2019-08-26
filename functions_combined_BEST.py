@@ -291,27 +291,72 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
 
 
 #################################################### STOCK ##############################################################
-def column_report(twitter_df, decision_map=None, sort_column=None, ascending=True, interactive=True):
+def column_report(twitter_df, name_for_note_col = 'Action', decision_map=None, format_dict=None, sort_column=None, return_df = False, ascending=True, qgrid=True, interactive=False):
+
+    """
+    Returns a datafarme summary of the columns, their dtype,  a summary dataframe with the column name, column dtypes, and a `decision_map` dictionary of 
+    datatype
+    """
     from ipywidgets import interact
     import pandas as pd
-    df_dtypes=pd.DataFrame()
-    df_dtypes = pd.DataFrame({'Column #': range(len(twitter_df.columns)),'Column Name':twitter_df.columns,
-                              'Data Types':twitter_df.dtypes.astype('str')}).set_index('Column Name') #.set_index('Column Name')
+
+    # format_dict = {'sum':'${0:,.0f}', 'date': '{:%m-%Y}', 'pct_of_total': '{:.2%}'}
+    # monthly_sales.style.format(format_dict).hide_index()
+    def count_col_zeros(df, columns=None):
+        import pandas as pd 
+        import numpy as np
+        # Make a list of keys for every column  (for series index)
+        zeros = pd.Series(index=df.columns)
+        # use all cols by default
+        if columns is None:
+            columns=df.columns
+            
+        # get sum of zero values for each column
+        for col in columns:
+            zeros[col] = np.sum( df[col].values == 0)
+        return zeros
+
+
+    ##     
+    df_report = pd.DataFrame({'.iloc[:, i]': range(len(twitter_df.columns)),
+                            'column Name':twitter_df.columns,
+                            'dtypes':twitter_df.dtypes.astype('str'),
+                            '# zeros': count_col_zeros(twitter_df),
+                            '# null': twitter_df.isna().sum(),
+                            '% null (%)':twitter_df.isna().sum().divide(twitter_df.shape[0]).mul(100).round(2)})
+
+    df_report.set_index('.iloc[:, i]',inplace=True)
+
+    ## Add additonal column with notes 
+    # decision_map_keys = ['by_name', 'by_dtype','by_iloc']
+    if decision_map is None:
+
+        decision_map['by_dtype'] = {'object':'Check if should be one hot coded',
+                        'int64':'May be  class object, or count of a ',
+                        'bool':'one hot',
+                        'float64':'drop and recalculate'}
+
+
+    df_report[name_for_note_col] = df_report['dtypes'].map(decision_map['by_dtype'])#column_list
+#     df_report.style.set_caption('DF Columns, Dtypes, and Course of Action')
     
-    decision_map = {'object':'join','int64':'sum','bool':'to_list()?','float64':'drop and recalculate'}
-    
-    df_dtypes['Action'] = df_dtypes['Data Types'].map(decision_map)#column_list
-#     df_dtypes.style.set_caption('DF Columns, Dtypes, and Course of Action')
-    
+    ## 
     if sort_column is not None:
-        df_dtypes.sort_values(by =sort_column,ascending=ascending, axis=0, inplace=True)
-    if interactive==False:
-        return df_dtypes
+        df_report.sort_values(by =sort_column,ascending=ascending, axis=0, inplace=True)
+
+    if return_df:
+        return df_report
+
+    elif qgrid:
+        import qgrid
+        qdf = qgrid.show_qrid(df_report) 
+        return qdf
+
     else: 
         
-        @interact(column= df_dtypes.columns,direction={'ascending':True,'descending':False})
+        @interact(column= df_report.columns,direction={'ascending':True,'descending':False})
         def sort_df(column, direction):
-            return df_dtypes.sort_values(by=column,axis=0,ascending=direction)        
+            return df_report.sort_values(by=column,axis=0,ascending=direction)        
 
 
 
@@ -395,9 +440,8 @@ def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill'
     if freq=='CBH':
         freq=custom_BH_freq()
 #         start_idx = 
-        
     # Change frequency to freq
-    ive_df = ive_df.asfreq(freq,)#'min')
+    ive_df = ive_df.asfreq(freq)#'min')
     
     #     # Set timezone
     #     if set_tz==True:
@@ -406,7 +450,7 @@ def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill'
     
     # Report Success / Details
     if verbose>1:
-        print(f"Post-Change\t{ive_df.index.freq}\t{ive_df.index[0]}\t{ive_df.index[-1]}")
+        print(f"[i] Post-Change\t{ive_df.index.freq}\t{ive_df.index[0]}\t{ive_df.index[-1]}")
 
 
     ## FILL AND TRACK TIMEPOINTS WITH MISSING DATA    
@@ -441,6 +485,7 @@ def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill'
     ive_df['filled_timebin'] = ive_df['filled_timebin'] >0
             
     ## FILL IN NULL VALUES
+    ive_df.sort_index(inplace=True, ascending=True)        
     ive_df.fillna(method=fill_method, inplace=True)
 
     # Report # filled
@@ -473,14 +518,15 @@ def check_null_times(x):
     else:
         return False
     
+
 ##################### DATASET LOADING FUNCTIONS #####################   
-def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.txt', 
+def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.csv', 
                                folderpath='data/',
                                start_index = '2016-12-01',
                                  clean=True,fill_or_drop_null='drop',fill_method='ffill',
                                  freq='CBH',verbose=2):
     """- Loads in the IVE_bidask1min data from text file, adds column headers.
-        - Original stock data file: 'IVE_bidask1min.txt'
+        - Original stock data file: 'IVE_bidask1min.txt', 'IVE_bidask1min_08_23_2019.txt'
     - Creates datetimeindex from Date/Time cols, but keeps the 'datetime_index` column in the df.  
         - Limits data to specified `start_index` date(defualt='2016-12-01').
 
@@ -502,56 +548,96 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.txt',
 
     # Load in the text file and set headers
     fullfilename= folderpath+filename
-    headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
-    stock_df = pd.read_csv(fullfilename, names=headers,parse_dates=True)
+    print(f"[i] Loading {fullfilename}...\n")
 
+    ## IF USING TRUE RAW TXT FILES:
+    ext = filename.split('.')[-1]
+    if 'txt' in ext:
 
+        headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
+        stock_df = pd.read_csv(fullfilename, names=headers,parse_dates=True)
+
+        # Create datetime index
+        date_time_index = (stock_df['Date']+' '+stock_df['Time']).rename('date_time_index')
+        stock_df['date_time_index'] = pd.to_datetime(date_time_index)
+
+        # stock_df.set_index('date_time_index', inplace=True, drop=False)
+        # stock_df.sort_index(inplace=True, ascending=True)
     
-    # Create datetime index
-    date_time_index = (stock_df['Date']+' '+stock_df['Time']).rename('date_time_index')
-    stock_df['date_time_index'] = pd.to_datetime(date_time_index)
+    elif 'csv' in ext: # USING THE PARTIAL PROCESSED (size reduced, datetime index)
+        stock_df = pd.read_csv(fullfilename, parse_dates=True)
+        stock_df['date_time_index'] = pd.to_datetime( stock_df['date_time_index'])
+    else:
+        raise Exception('file extension not csv or txt')
+    
     stock_df.set_index('date_time_index', inplace=True, drop=False)
 
-
-    # Add _metadata to stock_df
-    stock_df._metadata={'filename':fullfilename, 'original_index':ji.index_report(stock_df,return_index_dict=True)}
-
-
     # Select only the days after start_index
-    stock_df = stock_df[start_index:]
-    # print(f'\nRestricting stock_df to index {start_index}-forward')
+    if verbose>0: 
+        print(f"[i] Exlcuding data earlier than {start_index}.")
+    
+    ## Continue processing
+    stock_df.sort_index(inplace=True, ascending=True)  
+    # remove earlier data
+    stock_df = stock_df.loc[start_index:]
+    
+
     
     # Remove 0's from BidClose
     if clean==True:
+        # Get number of zeros
+        num_zeros= len(stock_df.loc[stock_df['BidClose']==0])
 
-        print(f"There are {len(stock_df.loc[stock_df['BidClose']==0])} '0' values for 'BidClose'")
+        # Replacing 0's with np.nan
         stock_df.loc[stock_df['BidClose']==0] = np.nan
+
+        # get count of null values
         num_null = stock_df['BidClose'].isna().sum()
-        print(f'\tReplaced 0 with np.nan. There are {num_null} null values to address.')
+
+        if verbose>1:
+            print(f'[i] Cleaning 0 values: replaced {num_zeros} zeroes in "BidClose" with np.nan ...".')
         
+        ## handle the new null values
         if fill_or_drop_null=='drop':
-            print("\tsince fill_or_drop_null=drop, dropping null values from BidClose.")
+            if verbose>0:
+                print("\t- dropping null values (`fill_or_drop_null`).")
             stock_df.dropna(subset=['BidClose'],axis=0, inplace=True)
 
         elif fill_or_drop_null=='fill':
-            print(f"\tsince fill_or_drop_null=fill, using fill_method={fill_method} to fill BidClose.")
-
+            if verbose>0:
+                print(f'\t- filling null values using fill_method: "{fill_method}"')
+            # print(f'\tsince fill_or_drop_null=fill, using fill_method={fill_method} to fill BidClose.')
+            stock_df.sort_index(inplace=True,ascending=True)
             stock_df['BidClose'].fillna(method=fill_method, inplace=True)
         
         # if verbose>0:
             # print(f"Number of 0 values:\n{len(stock_df.loc[stock_df['BidClose']==0])}")
             # print(f"Filling 0 values using method = {fill_method}")
+
     # call set_timeindex_freq to specify proper frequency
     if freq is not None:
         # Set the time index .
-        print(f'Setting the timeindex to freq{freq}')
-        stock_df = set_timeindex_freq(stock_df, freq=freq, fill_method = fill_method, verbose=verbose)
-                  
+        if verbose>0:
+            print(f'[i] Converting the datetimeindex to `freq` "{freq}"')
+            print(f'\t- addressing resulting null values using fill_method {fill_method}...')
+
+        stock_df = set_timeindex_freq(stock_df, freq=freq, fill_method = fill_method, verbose=0)
+
+    # sort data so newest at top
+    stock_df.sort_index(inplace=True, ascending=False)           
+
     # Display feedback
-    if verbose>0:
-        display(stock_df.head())
     if verbose>1:
-        print(stock_df.index[[0,-1]],stock_df.index.freq)
+        cap = f"Data Loaded from {fullfilename}"
+        display(stock_df.head().style.set_caption(cap))
+
+    if verbose>0:
+        try:
+            index_report(stock_df)
+        except:
+            print('[!] Error in index_report')
+            print(stock_df.index)
+        # print(stock_df.index[[0,-1]],stock_df.index.freq)
 
     return stock_df
 
@@ -1591,13 +1677,13 @@ def plot_fit_cloud(troll_cloud,contr_cloud,label1='Troll',label2='Control'):
     return fig, ax
 
 
-def display_random_tweets(df_tokenize,n=5 ,display_cols=['content','text_for_vectors','tokens'], group_labels=[],verbose=True):
+def display_random_tweets(df_tokenize,n=5 ,display_cols=['content','content_min_clean','cleaned_stopped_content'], group_labels=[],verbose=True):
     """Takes df_tokenize['text_for_vectors']"""
     import numpy as np
     import pandas as pd 
     from IPython.display import display
-    if len(group_labels)==0:
 
+    if len(group_labels)==0:
         group_labels = display_cols
 
     
@@ -2342,8 +2428,9 @@ def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21'
     return fig
 
 #BOOKMARK    
-def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=False, verbose=0,figsize=(14,4)):
-    
+def plot_true_vs_preds_subplots(train_price, test_price, pred_price, figsize=(14,4), subplots=True,save_fig=False,filename=None, verbose=0,):
+    if save_fig==True and filename is None:
+        raise Exception('Must provide filename if save_fig is True')
     from sklearn.metrics import mean_squared_error
     import matplotlib.pyplot as plt
     import matplotlib as mpl
@@ -2460,9 +2547,12 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, subplots=Fa
     # # ANNOTATING RMSE
     # RMSE = np.sqrt(mean_squared_error(test_price,pred_price))
     # bbox_props = dict(boxstyle="square,pad=0.5", fc="white", ec="k", lw=0.5)
-    
-    # plt.annotate(f"RMSE: {RMSE.round(3)}",xycoords='figure fraction', xy=(0.085,0.85),bbox=bbox_props)
     plt.tight_layout()
+
+    # plt.annotate(f"RMSE: {RMSE.round(3)}",xycoords='figure fraction', xy=(0.085,0.85),bbox=bbox_props)
+    if save_fig:
+        fig.savefig(filename,facecolor='white', format='png', frameon=True)
+        print(f'[i] Figure saved as {filename}')
     if subplots==True:
         return fig, ax1,ax2
     else:
@@ -3326,6 +3416,8 @@ def get_stock_prices_for_twitter_data(twitter_df, stock_prices, time_after_tweet
     # twitter_df.drop(['0'],axis=1,inplace=True)
     twitter_df = new_twitter_df
     twitter_df['delta_price_class'] = np.where(twitter_df['delta_price'] > 0,'pos','neg')
+    twitter_df['delta_price_class_int']=twitter_df['delta_price_class'].apply(lambda x: 1 if x=='pos' else 0) #y = [1 if x=='pos' else 0  for x in df_sampled['delta_price_class']]
+
 
     # twitter_df.drop([0],axis=1, inplace=True)
     # display(twitter_df.head())
@@ -3334,30 +3426,6 @@ def get_stock_prices_for_twitter_data(twitter_df, stock_prices, time_after_tweet
     return twitter_df
 
 
-
-def index_report(df, time_fmt = '%Y-%m-%d %T', return_index_dict=False):
-    """Sorts dataframe index, prints index's start and end points and its datetime frequency.
-    if return_index_dict=True then it returns these values in a dictionary as well as printing them."""
-    import pandas as pd
-    df.sort_index(inplace=True)
-
-    index_info = {'index_start': df.index[0].strftime(time_fmt), 'index_end':df.index[-1].strftime(time_fmt),
-                'index_freq':df.index.freq}
-
-    if df.index.freq is None:
-        try:
-            index_info['inferred_index_freq'] = pd.infer_freq(df.index)
-        except:
-            index_info['inferred_index_freq'] = 'error'
-
-
-    print(f"* Index Endpoints:\n\t{df.index[0].strftime(time_fmt)} -- to -- {df.index[-1].strftime(time_fmt)}")
-    print(f'* Index Freq:\n\t{df.index.freq}')
-
-    if return_index_dict == True:
-        return index_info
-    else:
-        return
 
 
 def preview_dict(d, n=5,print_or_menu='print',return_list=False):
@@ -3614,8 +3682,8 @@ def inspect_variables(local_vars = None,sort_col='size',exclude_funcs_mods=True,
 
 
 def display_same_tweet_diff_cols(df_sampled,index=None,columns = ['content' ,'content_min_clean',
-                                                                'clean_content', 'clean_content_stop',
-                                                                'clean_content_stop_tokens'],
+                                                                'cleaned_stopped_content',
+                                                                'cleaned_stopped_tokens'],
                                                                  as_df = False, as_md=False,
                                                                  time_format='%m-%d-%Y %T'):
     """Displays the contents each column for a specific index = i; 
@@ -3762,3 +3830,175 @@ def check_if_str_is_date(string, fuzzy=False):
 
     except ValueError:
         return False
+
+
+
+def check_class_balance(df,col ='delta_price_class_int',note='',
+                        as_percent=True, as_raw=True):
+    dashes = '--'*20
+    print('\n')
+    print(dashes)
+    print(f'CLASS VALUE COUNTS FOR COL "{col}":')
+    print(dashes)
+    # print(f'Class Value Counts (col: {col}) {note}\n')
+    
+    ## Check for class value counts to see if resampling/balancing is needed
+    class_counts = df[col].value_counts()
+    
+    if as_percent:
+        print('class by %:\n',class_counts/len(df))
+    if as_percent and as_raw:
+        print('\n')
+    if as_raw:
+        print('class raw counts:\n',class_counts)
+    
+
+
+def check_for_duplicated_columns(twitter_df, always_return_df=True, remove=False):
+    ## remove any duplicated columns
+    duped = twitter_df.columns.duplicated()
+    dashes='---'*20
+    print('\n')
+    print(dashes)
+    print('DUPLCATE COLUMNS REPORT:')
+    print(dashes)
+
+    if any(duped):
+        print('Duplicate columns to remove:')
+        print(' - ',twitter_df.columns[duped==True])
+    else:
+        print('[i] No duplicate columns.')
+        if always_return_df:
+            print(f'>> returning original df...')
+            return twitter_df
+
+    if remove:
+        print('\n[i] Removing duplicated columns (since remove==True)')
+        # remove columns
+        twitter_df = twitter_df.loc[:,~twitter_df.columns.duplicated()]
+        # twitter_df.columns.duplicated()
+        print('>> returning cleaned df...')
+        return twitter_df
+    
+    
+    else:
+        print('\n[!] Duplicated columns remain (since remove==False)')
+    if always_return_df:
+        print(f'>> returning original df...')
+        return twitter_df
+
+    else: 
+        print('\n[!] No df returned.')
+
+
+
+## Correcting for errant long tweet
+def get_len_of_tweet(x):
+    if isinstance(x, list):
+        text = ' '.join(x)
+    elif isinstance(x, str):
+        text=x
+    
+    return len(x)
+
+## 
+def check_length_string_column(df,str_col='content',length_cutoff = 350,display_describe=True,return_idx=True ):
+    from IPython.display import display
+    import pandas as pd
+    dashes = '---'*20
+    str_length = df[str_col].apply(lambda x: get_len_of_tweet(x))
+    
+    ## save describe to a horizontal dataframe
+    len_report = str_length.describe()
+    str_report = pd.DataFrame(len_report).T
+    
+    print('\n')
+    print(dashes)
+    print('STRING LENGTH REPORT:')
+    print(dashes)
+    ## get # of rows above length_cutoff
+    num_outliers = df.loc[str_length>length_cutoff].shape[0]
+    print(f'Found {num_outliers} # of strings above cutoff of {length_cutoff} chars.')
+
+    if display_describe:
+        display(str_report.style.set_caption(f'.descibe() Stats for "{str_col}" Strings'))
+    '---'*20
+    # return indices of outliers 
+    if return_idx:
+        idx_remove =str_length.loc[str_length>length_cutoff].index
+        idx_keep_tf = df[str_col].apply(lambda x: get_len_of_tweet(x)<=length_cutoff)
+        return idx_keep_tf
+
+
+
+
+def index_report(df, time_fmt = '%Y-%m-%d %T', return_index_dict=False):
+    """Sorts dataframe index, prints index's start and end points and its datetime frequency.
+    if return_index_dict=True then it returns these values in a dictionary as well as printing them."""
+    import pandas as pd
+    df.sort_index(inplace=True)
+
+    index_info = {'index_start': df.index[0].strftime(time_fmt), 'index_end':df.index[-1].strftime(time_fmt),
+                'index_freq':df.index.freq}
+
+    if df.index.freq is None:
+        try:
+            index_info['inferred_index_freq'] = pd.infer_freq(df.index)
+        except:
+            index_info['inferred_index_freq'] = 'error'
+    dashes = '---'*20
+    print('\n')
+    print(dashes)
+    print("INDEX REPORT:")
+    print(dashes)
+    print(f"* Index Endpoints:\n\t{df.index[0].strftime(time_fmt)} -- to -- {df.index[-1].strftime(time_fmt)}")
+    print(f'* Index Freq:\n\t{df.index.freq}')
+    print('\n')
+    # print(dashes)
+
+    if return_index_dict == True:
+        return index_info
+    else:
+        return
+
+
+def undersample_df_to_match_classes(df,class_column='delta_price_class' , verbose=1):
+    """Resamples (undersamples) input df so that the classes in class_column have equal number of occruances."""
+    import pandas as pd
+    ##  Get value counts and classes
+    class_counts = df[class_column].value_counts()
+    classes = list(class_counts.index)
+    class0, class1 = classes
+
+    if verbose>0:
+        print('Initial Class Value Counts:')
+        print('%: ',class_counts/len(df))
+
+    ## Check counts to determine which classes' counts should be matched
+    if class_counts[classes[0]] > class_counts[classes[1]]:
+        class_to_match = classes[1]
+        
+    elif class_counts[classes[1]] > class_counts[classes[0]]:
+        class_to_match = classes[0]
+    else:
+        raise Exception('Classes are already balanced')
+        
+    # get number of samples to match
+    count_to_match = class_counts[class_to_match]
+
+    ## Separate classes to sample count_to_match from each.
+    df_sampled_class0 =  df.loc[df[class_column] == classes[0]].sample(n=count_to_match)
+    df_sampled_class1 =  df.loc[df[class_column] == classes[1]].sample(n=count_to_match)
+    
+    ## Combine class dfs and sort_index
+    df_sampled = pd.concat([df_sampled_class0,df_sampled_class1], axis=0)
+    df_sampled.sort_index(inplace=True)
+
+    if verbose>0:
+        check_class_balance(df_sampled, col=class_column)
+        # class_counts = [class_column].value_counts()
+
+        # print('Final Class Value Counts:')
+        # print('%: ',class_counts/len(df))
+    
+    return df_sampled
