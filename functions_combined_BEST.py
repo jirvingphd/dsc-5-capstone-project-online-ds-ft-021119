@@ -260,20 +260,24 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
 
         banner = ''.join(["---"*2,' SOURCE -',"---"*23])
         print(banner)
+        try:
+            import inspect
+            source_DF = inspect.getsource(function_or_mod)            
 
-        import inspect
-        source_DF = inspect.getsource(function_or_mod)
+            if colab == False:
+                # display(Markdown(f'___\n'))
+                output = "```python" +'\n'+source_DF+'\n'+"```"
+                # print(source_DF)    
+                display(Markdown(output))
+            else:
 
-        if colab == False:
-            # display(Markdown(f'___\n'))
-            output = "```python" +'\n'+source_DF+'\n'+"```"
-            # print(source_DF)    
-            display(Markdown(output))
-        else:
+                print(banner)
+                print(source_DF)
 
-            print(banner)
-            print(source_DF)
-        
+        except TypeError:
+            pass
+            # display(Markdown)
+            
     
     if file_location:
         file_loc = inspect.getfile(function_or_mod)
@@ -291,14 +295,84 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
 
 
 #################################################### STOCK ##############################################################
-def column_report(twitter_df, name_for_note_col = 'Action', decision_map=None, format_dict=None, sort_column=None, return_df = False, ascending=True, qgrid=True, interactive=False):
+def column_report(twitter_df,index_col='iloc', sort_column='iloc', ascending=True,name_for_notes_col = 'Notes',notes_by_dtype=False,
+ decision_map=None, format_dict=None,   as_qgrid=True, qgrid_options=None, qgrid_column_options=None,qgrid_col_defs=None, qgrid_callback=None,
+ as_df = False, as_interactive_df=False, show_and_return=True):
 
     """
     Returns a datafarme summary of the columns, their dtype,  a summary dataframe with the column name, column dtypes, and a `decision_map` dictionary of 
     datatype
+    Default qgrid options:
+       default_grid_options={
+        # SlickGrid options
+        'fullWidthRows': True,
+        'syncColumnCellResize': True,
+        'forceFitColumns': True,
+        'defaultColumnWidth': 50,
+        'rowHeight': 25,
+        'enableColumnReorder': True,
+        'enableTextSelectionOnCells': True,
+        'editable': True,
+        'autoEdit': False,
+        'explicitInitialization': True,
+
+        # Qgrid options
+        'maxVisibleRows': 30,
+        'minVisibleRows': 8,
+        'sortable': True,
+        'filterable': True,
+        'highlightSelectedCell': True,
+        'highlightSelectedRow': True
+    }
     """
     from ipywidgets import interact
     import pandas as pd
+    from IPython.display import display
+    import qgrid
+    small_col_width = 20
+
+    default_col_options={'width':20}
+
+    default_column_definitions={'column name':{'width':60}, '.iloc[:,i]':{'width':small_col_width}, 'dtypes':{'width':30}, '# zeros':{'width':small_col_width},
+                    '# null':{'width':small_col_width},'% null':{'width':small_col_width}, name_for_notes_col:{'width':100}}
+
+    default_grid_options={
+        # SlickGrid options
+        'fullWidthRows': True,
+        'syncColumnCellResize': True,
+        'forceFitColumns': True,
+        'defaultColumnWidth': 50,
+        'rowHeight': 25,
+        'enableColumnReorder': True,
+        'enableTextSelectionOnCells': True,
+        'editable': True,
+        'autoEdit': False,
+        'explicitInitialization': True,
+
+        # Qgrid options
+        'maxVisibleRows': 30,
+        'minVisibleRows': 8,
+        'sortable': True,
+        'filterable': True,
+        'highlightSelectedCell': True,
+        'highlightSelectedRow': True
+    }
+
+    ## Set the params to defaults, to then be overriden 
+    column_definitions = default_column_definitions
+    grid_options=default_grid_options
+    column_options = default_col_options
+
+    if qgrid_options is not None:
+        for k,v in qgrid_options.items():
+            grid_options[k]=v
+
+    if qgrid_col_defs is not None:
+        for k,v in qgrid_col_defs.items():
+            column_definitions[k]=v
+    else:
+        column_definitions = default_column_definitions
+            
 
     # format_dict = {'sum':'${0:,.0f}', 'date': '{:%m-%Y}', 'pct_of_total': '{:.2%}'}
     # monthly_sales.style.format(format_dict).hide_index()
@@ -318,45 +392,62 @@ def column_report(twitter_df, name_for_note_col = 'Action', decision_map=None, f
 
 
     ##     
-    df_report = pd.DataFrame({'.iloc[:, i]': range(len(twitter_df.columns)),
-                            'column Name':twitter_df.columns,
+    df_report = pd.DataFrame({'.iloc[:,i]': range(len(twitter_df.columns)),
+                            'column name':twitter_df.columns,
                             'dtypes':twitter_df.dtypes.astype('str'),
                             '# zeros': count_col_zeros(twitter_df),
                             '# null': twitter_df.isna().sum(),
-                            '% null (%)':twitter_df.isna().sum().divide(twitter_df.shape[0]).mul(100).round(2)})
+                            '% null':twitter_df.isna().sum().divide(twitter_df.shape[0]).mul(100).round(2)})
+    ## Sort by index_col 
+    if 'iloc' in index_col:
+        index_col = '.iloc[:,i]'
 
-    df_report.set_index('.iloc[:, i]',inplace=True)
+    df_report.set_index(index_col ,inplace=True)
 
     ## Add additonal column with notes 
     # decision_map_keys = ['by_name', 'by_dtype','by_iloc']
     if decision_map is None:
-
+        decision_map ={}
         decision_map['by_dtype'] = {'object':'Check if should be one hot coded',
                         'int64':'May be  class object, or count of a ',
                         'bool':'one hot',
                         'float64':'drop and recalculate'}
 
-
-    df_report[name_for_note_col] = df_report['dtypes'].map(decision_map['by_dtype'])#column_list
+    if notes_by_dtype:
+        df_report[name_for_notes_col] = df_report['dtypes'].map(decision_map['by_dtype'])#column_list
+    else:
+        df_report[name_for_notes_col] = ''
 #     df_report.style.set_caption('DF Columns, Dtypes, and Course of Action')
     
-    ## 
-    if sort_column is not None:
-        df_report.sort_values(by =sort_column,ascending=ascending, axis=0, inplace=True)
+    ##  Sort column
+    if sort_column is None:
+        sort_column = '.iloc[:,i]'
 
-    if return_df:
+    
+    if 'iloc' in sort_column:
+        sort_column = '.iloc[:,i]'
+
+    df_report.sort_values(by =sort_column,ascending=ascending, axis=0, inplace=True)
+
+    if as_df:
+        if show_and_return:
+            display(df_report)
         return df_report
 
-    elif qgrid:
-        import qgrid
-        qdf = qgrid.show_qrid(df_report) 
+    elif as_qgrid:
+        print('[i] qgrid returned. Use gqrid.get_changed_df() to get edited df back.')
+        qdf = qgrid.show_grid(df_report,grid_options=grid_options, column_options=qgrid_column_options, column_definitions=column_definitions,row_edit_callback=qgrid_callback  ) 
+        if show_and_return:
+            display(qdf)
         return qdf
 
-    else: 
+    elif as_interactive_df:
         
         @interact(column= df_report.columns,direction={'ascending':True,'descending':False})
         def sort_df(column, direction):
-            return df_report.sort_values(by=column,axis=0,ascending=direction)        
+            return df_report.sort_values(by=column,axis=0,ascending=direction)
+    else:
+        raise Exception('One of the output options must be true: `as_qgrid`,`as_df`,`as_interactive_df`')
 
 
 
@@ -424,7 +515,7 @@ def get_day_window_size_from_freq(dataset, CBH=custom_BH_freq()):#, freq='CBH'):
 
     
     
-def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill',
+def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_nulls = True, fill_with_val_or_method='method',fill_val= None, fill_method='ffill',
                         verbose=3): #set_tz=True,
     
     import pandas as pd
@@ -485,13 +576,25 @@ def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill'
     ive_df['filled_timebin'] = ive_df['filled_timebin'] >0
             
     ## FILL IN NULL VALUES
-    ive_df.sort_index(inplace=True, ascending=True)        
-    ive_df.fillna(method=fill_method, inplace=True)
+    ive_df.sort_index(inplace=True, ascending=True)     
+
+    if fill_nulls:
+        if 'method' in fill_with_val_or_method:# =='fill':
+            if fill_method is not None:
+                ive_df.fillna(method=fill_method, inplace=True)
+            else:
+                raise Exception('[!] fill_method not specified')
+
+        elif 'val' in fill_with_val_or_method:
+            if fill_val is not None:
+                ive_df.fillna(fill_val,inplace=True)
+            else:
+                raise Exception('[!] fill_val not specified')
 
     # Report # filled
     if verbose>0:
         check_fill = ive_df.loc[ive_df['filled_timebin']>0]
-        print(f'\nFilled {len(check_fill==True)}# of rows using method {fill_method}')
+        print(f'\n[i] Filled {len(check_fill==True)}# of rows using method {fill_method}')
     
     # Report any remaning null values
     if verbose>0:
@@ -504,7 +607,7 @@ def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_method='ffill'
             
     # display header
     if verbose>2:
-        from ipython import display
+        from IPython.display import display
         display(ive_df.head())
     
     return ive_df
@@ -521,7 +624,7 @@ def check_null_times(x):
 
 ##################### DATASET LOADING FUNCTIONS #####################   
 def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.csv', 
-                               folderpath='data/',
+                               folderpath=None,
                                start_index = '2016-12-01',
                                  clean=True,fill_or_drop_null='drop',fill_method='ffill',
                                  freq='CBH',verbose=2):
@@ -547,7 +650,10 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.csv',
     import functions_combined_BEST as ji
 
     # Load in the text file and set headers
-    fullfilename= folderpath+filename
+    if folderpath is not None:
+        fullfilename= folderpath+filename
+    else:
+        fullfilename = filename
     print(f"[i] Loading {fullfilename}...\n")
 
     ## IF USING TRUE RAW TXT FILES:
@@ -595,7 +701,7 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.csv',
         num_null = stock_df['BidClose'].isna().sum()
 
         if verbose>1:
-            print(f'[i] Cleaning 0 values: replaced {num_zeros} zeroes in "BidClose" with np.nan ...".')
+            print(f'[i] Cleaning 0 values:\n\t -replaced {num_zeros} zeroes in "BidClose" with np.nan ...".')
         
         ## handle the new null values
         if fill_or_drop_null=='drop':
@@ -627,9 +733,7 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.csv',
     stock_df.sort_index(inplace=True, ascending=False)           
 
     # Display feedback
-    if verbose>1:
-        cap = f"Data Loaded from {fullfilename}"
-        display(stock_df.head().style.set_caption(cap))
+
 
     if verbose>0:
         try:
@@ -638,6 +742,10 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.csv',
             print('[!] Error in index_report')
             print(stock_df.index)
         # print(stock_df.index[[0,-1]],stock_df.index.freq)
+
+    if verbose>1:
+        cap = f"Data Loaded from {fullfilename}"
+        display(stock_df.head().style.set_caption(cap))
 
     return stock_df
 
@@ -1962,6 +2070,9 @@ def auto_filename_time(prefix='model',sep='_',timeformat='%m-%d-%Y_%I%M%p'):
 
 
 
+def dict_dropdown(dict_to_display,title='Dictionary Contents'):
+    """Alternative name to call `display_dict_dropdown`"""
+    display_dict_dropdown(dict_to_display=dict_to_display, title=title)
 
 def display_dict_dropdown(dict_to_display,title='Dictionary Contents' ):
     """Display the model_params dictionary as a dropdown menu."""
@@ -2203,16 +2314,19 @@ def def_my_layout_solar_theme():
 
 
 def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Price',theme='solar',
-as_figure = False): #,name='S&P500 Price'):
+as_figure = False,show_fig=True): #,name='S&P500 Price'):
     import plotly
     from IPython.display import display
         
     # else:
     import plotly.offline as py
+    from plotly.offline import plot, iplot, init_notebook_mode
+
     import plotly.tools as tls
     import plotly.graph_objs as go
     import cufflinks as cf
     cf.go_offline()
+    init_notebook_mode(connected=False)
 
     # py.init_notebook_mode(connected=True)
     # Set title
@@ -2244,15 +2358,15 @@ as_figure = False): #,name='S&P500 Price'):
 
         # if no columns specified, use the whole df
         if (y_col is None) and (x_col is None):
-            fig = stock_df.iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
+            fig = stock_df.iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True)
 
         # else plot y_col 
         elif (y_col is not None) and (x_col is None):
-            fig = stock_df[y_col].iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
+            fig = stock_df[y_col].iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True)
         
         #  else plot x_col vs y_col
         else:
-            fig = stock_df.iplot(x=x_col,y=y_col, asDates=True, layout=my_layout,world_readable=True,asFigure=as_figure)
+            fig = stock_df.iplot(x=x_col,y=y_col, asDates=True, layout=my_layout,world_readable=True,asFigure=True)
     
     
     ## IF using verson v4.0 of plotly
@@ -2299,6 +2413,7 @@ as_figure = False): #,name='S&P500 Price'):
             ),
 
             yaxis = go.layout.YAxis(
+                        autorange=True,
                         title=go.layout.yaxis.Title(
                             text = 'S&P500 Price',
                             font=dict(
@@ -2311,10 +2426,12 @@ as_figure = False): #,name='S&P500 Price'):
         
     # fig.show()
     # display(fig)
+    if show_fig:
+        iplot(fig)
     if as_figure:
         return fig
-    else:
-        return#display(fig)#fig
+    # else:
+        # return iplot(fig)#display(fig)#fig
 
 
 def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):
@@ -2388,7 +2505,7 @@ def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):
     return fig
 
 def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21', '26ema', '12ema', 
-'upper_band', 'lower_band', 'ema', 'momentum'],x_col=None, theme='solar', verbose=0,figsize=(14,4)):
+'upper_band', 'lower_band', 'ema', 'momentum'],x_col=None, theme='solar', as_figure =True, verbose=0,figsize=(14,4)):
 
     from plotly.offline import init_notebook_mode, plot, iplot, iplot_mpl
 
@@ -2401,7 +2518,7 @@ def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21'
     # if len(train_price)>0:
     df=stock_df[plot_indicators].copy()
     df.dropna(inplace=True)
-    fig = plotly_time_series(df,x_col=x_col,y_col=plot_indicators, as_figure=True)
+    fig = plotly_time_series(df,x_col=x_col,y_col=plot_indicators, show_fig=False, as_figure=True)
 
     # FIND THE PRICE TRACE AND CHANGE ITS PROPERTIES, PUT IT ON TOP
     temp_data = list(fig['data'])
@@ -2733,7 +2850,7 @@ def load_processed_stock_data(processed_data_filename = 'data/_stock_df_with_tec
     current_files = os.listdir()
 
     # Run all processing on raw data if file not found.
-    if (force_from_raw == True) or (processed_data_filename not in current_files):
+    if (force_from_raw == True):# or (processed_data_filename not in current_files):
         
         print(f'[!] File not found. Processing raw data using custom ji functions...')
         print('1) ji.load_raw_stock_data_from_text\n2) ji.get_technical_indicators,dropping na from column "ma21"')
@@ -2754,7 +2871,7 @@ def load_processed_stock_data(processed_data_filename = 'data/_stock_df_with_tec
 
 
     # load processed_data_filename if found
-    elif processed_data_filename in current_files:
+    else:# processed_data_filename in current_files:
 
         print(f'>> File found. Loading {processed_data_filename}')
         
@@ -2773,31 +2890,84 @@ def load_processed_stock_data(processed_data_filename = 'data/_stock_df_with_tec
 
 
 
-def ihelp_menu(function_names,show_source=True,show_help=False):
-    from ipywidgets import interact
+def ihelp_menu(function_names,show_help=False,show_source=True):
+    """Accepts a list of functions or function_names as strings.
+    if show_help: display `help(function`.
+    if show_source: retreive source code and display as proper markdown syntax"""
+    from ipywidgets import interact, interactive, interactive_output
+    import ipywidgets as widgets
+    from IPython.display import display
     from functions_combined_BEST import ihelp
     import functions_combined_BEST as ji
     import inspect
     import pandas as pd
     
+    if isinstance(function_names,list)==False:
+        function_names = [function_names]
     functions_dict = dict()
     for fun in function_names:
         if isinstance(fun, str):
+            # module = 
             functions_dict[fun] = eval(fun)
 
         elif inspect.isfunction(fun):
 
             members= inspect.getmembers(fun)
             member_df = pd.DataFrame(members,columns=['param','values']).set_index('param')
-            
+
             fun_name = member_df.loc['__name__'].values[0]
             functions_dict[fun_name] = fun
-            
 
-    @interact(functions_dict=functions_dict,show_help=show_help,show_source=show_source)
-    def help_menu(show_help=show_help,show_source=show_source,functions=functions_dict):
-        return ihelp(functions, show_help=show_help, show_code=show_source)
 
+
+    ## Check boxes
+    check_help = widgets.Checkbox(description='show help(function)',value=True)
+    check_source = widgets.Checkbox(description='show source code)',value=True)
+    check_boxes = widgets.HBox(children=[check_help,check_source])
+
+    ## dropdown menu (dropdown, label, button)
+    dropdown = widgets.Dropdown(options=list(functions_dict.keys()))
+    label = widgets.Label('Function Menu')
+    button = widgets.ToggleButton(description='Show/hide',value=False)
+    menu = widgets.HBox(children=[label,dropdown,button])
+    full_layout = widgets.GridBox(children=[menu,check_boxes],box_style='warning')
+
+    # out=widgets.Output(layout={'border':'1 px solid black'})
+    def dropdown_event(change): 
+        show_ihelp(function=change.new)
+    dropdown.observe(dropdown_event,names='values')
+
+    def button_event(change):
+        button_state = change.new
+        if button_state:
+            button.description
+    #     show_ihelp(display_help=button_state)
+
+    button.observe(button_event)
+    show_output = widgets.Output()
+
+    def show_ihelp(display_help=button,function=dropdown.value,show_help=check_help.value,show_code=check_source.value):
+        import functions_combined_BEST as ji
+        from IPython.display import display
+        show_output.clear_output()
+        if display_help:
+            if isinstance(function, str):
+    #             with show_output:
+    #                 ihelp(eval(function),show_help=show_help,show_code=show_code)
+                display(ihelp(eval(function),show_help=show_help,show_code=show_code))
+            else:
+                display(ihelp(function,show_help=show_help,show_code=show_code))
+        else:
+            display('Press show to display ')
+    #         show_output.clear_output()
+
+    output = widgets.interactive_output(show_ihelp,{'display_help':button,
+                                                   'function':dropdown,
+                                                   'show_help':check_help,
+                                                   'show_code':check_source})
+    # with out:
+    # with show_output:
+    display(full_layout, output)#,show_output)
 
 
 
@@ -3095,25 +3265,36 @@ def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins',date_ti
 
 
 
-def load_stock_price_series(filename='IVE_bidask1min_08_23_2019.txt', 
+def load_stock_price_series(filename='IVE_bidask1min_08_23_2019.csv', 
                                folderpath='data/',
                                start_index = '2016-12-01', freq='T'):
     import pandas as pd
     import numpy as np
     from IPython import display
+    ext=filename.split('.')[-1]
+    full_filename = folderpath + filename
 
-    # Load in the text file and set headers
-    fullfilename= folderpath+filename
-    headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
-    stock_df = pd.read_csv(fullfilename, names=headers,parse_dates=True,usecols=['Date','Time','BidClose'])
+    if 'txt' in ext:
+        headers = ['Date','Time','BidOpen','BidHigh','BidLow','BidClose','AskOpen','AskHigh','AskLow','AskClose']
+        stock_df = pd.read_csv(full_filename, names=headers,parse_dates=True)
+
+        # Create datetime index
+        date_time_index = (stock_df['Date']+' '+stock_df['Time']).rename('date_time_index')
+        stock_df['date_time_index'] = pd.to_datetime(date_time_index)
+
+        # stock_df.set_index('date_time_index', inplace=True, drop=False)
+        # stock_df.sort_index(inplace=True, ascending=True)
+
+    elif 'csv' in ext: # USING THE PARTIAL PROCESSED (size reduced, datetime index)
+        stock_df = pd.read_csv(full_filename, parse_dates=True)
+        stock_df['date_time_index'] = pd.to_datetime( stock_df['date_time_index'])
+    else:
+        raise Exception('file extension not csv or txt')
     
-    # Create datetime index
-    date_time_index = stock_df['Date']+' '+stock_df['Time']
-    date_time_index = pd.to_datetime(date_time_index)
-    stock_df.index=date_time_index
+    stock_df.set_index('date_time_index', inplace=True, drop=False)
     
     # Select only the days after start_index
-    stock_df = stock_df[start_index:]
+    stock_df = stock_df.sort_index()[start_index:]
     
     stock_price = stock_df['BidClose'].rename('stock_price')
     stock_price[stock_price==0] = np.nan
@@ -3328,8 +3509,9 @@ def unpack_match_stocks(stock_dict):
 ## twitter_df, stock_price = load_twitter_df_stock_price()
 ## twitter_df = get_stock_prices_for_twitter_data(twitter_df, stock_prices)
 #  
-def load_twitter_df_stock_price(twitter_df = None, get_stock_prices_per_tweet=False,price_mins_after_tweet=60):# del stock_price
-    """Loads in stock_price data from original text souce in minute frequency using load_stock_price_series(filename='IVE_bidask1min_08_23_2019)
+def load_twitter_df_stock_price(twitter_df = None, stock_price_file = 'IVE_bidask1min_08_23_2019.csv',get_stock_prices_per_tweet=False,price_mins_after_tweet=60):# del stock_price
+    """Loads in stock_price data from original text souce in minute frequency using 
+    load_stock_price_series(filename= #'IVE_bidask1min_08_23_2019.csv)
     if twitter_df not provided, it is created from scratch using processing functions. 
     if get_stock_prices_per_tweet == True, runs the follow-up function to add several stock_price columns matched to each tweet.
     price_mins_after_tweet = how many minutes after the tweet should the change in stock price be calculated. 
@@ -3338,11 +3520,12 @@ def load_twitter_df_stock_price(twitter_df = None, get_stock_prices_per_tweet=Fa
     Returns twitter_df, stock_price_series if it is False
     """
     from IPython.display import display
+    import functions_combined_BEST as ji
     try: stock_price
     except NameError: stock_price = None
     if stock_price is  None:    
         print('loading stock_price')
-        stock_price = load_stock_price_series()
+        stock_price = ji.load_stock_price_series()
     else:
         print('using pre-existing stock_price')
 
@@ -3355,8 +3538,8 @@ def load_twitter_df_stock_price(twitter_df = None, get_stock_prices_per_tweet=Fa
     # twitter_df = load_twitter_df(verbose=0)
     if twitter_df is None: 
         print('Creating twitter_df using `load_raw_twitter_file()`, `full_twitter_df_processing`')
-        twitter_df= load_raw_twitter_file()
-        twitter_df = full_twitter_df_processing(twitter_df)
+        twitter_df= ji.load_raw_twitter_file()
+        twitter_df = ji.full_twitter_df_processing(twitter_df)
 
     stock_price.sort_index(inplace=True)
     twitter_df.sort_index(inplace=True)
@@ -3366,13 +3549,21 @@ def load_twitter_df_stock_price(twitter_df = None, get_stock_prices_per_tweet=Fa
     print(twitter_df.index[0],twitter_df.index[-1])
     
     if get_stock_prices_per_tweet:
-        print('Adding stock_price data for tweets using `get_stock_prices_for_twitter_data`...')
-        print('Limiting twitter_df timeindex to match stock_price.')
-        twitter_df = twitter_df.loc[stock_price.index[0]:stock_price.index[-1]]
 
-        twitter_df = get_stock_prices_for_twitter_data(twitter_df=twitter_df, stock_prices=stock_price,
-        time_after_tweet=price_mins_after_tweet)
-        return twitter_df
+        cols_created_by_func = ['B_day', 'B_shifted', 'B_time','B_dt_index', 'time_shift', 'B_dt_minutes', 'stock_price_results','null_results', 'B_ts_rounded', 'pre_tweet_price', 'mins_after_tweet',
+        'B_ts_post_tweet', 'post_tweet_price', 'delta_time', 'delta_price','delta_price_class', 'delta_price_class_int']
+        
+        if any([True for x in cols_created_by_func if x in  twitter_df.columns]):
+           print(f'[!] Found columns created by `get_stock_prices_for_twitter_data`\nReturning input df.')
+           return twitter_df
+        else:
+            print('Adding stock_price data for tweets using `get_stock_prices_for_twitter_data`...')
+            print('Limiting twitter_df timeindex to match stock_price.')
+            twitter_df = twitter_df.loc[stock_price.index[0]:stock_price.index[-1]]
+
+            twitter_df = get_stock_prices_for_twitter_data(twitter_df=twitter_df, stock_prices=stock_price,
+            time_after_tweet=price_mins_after_tweet)
+            return twitter_df
 
     else:
         return twitter_df, stock_price
@@ -3470,14 +3661,15 @@ def create_required_folders(full_filenamepath,folder_delim='/',verbose=1):
     
     # if the splits creates more than 1 filepath:
     if len(check_for_folders)==1:
-        return print('No folders detected in provided full_filenamepath')
+        return print('[!] No folders detected in provided full_filenamepath')
     else:# len(check_for_folders) >1:
 
         # set first foler to check 
         check_path = check_for_folders[0]
 
         if check_path not in os.listdir():
-            print(f'- creating folder "{check_path}"')
+            if verbose>0:
+                print(f'\t- creating folder "{check_path}"')
             os.mkdir(check_path)
 
         ## handle multiple subfolders
@@ -3491,10 +3683,11 @@ def create_required_folders(full_filenamepath,folder_delim='/',verbose=1):
                 check_path = check_path + '/' + folder
 
                 if folder not in base_folder_contents:#os.listdir():
-                    print(f'- creating folder "{check_path}"')
+                    if verbose>0:
+                        print(f'\t- creating folder "{check_path}"')
                     os.mkdir(check_path)            
-        if verbose>0:
-            return print('Finished. All required folders have been created.')
+        if verbose>1:
+            print('Finished. All required folders have been created.')
         else:
             return
 
@@ -3612,13 +3805,14 @@ def df2png(df, filename_prefix = 'results/summary_table',sep='_',filename_suffix
 
 
 # from __future__ import print_function  # for Python2
-def inspect_variables(local_vars = None,sort_col='size',exclude_funcs_mods=True, top_n=None):
+def inspect_variables(local_vars = None,sort_col='size',exclude_funcs_mods=True, top_n=None,return_df=False,always_display=True,
+show_how_to_delete=True,print_names=False):
     """Displays a dataframe of all variables and their size in memory, with the
     largest variables at the top."""
     import sys
     import inspect
     import pandas as pd
-    
+    from IPython.display import display
     if local_vars is None:
         raise Exception('Must pass "locals()" in function call. i.e. inspect_variables(locals())')
 
@@ -3677,14 +3871,35 @@ def inspect_variables(local_vars = None,sort_col='size',exclude_funcs_mods=True,
     
     if top_n is not None:
         var_df = var_df.iloc[:top_n]
-        
-    return var_df
+
+
+
+    if always_display:
+        display(var_df.style.set_caption('Current Variables by Size in Memory'))
+    
+    if show_how_to_delete:
+        print('---'*15)
+        print('## CODE TO DELETE MANY VARS AT ONCE:')
+        show_del_me_code(called_by_inspect_vars=True)
+
+    
+    if print_names ==False:
+        print('#[i] set `print_names=True` for var names to copy/paste.')
+        print('---'*15)
+    else:
+        print('---'*15)
+        print('Variable Names:\n')
+        print_me = [f"{str(x)}" for x in var_df.index]
+        print(print_me)
+
+    if return_df:        
+        return var_df
 
 
 def display_same_tweet_diff_cols(df_sampled,index=None,columns = ['content' ,'content_min_clean',
                                                                 'cleaned_stopped_content',
                                                                 'cleaned_stopped_tokens'],
-                                                                 as_df = False, as_md=False,
+                                                                 as_df = False, as_md=True,
                                                                  time_format='%m-%d-%Y %T'):
     """Displays the contents each column for a specific index = i; 
     If i=None then defaults to randomly selected row."""
@@ -3713,7 +3928,7 @@ def display_same_tweet_diff_cols(df_sampled,index=None,columns = ['content' ,'co
 
     else: #index is None:
         i = np.random.choice(df_sampled.index.to_series()) #range(len(df_sampled)))
-        print(i)
+        # print(i)
         tweet = df_sampled.loc[i]
 
     ## setup parameters to use if df or series
@@ -3835,8 +4050,8 @@ def check_if_str_is_date(string, fuzzy=False):
 
 def check_class_balance(df,col ='delta_price_class_int',note='',
                         as_percent=True, as_raw=True):
-    dashes = '--'*20
-    print('\n')
+    dashes = '---'*20
+    # print('\n')
     print(dashes)
     print(f'CLASS VALUE COUNTS FOR COL "{col}":')
     print(dashes)
@@ -3858,7 +4073,7 @@ def check_for_duplicated_columns(twitter_df, always_return_df=True, remove=False
     ## remove any duplicated columns
     duped = twitter_df.columns.duplicated()
     dashes='---'*20
-    print('\n')
+    # print('\n')
     print(dashes)
     print('DUPLCATE COLUMNS REPORT:')
     print(dashes)
@@ -3867,9 +4082,9 @@ def check_for_duplicated_columns(twitter_df, always_return_df=True, remove=False
         print('Duplicate columns to remove:')
         print(' - ',twitter_df.columns[duped==True])
     else:
-        print('[i] No duplicate columns.')
+        print('[i] No duplicate columns found.')
         if always_return_df:
-            print(f'>> returning original df...')
+            print(f'\t>> returning original df...')
             return twitter_df
 
     if remove:
@@ -3877,14 +4092,14 @@ def check_for_duplicated_columns(twitter_df, always_return_df=True, remove=False
         # remove columns
         twitter_df = twitter_df.loc[:,~twitter_df.columns.duplicated()]
         # twitter_df.columns.duplicated()
-        print('>> returning cleaned df...')
+        print('\t>> returning cleaned df...')
         return twitter_df
     
     
     else:
         print('\n[!] Duplicated columns remain (since remove==False)')
     if always_return_df:
-        print(f'>> returning original df...')
+        print(f'\t>> returning original df...')
         return twitter_df
 
     else: 
@@ -3893,41 +4108,73 @@ def check_for_duplicated_columns(twitter_df, always_return_df=True, remove=False
 
 
 ## Correcting for errant long tweet
-def get_len_of_tweet(x):
+def get_len_of_tweet(x,verbose=0):
+    import numpy as np
     if isinstance(x, list):
         text = ' '.join(x)
+        if verbose:
+            print('[!] Found list in string column. Filled with np.nan')
+            return np.nan
     elif isinstance(x, str):
         text=x
-    
-    return len(x)
+        return len(text)
+    elif isinstance(x,float):
+        if verbose:
+            print('[!] Found float in string column. Filled with np.nan')
+        return np.nan
 
 ## 
-def check_length_string_column(df,str_col='content',length_cutoff = 350,display_describe=True,return_idx=True ):
+def check_length_string_column(df,str_col='content_min_clean',length_cutoff = 350,
+display_describe=True,display_header=True,return_keep_idx=True,
+verbose_help=True,verbose=1,debug=False):
     from IPython.display import display
     import pandas as pd
     dashes = '---'*20
-    str_length = df[str_col].apply(lambda x: get_len_of_tweet(x))
-    
-    ## save describe to a horizontal dataframe
-    len_report = str_length.describe()
-    str_report = pd.DataFrame(len_report).T
-    
-    print('\n')
-    print(dashes)
-    print('STRING LENGTH REPORT:')
-    print(dashes)
-    ## get # of rows above length_cutoff
-    num_outliers = df.loc[str_length>length_cutoff].shape[0]
-    print(f'Found {num_outliers} # of strings above cutoff of {length_cutoff} chars.')
 
-    if display_describe:
-        display(str_report.style.set_caption(f'.descibe() Stats for "{str_col}" Strings'))
-    '---'*20
-    # return indices of outliers 
-    if return_idx:
-        idx_remove =str_length.loc[str_length>length_cutoff].index
-        idx_keep_tf = df[str_col].apply(lambda x: get_len_of_tweet(x)<=length_cutoff)
-        return idx_keep_tf
+    if display_header:            
+        print(dashes)
+        print('STRING LENGTH REPORT:')
+        print(dashes)
+    if debug:
+        pass_verbose = 1
+    else:
+        pass_verbose=0
+    str_length = df[str_col].apply(lambda x: get_len_of_tweet(x, verbose=pass_verbose))
+
+    try:
+        if str_length.isna().sum()>0:
+            raise Exception('[!] ERROR: nan found in lengths, reutrning length series.')
+    except:
+        if verbose>0:
+            print('[!]',str_length.isna().sum(), ' null values found after checking legnth.')
+            if verbose_help:
+                print('\t- set `verbose=2` to see indices of null values.')
+
+        if verbose>1:
+
+            na_list = [x.index for x in str_length if x.isna() ==True]
+            print(na_list)
+            # print(str_length.isna()==True)
+        # return str_length
+        # raise Exception('Returned str_length series with bad np.nan values')
+    finally:
+        
+        ## save describe to a horizontal dataframe
+        len_report = str_length.describe()
+        str_report = pd.DataFrame(len_report).T
+
+        ## get # of rows above length_cutoff
+        num_outliers = df.loc[str_length>length_cutoff].shape[0]
+        print(f'[i] Found {num_outliers} # of strings above cutoff of {length_cutoff} chars.')
+
+        if display_describe:
+            display(str_report.style.set_caption(f'.descibe() Stats for "{str_col}" column.'))
+        '---'*20
+        # return indices of outliers 
+        if return_keep_idx:
+            # idx_remove =str_length.loc[str_length>length_cutoff].index
+            idx_keep_tf = df[str_col].apply(lambda x: get_len_of_tweet(x)<=length_cutoff)
+            return idx_keep_tf
 
 
 
@@ -3947,13 +4194,13 @@ def index_report(df, time_fmt = '%Y-%m-%d %T', return_index_dict=False):
         except:
             index_info['inferred_index_freq'] = 'error'
     dashes = '---'*20
-    print('\n')
+    # print('\n')
     print(dashes)
     print("INDEX REPORT:")
     print(dashes)
     print(f"* Index Endpoints:\n\t{df.index[0].strftime(time_fmt)} -- to -- {df.index[-1].strftime(time_fmt)}")
     print(f'* Index Freq:\n\t{df.index.freq}')
-    print('\n')
+    # print('\n')
     # print(dashes)
 
     if return_index_dict == True:
@@ -4002,3 +4249,92 @@ def undersample_df_to_match_classes(df,class_column='delta_price_class' , verbos
         # print('%: ',class_counts/len(df))
     
     return df_sampled
+
+
+def show_del_me_code(called_by_inspect_vars=False):
+    """Prints code to copy and paste into a cell to delete vars using a list of their names.
+    Companion function inspect_variables(locals(),print_names=True) will provide var names tocopy/paste """
+    from pprint import pprint
+    if called_by_inspect_vars==False:
+        print("#[i]Call: `inspect_variables(locals(), print_names=True)` for list of var names")
+
+    del_me = """
+    del_me= []#list of variable names
+    for me in del_me:    
+        try: 
+            exec(f'del {me}')
+            print(f'del {me} succeeded')
+        except:
+            print(f'del {me} succeeded')
+            continue
+        """
+    print(del_me)
+
+
+def check_twitter_df(twitter_df, text_col='content_min_clean',char_limit=400,remove_duplicates=False,
+                     remove_long_strings = False, show_string_nulls=False,return_idx_good_strings=False,
+                     df_head=True,n_head=2):
+    """Runs ji.index_report, ji.check_for_duplicated_columns,ji.check_length_string_column,
+    - if remove_duplicates=True, removes the duplicate columns.
+    - if remove_long_strings = True, removes the rows with excessively long strings
+    - if both removes =False and return_idx_good_strings=True, then a series of the good string
+    rows to keep as a series (index=twitter_df.index, data=str_length)
+    """
+    import functions_combined_BEST as ji
+    from IPython.display import display
+    ji.index_report(twitter_df)
+#     print('\n')
+    twitter_df = ji.check_for_duplicated_columns(twitter_df,remove=remove_duplicates,
+                                                 always_return_df=True)
+    
+#     print('\n')
+    if show_string_nulls:
+        pass_verbose = 2
+    else:
+        pass_verbose=1
+    idx_keep = ji.check_length_string_column(twitter_df, length_cutoff=char_limit, 
+                                             str_col=text_col,display_header=True,
+                                             display_describe=False,
+                                             return_keep_idx=True, verbose=pass_verbose,
+                                             verbose_help=False)
+    
+    if remove_long_strings:
+        twitter_df = twitter_df[idx_keep]
+        print('\t[i] Removed long strings. Rechecking final string column.\n')
+        ji.check_length_string_column(twitter_df, length_cutoff=char_limit, 
+                                             str_col=text_col,
+                                             display_header=False, display_describe=True,
+                                             return_keep_idx=False, verbose=pass_verbose,
+                                             verbose_help=False,);
+
+    if df_head:
+        display(twitter_df.head(n_head).style.set_caption('twitter_df.head()'))
+    
+    if remove_duplicates or remove_long_strings:
+        if twitter_df is not None:
+            return twitter_df
+        else:
+            raise Exception('Error: output twitter_df is None')
+    
+    elif return_idx_good_strings:
+        return idx_keep
+    
+
+def check_y_class_balance(data):#,var_list=locals()):
+    import pandas as pd 
+    import functions_combined_BEST as ji
+    from IPython.display import display
+    if isinstance(data, list)==False:
+        data=[data]
+    # if isinstance(data[0], str)==False:
+    #     raise Exception('Data must be strings')
+
+    for num,y in enumerate(data):
+        ## CHECKING CLSS BALANCE IN Y_TEST
+        # var = var_list[y]
+        name = f"data {str(num)}"
+        df_check_class = pd.Series(data=y,name=name)
+        print(f'\n[i] class balance (%) for variable #{num}:')
+        res = (df_check_class.value_counts()/len(y))*100
+        display(res) #df_check_class.value_counts()/len(y))
+        # ji.check_class_balance(df_check_class,y,as_percent=True, as_raw=False)

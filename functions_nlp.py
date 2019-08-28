@@ -511,9 +511,61 @@ class TEXT(object):
 
 ########################################################################################    
 
+def replace_embedding_layer(nlp_keras_model, word2vec_model,input_text_series, verbose=2):
+    """Takes the original Keras model with embedding_layer, a series of new text, a TEXT object,
+    and replaces the embedding_layer (layer[0]) with a new embedding layer with the correct size for new text"""
+    ## CONVERT MODEL TO JSON, REPLACE OLD INPUT LAYER WITH NEW ONE FROM TEXT object
+    json_model = nlp_keras_model.to_json()
+
+    import functions_combined_BEST as ji
+    # pprint(json_model)
+    import json
+    json_model = json.loads(json_model)
+    # ji.display_dict_dropdown(json_model)
+
+    if verbose>0:## Find the exact parameters for shape size that need to change
+        print('---'*10,'\n',"json_model['config']['layers'][0]:")
+        print('\t','batch_input_shape: ',json_model['config']['layers'][0]['config']['batch_input_shape'])
+        print('\t','input_dim: ',json_model['config']['layers'][0]['config']['input_dim'])
+        print('\t','input_length:',json_model['config']['layers'][0]['config']['input_length'])
+
+
+    # Save layer 0 as separate variable to edit, and then replace in the dict
+    layer_0 = json_model['config']['layers'][0]
+    if verbose>0:
+        ji.display_dict_dropdown(layer_0)
+        
+        
+    ## FOR SEQUENCES FROM EXTERNAL NEW TEXT (tweets):
+    tokenizer, X_seq = get_tokenizer_and_text_sequences(word2vec_model, input_text_series) #self.text_to_sequences(text_data = input_text_series,regexp_tokenize=True)
+
+    if verbose>0:
+        ## To get Text back from X_seq:
+        # text_from_seq = TEXT.sequences_to_text(X_seq)
+        print('(num_rows_in_df, num_words_in_vocab)')
+        print(X_seq.shape)
+        
+    ## Get new embedding layer's config  (that is fit to new text)
+    output = make_keras_embedding_layer(word2vec_model, X_sequences=X_seq)#input_size=X_seq.shape[1])
+    new_emb_config = output.get_config()
+    
+    ## Copy original model
+    new_json_model = json_model
+    
+    ## Replace old layer 0  config with new_emb_config
+    new_json_model['config']['layers'][0]['config'] = new_emb_config
+    
+    # convert model to string (json.dumps) so can use model_from_json
+    string_model = json.dumps(json_model)    
+    
+    ## Make model from json to return 
+    from keras.models import model_from_json
+    new_model = model_from_json(string_model)
+    
+    return new_model
 
 ## NEW FUNCTIONS FOR WORD2VEC AND KERAS TOKENIZATION/SEQUENCE GENERATION
-def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a-zA-Z]+(?:'[a-z]+)?)",
+def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a-zA-Z]+(?:'[a-z]+)?)",verbose=0,
                        vector_size=300,window=3,min_count=1, workers=3,epochs=10,summary=True, return_full=False,**kwargs):
     
 
@@ -535,7 +587,19 @@ def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a
         if k in w2v_params:
             w2v_params[k] = v
 
-    print(w2v_params)
+    if verbose>0:
+        # print(f'[i] Using these params for Word2Vec model trained:')
+        params_to_print={}
+        params_to_print['min_count'] = min_count
+        params_to_print['window'] = window
+        params_to_print['epochs'] = epochs
+
+        for k,v in w2v_params.items():
+            params_to_print[k] = v
+
+        print(f'[i] Training Word2Vec model using:\n\t{params_to_print}')
+        # print(w2v_params)
+
     wv_keras = Word2Vec(text_data, size=vector_size, window=window, min_count=min_count, sg=w2v_params['sg'],
      hs=w2v_params['hs'], negative=w2v_params['negative'], ns_exponent=w2v_params['ns_exponent'], workers=workers)
     
@@ -547,14 +611,13 @@ def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a
     if summary:
         wv = wv_keras.wv
         vocab_size = len(wv_keras.wv.vocab)
-        print(f'Word2Vec model trained using:   min_count={min_count}, window={window}, over {epochs} epochs.')
-        print(f'There are {vocab_size} words the vocabulary, with a vector size {vector_size}.')
+        print(f'\t[i] Training complete. model vocab has {vocab_size} words, with vector size {vector_size}.')
         if return_full:
             ans = 'full model'
         else:
             ans = 'model.wv'
         
-        print(f'- output is {ans}')
+        print(f'\t[o] returned model is {ans}.')
         
     if return_full:
         return wv_keras
@@ -638,8 +701,8 @@ def get_tokenizer_and_text_sequences(word2vec_model,text_data):
 ########################################################################################    
     
 
-def search_for_tweets_with_word(twitter_df,word, from_column='content_min_clean',n=50, ascending=False,
-                                return_index=False, display_df=True, display_cols = [
+def search_for_tweets_with_word(twitter_df,word, from_column='content_min_clean',display_n=50, ascending=False,
+                                return_index=False, display_df=True,for_interactive=False, display_cols = [
                                     'retweet_count','favorite_count','source',
                                     'compound_score','sentiment_class']):
     """Searches the df's `from_column` for the specified `word`.
@@ -650,6 +713,7 @@ def search_for_tweets_with_word(twitter_df,word, from_column='content_min_clean'
     import functions_combined_BEST as ji
     from IPython.display import display
     import numpy as np
+    n=display_n
 
     ## Make list of cols starting with from_column and adding display_cols
     select_cols = [from_column]
@@ -667,7 +731,7 @@ def search_for_tweets_with_word(twitter_df,word, from_column='content_min_clean'
     res_df_ = df.loc[check_word]
     
     # Save datetime index to output before changing
-    output_index = res_df_.index
+    output_index = res_df_.index.to_series()
     
     ## Sort res_df_ by datetime index, before resetting index
     res_df_.sort_index(inplace=True, ascending=ascending)
@@ -675,11 +739,7 @@ def search_for_tweets_with_word(twitter_df,word, from_column='content_min_clean'
     
     
     # Take n # of rows from the top of the dataframe
-    if n is None:
-        n=res_df_.shape[0]-1
-        
-    res_df = res_df_.iloc[:n,:]
-    
+
     
     ## Set table_style for display df.styler
     table_style =[{'selector':'caption',
@@ -691,17 +751,32 @@ def search_for_tweets_with_word(twitter_df,word, from_column='content_min_clean'
                   'props':[('font-size','1.1em'),('text-align','center')]}]
 #                  {'selector':'td','props':[('pad','0.1em')]}]
     
-    ## Caption for df
-    capt_text = f'Tweets Containing "{word}" ({res_df.shape[0]} of {found_words})'
+
+
+    if display_n is None:
+        n=res_df_.shape[0]-1
+        
+    res_df = res_df_.iloc[:n,:]
+    # full_index = res_df_.index
     
     ## Create styled df with caption, table_style, hidden index, and text columns formatted
-    dfs = res_df.style.hide_index().\
+    if for_interactive==False:
+        df_to_show = res_df
+    else:
+        df_to_show = res_df_
+
+    ## Caption for df
+    capt_text = f'Tweets Containing "{word}" ({display_n} of {found_words})'
+    
+    dfs = df_to_show.style.hide_index().\
     set_caption(capt_text).set_properties(subset=[from_column],
                                           **{'width':'400px',
                                             'text-align':'center',
                                             'padding':'2em',
                                             'font-size':'1.2em'}).set_table_styles(table_style)
     ## Display dataframe if display_df
+    if for_interactive:
+        return dfs
     if display_df:
         display(dfs)
         remaining_tweets = found_words - n
@@ -779,8 +854,8 @@ def compare_freq_dists_unique_words(text1,label1,text2, label2,top_n=20, display
 
 
 
-def compare_word_clouds(text1,label1,text2,label2,suptitle_text='', cfg_dict=None, twitter_shaped=True,from_freq_dicts=False,
-fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=False, filepath_folder="figures/",**kwargs):
+def compare_word_clouds(text1,label1,text2,label2,suptitle_text='', wordcloud_cfg_dict=None, twitter_shaped=True,from_freq_dicts=False,
+fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=False,base_folder='figures/',png_name_from_title=False, png_filename=None,verbose=1,**kwargs):
     """Compares the wordclouds from 2 sets of texts. 
     text1,text2:
         If `from_freq_dicts`=False, texts must be non-tokenized form bodies of text.
@@ -802,15 +877,17 @@ fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=Fals
         if false, wordclouds will be rectangular (shape=specified 'width' and 'height' config keys)
 
     save_file:
-        if True, saves .png to filepath_folder using suptitle as name (if given), else filename='wordcloud_figure.png'
+        if True, saves .png to png_filename using suptitle as name (if given), else filename='wordcloud_figure.png'
 
     **kwargs:
+
         valid keywords: 
         - 'subplot_titles_fontdict':{any_matplotlib_text_kwds:values} # for ax.set_title() # passed as fontdict=fontdict
         - 'suptitle_fontdict':{any_matplotlib_text_kwds:values} # fontdict for plt.suptitle() # passed as **fontdict 
         - 'imshow':{'interpolation': #options are ['none', 'nearest', 'bilinear', 'bicubic', 'spline16',
                     'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric', 'catrom',
                      'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos'] }
+        - 'group colors':('green','red)
 
         """
     import functions_combined_BEST as ji
@@ -818,7 +895,34 @@ fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=Fals
     import matplotlib.pyplot as plt
     from PIL import Image
     import numpy as np
+    from pprint import pprint as pp
+    ## Fill in params dictionary with defaults
+    # params= {}
+    # params['subplot_titles_fontdict'] = {'fontsize':30}
+    # params['suptitle_fontdict'] = {'fontsize':40}
+    # params['imshow']= {'interpolation':'gaussian'}
 
+    # ## Check for kwargs replacements to defaults
+    # to_do = ['subplot_titles_fontdict','suptitle_fontdict','imshow']
+    # for td in to_do:
+    #     if td in kwargs and kwargs[td] is not None:
+    #         params[td] = kwargs[td]
+    
+    ## Fill in params dictionary with defaults
+    params= {}
+    params['subplot_titles_fontdict'] = {'fontsize':30}
+    params['suptitle_fontdict'] = {'fontsize':40}
+    params['imshow']= {'interpolation':'gaussian'}
+    params['group_colors']={'group1':'cornflowerblue','group2':'cornflowerblue'}
+
+    ## Check for kwargs replacements to defaults
+    to_do = ['subplot_titles_fontdict','suptitle_fontdict','imshow','group_colors']
+    for td in to_do:
+        if td in kwargs.keys() and kwargs[td] is not None:
+            params[td] = kwargs[td]
+
+    
+    ## Handle word2vec_doict
     default_cfg={
                 'max_font_size':100, 'width':400, 'height':400,
                 'max_words':150, 'background_color':'white', 
@@ -827,28 +931,46 @@ fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=Fals
                 'contour_color':'cornflowerblue',
                 'contour_width':2
                 }
+    cfg=default_cfg
+
     ## Use default config if none provided
-    if cfg_dict is None:
+    if wordcloud_cfg_dict is None:
         cfg = default_cfg
+        if verbose==1: 
+            print('Using default cfg. (use verbose=2 for details).')
+        elif verbose>1:
+            print('cfg kwargs:')
+            pp(cfg)
+        
 
     else:
-        ## Fill in any default config keys that the user did not specify
-        for k,v in default_cfg.items():
-            if k not in cfg_dict.keys():
-                cfg_dict[k] = default_cfg[k]
-        cfg = cfg_dict
+        to_do = list(default_cfg.keys()) #['subplot_titles_fontdict','suptitle_fontdict','imshow']
+        for td in to_do:
+            if td in wordcloud_cfg_dict.keys() and wordcloud_cfg_dict[td] is not None:
+                cfg[td] = wordcloud_cfg_dict[td]
 
+        if verbose>1:
+            print('cfg kwargs:')
+            pp(cfg)
+
+    ## Set different colors if group_colors specified
+    if 'group_colors' in kwargs.keys():
+        contour_color_1 = kwargs['group_colors']['group1']
+        contour_color_2 = kwargs['group_colors']['group2']
+
+    else: #otherwise use  word2vec cfg 
+        contour_color_1 = cfg['contour_color']
+        contour_color_2 = cfg['contour_color']
 
     # instantiate the two word clouds using cfg dictionary parametrs
     wordcloud1 = WordCloud(max_font_size = cfg['max_font_size'], width=cfg['width'], height=cfg['height'], max_words=cfg['max_words'],
     background_color=cfg['background_color'], stopwords=cfg['cloud_stopwords'],collocations=cfg['collocations'],
-    contour_color=cfg['contour_color'], contour_width=cfg['contour_width'])
-
+    contour_color=contour_color_1, contour_width=cfg['contour_width'])
 
 
     wordcloud2 = WordCloud(max_font_size = cfg['max_font_size'], width=cfg['width'], height=cfg['height'], max_words=cfg['max_words'],
     background_color=cfg['background_color'], stopwords=cfg['cloud_stopwords'],collocations=cfg['collocations'], 
-    contour_color=cfg['contour_color'], contour_width=cfg['contour_width'])
+    contour_color=contour_color_2, contour_width=cfg['contour_width'])
 
     ## Add .mask attribute to wordclouds if twitter_shaped==True
     if twitter_shaped ==True:
@@ -878,20 +1000,20 @@ fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=Fals
         wordcloud2.generate_from_frequencies(text2)
 
 
-
     ## PLOTTING THE WORDCLOUDS
 
-    ## Fill in params dictionary with defaults
-    params= {}
-    params['subplot_titles_fontdict'] = {'fontsize':30}
-    params['suptitle_fontdict'] = {'fontsize':40}
-    params['imshow']= {'interpolation':'gaussian'}
+    # ## Fill in params dictionary with defaults
+    # params= {}
+    # params['subplot_titles_fontdict'] = {'fontsize':30}
+    # params['suptitle_fontdict'] = {'fontsize':40}
+    # params['imshow']= {'interpolation':'gaussian'}
+    # params['group_colors':('green','red')]
 
-    ## Check for kwargs replacements to defaults
-    to_do = ['subplot_titles_fontdict','suptitle_fontdict','imshow']
-    for td in to_do:
-        if td in kwargs and kwargs[td] is not None:
-            params[td] = kwargs[td]
+    # ## Check for kwargs replacements to defaults
+    # to_do = ['subplot_titles_fontdict','suptitle_fontdict','imshow','group_colors']
+    # for td in to_do:
+    #     if td in kwargs and kwargs[td] is not None:
+    #         params[td] = kwargs[td]
 
     
     ## CREATE SUBPLOTS
@@ -913,12 +1035,37 @@ fig_size = (18,18), subplot_titles_y_loc = 0, suptitle_y_loc=0.8, save_file=Fals
     plt.show()
 
     if save_file:
-        if len(suptitle_text)==0:
-            filename = filepath_folder + 'wordcloud_figure.png'
-        
-        else:
-            title_for_filename = ji.replace_bad_filename_chars(suptitle_text,replace_spaces=False, replace_with='_')
-            filename = filepath_folder + title_for_filename+'.png'
+
+        # if name provided
+        if png_filename is not None:
+
+            #if base_folder is provided, check of overlaps
+            if base_folder is not None:
+                # if the folder is already in png_filename, use png_filename
+                if base_folder in png_filename:
+                    filename = png_filename
+
+                else: # add base_folder to 
+                    filename = base_folder+png_filename
+
+        elif png_filename is None:
+
+            if png_name_from_title:
+                if len(suptitle_text)>0:
+                    
+                    title_for_filename = ji.replace_bad_filename_chars(suptitle_text,replace_spaces=False, replace_with='_')
+
+                    if base_folder is not None:
+                        filename = base_folder + title_for_filename+'.png'
+                    else:
+                        filename =title_for_filename+'.png'
+                
+            else:
+                if base_folder is None:
+                    base_folder=''
+                prefix= base_folder+"wordcloud_figure"
+                filename = ji.auto_filename_time(prefix=prefix)
+                filename+='.png'
 
         fig.savefig(filename,facecolor=cfg['background_color'], format='png', frameon=True)
         print(f'figured saved as {filename}')
@@ -1045,11 +1192,12 @@ def get_group_sentiment_scores(df, score_col='sentiment_scores'):
 
 
 def full_twitter_df_processing(df,raw_tweet_col='content', name_for_cleaned_tweet_col='content_cleaned', name_for_stopped_col=None,
-name_for_tokenzied_stopped_col = None, use_col_for_case_ratio='content_min_clean', use_col_for_sentiment='content_min_clean', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
+name_for_tokenzied_stopped_col = None, use_col_for_case_ratio=None, use_col_for_sentiment='content_min_clean', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
     """Accepts df_full, which contains the raw tweets to process, the raw_col name, the column to fill.
     If force=False, returns error if the fill_content_col already exists.
     Processing Workflow:1) Create has_RT, starts_RT columns. 2) Creates [fill_content_col,`content_min_clean`] cols after removing 'RT @mention:' and urls.
-    3) Removes hashtags from fill_content_col and saves hashtags in new col. 4) Removes mentions from fill_content_col and saves to new column."""
+    3) Removes hashtags from fill_content_col and saves hashtags in new col. 4) Removes mentions from fill_content_col and saves to new column.
+    - if use_cols_for_case_ration is None, the partially completed content_min_clean col is used (only urls and RTs removed)"""
     # Save 'hashtags' column containing all hastags
     import re
     from nltk import regexp_tokenize
@@ -1094,15 +1242,34 @@ name_for_tokenzied_stopped_col = None, use_col_for_case_ratio='content_min_clean
         fill_content_col = fill_content_col
 
         # df_full['content_urls'] = df_full[check_content_col].apply(lambda x: urls.findall(x))
-        df[fill_content_col] =  df[check_content_col].apply(lambda x: urls.sub(' ',x))
+        df[fill_content_col] =  df[check_content_col].apply(lambda x: urls.sub('',x))
 
         ## SAVE THIS MINIMALLY CLEANED CONTENT AS 'content_min_clean'
         df['content_min_clean'] =  df[fill_content_col]
         track_fill_content_col+=1
 
 
-    ## 08/25 ADDING REMOVAL OF @ And # SYMBOLS FOR MIN CLEAN
-    df['content_min_clean'] =   df['content_min_clean'].apply(lambda x: x.replace('@',' ').replace('#',' '))
+    ## 08/25 ADDING REMOVAL OF PUNCATUATION to min clean @ And # SYMBOLS FOR MIN CLEAN
+       
+    ## Case Ratio Calculation (optional)
+    if use_col_for_case_ratio is None or 'content_min_clean' in use_col_for_case_ratio:
+        use_col_for_case_ratio='content_min_clean'
+        df['case_ratio'] = df[use_col_for_case_ratio].apply(lambda x: case_ratio(x))
+        print(f'[i] case_ratio calculated from {use_col_for_case_ratio}')
+
+
+    def quick_fix(x):
+        import string
+        punc_list = string.punctuation
+        x = x.lower()
+        for punc in punc_list:
+            x = x.replace(punc,' ')
+        return x
+
+    df['content_min_clean'] =   df['content_min_clean'].apply(lambda x: quick_fix(x)) #.replace('#',' '))
+    print(f'[i] case->lower and punctuation removed from "content_min_clean" ' )
+
+
 
     if hashtags==True:
 
@@ -1165,10 +1332,10 @@ name_for_tokenzied_stopped_col = None, use_col_for_case_ratio='content_min_clean
     df[stop_col_name] = df[fill_content_col].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=False, pattern=pattern))
     df[stopped_tok_col_name] = df[stop_col_name].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=True, pattern=pattern))
 
-    
-    ## Case Ratio Calculation (optional)
-    if use_col_for_case_ratio is not None:
+    ## Calculate case ratio is non-default was used
+    if use_col_for_case_ratio is not None and 'content_min_clean' not in use_col_for_case_ratio:
         df['case_ratio'] = df[use_col_for_case_ratio].apply(lambda x: case_ratio(x))
+        print(f'[i] case_ratio calculated from {use_col_for_case_ratio}')
 
     ## Sentiment Analysis (optional)
     if use_col_for_sentiment is not None:
@@ -1186,9 +1353,17 @@ def case_ratio(msg):
     EX:
     df['case_ratio'] = df['text'].apply(lambda x: case_ratio(x))"""
     import numpy as np
+    if isinstance(msg,str)==False:
+        error = f"[!] Input string for case_ratio is not a string, it is a {type(msg)}"
+        raise Exception(error)
+
     msg_length = len(msg)
+
+    if msg_length == 0:
+        return np.nan
+
     test_upper = [1 for x in msg if x.isupper()]
-    test_lower = [1 for x in msg if x.islower()]
+    # test_lower = [1 for x in msg if x.islower()]
     test_ratio = np.round(sum(test_upper)/msg_length,5)
     return test_ratio
 
@@ -1223,3 +1398,90 @@ def get_group_texts_for_word_cloud(twitter_df, text_column='content_min_clean', 
         group_text_dict[k]['joined']=text_joined
         
     return group_df_dict, group_text_dict
+
+
+def make_regexp_pattern():
+    pattern="([a-zA-Z]+(?:'[a-z]+)?)"
+    return pattern
+
+
+
+
+def make_tweet_bigrams_by_group(twitter_df_groups,top_n=20,text_key=None,
+                                colname_if_key_is_df='cleaned_stopped_content',
+                                group_label_key={'neg':'Stock Market Decreased',
+                                                 'pos':'Stock Market Increased'},
+                                side_by_side=True, return_group_dfs = False, return_dfs_styled=True):
+    """Uses groups from `get_group_texts_for_word_cloud` to display df for each group.
+    EX:
+    >> twitter_df_groups,twitter_group_text = ji.get_group_texts_for_word_cloud(twitter_df, 
+                                                                      text_column='cleaned_stopped_content', 
+                                                                      groupby_column='delta_price_class')
+    >> make_tweet_bigrams_by_group(twitter_df_groups, )
+                                                                      """
+    # MAKE BIGRAMS
+    from nltk.collocations import BigramAssocMeasures, BigramCollocationFinder, TrigramAssocMeasures, TrigramCollocationFinder
+    from nltk import regexp_tokenize
+    import functions_combined_BEST as ji
+    import bs_ds as bs
+    from IPython.display import display
+
+    group_names = list(twitter_df_groups.keys())
+    group1 = group_names[0]
+    group2 = group_names[1]
+    
+    pattern = ji.make_regexp_pattern()
+    
+    if text_key is None:
+        col = colname_if_key_is_df
+        text_data_1 = twitter_df_groups[group1]['df'][col].apply(lambda x: regexp_tokenize(x,pattern))
+        text_data_2 = twitter_df_groups[group2]['df'][col].apply(lambda x: regexp_tokenize(x,pattern))
+        
+    else:
+        text_data_1 = twitter_df_groups[group1][text_key]
+        text_data_2 = twitter_df_groups[group2][text_key]
+
+
+
+    bigram_measures =BigramAssocMeasures()
+
+    tweet_finder1 = BigramCollocationFinder.from_documents(text_data_1)
+    tweets_scored1 = tweet_finder1.score_ngrams(bigram_measures.raw_freq)
+
+    tweet_finder2 = BigramCollocationFinder.from_documents(text_data_2)
+    tweets_scored2 = tweet_finder2.score_ngrams(bigram_measures.raw_freq)
+
+
+    df_1 = ji.quick_table(tweets_scored1[:top_n], col_names =['Bigram','Frequency'],
+                           caption='Tweet Bigrams', display_df=False)
+    
+    df_1['Bigram'] = df_1['Bigram'].apply(lambda x: ' '.join(x))
+    df_1.set_index('Bigram',inplace=True)
+    df_1.columms=['Frequency']
+    
+    # style df
+    cap1 = group_label_key[group1] 
+    dfs_1 = df_1.style.set_caption(cap1)
+
+    df_2 = ji.quick_table(tweets_scored2[:top_n], col_names =['Bigram','Frequency'],
+                           caption='Tweet Bigrams', display_df=False)
+    
+    df_2['Bigram'] = df_2['Bigram'].apply(lambda x: ' '.join(x))
+    df_2.set_index('Bigram',inplace=True)
+    df_2.columms=['Frequency']
+    
+    # style df
+    cap2 = group_label_key[group2] 
+    dfs_2 = df_2.style.set_caption(cap2)
+    
+    if side_by_side==True:
+        bs.display_side_by_side(dfs_1,dfs_2)
+    else:
+        display(dfs_1,dfs_2)
+        
+    if return_group_dfs:
+        if return_dfs_styled:
+            return dfs_1, dfs_2
+        else:
+            return df_1,df_2
+        

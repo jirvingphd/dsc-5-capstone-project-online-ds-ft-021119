@@ -480,6 +480,8 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
     # create base model filename 
     if auto_filename_suffix:
         filename = auto_filename_time(prefix=filename_prefix, sep=sep,timeformat=suffix_time_format )
+    else:
+        filename=filename_prefix
     
 
     ## Add suffix to filename
@@ -517,6 +519,7 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
     # convert model to json
     model_json = model.to_json()
 
+    ji.create_required_folders(full_filename)
     # save json model to json file
     with open(full_filename, "w") as json_file:
         json.dump(model_json,json_file)
@@ -540,6 +543,7 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
         # Get modelo config df
         df_model_config = get_model_config_df(model)
         df_model_config.to_excel(excel_filename, sheet_name='Keras Model Config')
+        print(f"Model configuration table saved as {excel_filename }")
            
 
 
@@ -585,7 +589,8 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
     else:
         model_params_filename=''
 
-    return [filename, weight_filename, excel_filename, model_params_filename]
+    filename_dict = {'model':filename,'weights':weight_filename,'excel':excel_filename,'params':model_params_filename}
+    return filename_dict#[filename, weight_filename, excel_filename, model_params_filename]
 
 
 def load_model_weights_params(base_filename = 'models/model_',load_model_params=True, load_model_layers_excel=True, trainable=False, 
@@ -1826,7 +1831,7 @@ from_train_preds=False):
 
 
 
-def evaluate_classification(model, history, X_train,X_test,y_train,y_test, 
+def evaluate_classification(model, history, X_train,X_test,y_train,y_test, binary_classes=True,
                             conf_matrix_classes= ['Decrease','Increase'],
                             normalize_conf_matrix=True,conf_matrix_figsize=(8,4),
                             save_conf_matrix_png=False, png_filename = 'results/confusion_matrix.png'):
@@ -1872,10 +1877,17 @@ def evaluate_classification(model, history, X_train,X_test,y_train,y_test,
     y_hat_train = model.predict_classes(X_train)
     y_hat_test = model.predict_classes(X_test)
 
-    # get both versions of classification report output
+    if binary_classes==False:
+        y_train = y_train.argmax(axis=1)
+        y_test = y_test.argmax(axis=1)
+        # y_hat_train = y_hat_train.argmax(axis=1)
+        # y_hat_test = y_hat_test.argmax(axis=1)
+        # matrix = metrics.confusion_matrix(y_test.argmax(axis=1), y_pred.argmax(axis=1))
+    # if binary_classes:
+        # get both versions of classification report output
     report_str = classification_report(y_test,y_hat_test)
     report_dict = classification_report(y_test,y_hat_test,output_dict=True)
-    
+
 
     ## Create and display classification report
     df_report =pd.DataFrame.from_dict(report_dict,orient='index')#class_rows,orient='index')
