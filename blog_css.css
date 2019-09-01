@@ -1,6 +1,7 @@
 body {
     margin: 0;
     font-family: Helvetica;
+    font-style: normal    ;
 }
 table.dataframe {
     border-collapse: collapse;
@@ -29,3 +30,5 @@ table.dataframe td {
     border: 2px solid #ccf;
     background-color: #f4f4ff;
 }
+
+/*

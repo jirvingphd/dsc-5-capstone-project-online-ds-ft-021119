@@ -1,0 +1,22 @@
+
+- **ENGINEER FEATURES:** 
+    - *Extract features about the stock data -calculate the technical indices for the S&P 500 discussed in his article.*  [ see reference #2 - blog post ]
+        * [x] 7 days moving average 
+        * [x] 21 days moving average
+        * [x] exponential moving average
+        * [x] momentum
+        * [x] Bollinger bands
+        * [x] MACD
+        
+* **PREDICTIVE MODELING:**
+    - *Generate stock price predictions based only historical data using....*
+        * [x] a binary classification using Tweet NLP to predict stock price up/down
+        * [x] a SARIMAX model using stock price alone
+        * [x] a LSTM neural network using price alone
+        * [x] a LSTM using price and technical indicators 
+        * [x] a LSTM using price, technical indicators, NLP-Model #1's predicitons, tweet-statistics
+        
+### FINAL MODEL - FEED ALL ABOVE FEATURES INTO:
+
+- **NEURAL NETWORK *REGRESSION* MODEL TO PREDICT *ACTUAL S&P 500 PRICE* AT 1 HOUR-1 DAY FOLLOWING TWEETS**
+    - Final Model Target is based more on blog post's construction (ref#2), but takes output of model like ref#

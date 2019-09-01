@@ -80,40 +80,36 @@ def def_data_params(stock_df, num_test_days=45, num_train_days=365,days_for_x_wi
     return data_params
 
 
-def make_train_test_series_gens(train_data_series,test_data_series,X_cols = None, y_cols='price', model_params=None,n_features=1,batch_size=1,debug=False,verbose=1):
+def make_train_test_series_gens(train_data_series,test_data_series,x_window,X_cols = None, y_cols='price',n_features=1,batch_size=1, model_params=None,debug=False,verbose=1):
     
     import functions_combined_BEST as ji
-    if 'data_params' in model_params.keys():
-        data_params = model_params['data_params']
-        model_params['input_params'] = {}
-    else:
-        print('data_params not found in model_params')
 
-    # elif 'x_window' in model_params.keys():
-    #     data_params = model_params
-
+    if model_params is not None:
+        if 'data_params' in model_params.keys():
+            data_params = model_params['data_params']
+            model_params['input_params'] = {}
+        else:
+            print('data_params not found in model_params')
     ########## Define shape of data by specifing these vars 
-
-    input_params = {}        
-    input_params['n_input'] = data_params['x_window']  # Number of timebins to analyze at once. Note: try to choose # greater than length of seasonal cycles 
-    input_params['n_features'] = n_features # Number of columns
-    input_params['batch_size'] = batch_size # Generally 1 for sequence data
-    
+    if model_params is not None:
+        input_params = {}        
+        input_params['n_input'] = data_params['x_window']  # Number of timebins to analyze at once. Note: try to choose # greater than length of seasonal cycles 
+        input_params['n_features'] = n_features # Number of columns
+        input_params['batch_size'] = batch_size # Generally 1 for sequence data
+        n_input =  data_params['x_window']
+    else:
+        # Get params from data_params_dict
+        n_input = x_window
 
 
     import functions_combined_BEST as ji
     from keras.preprocessing.sequence import TimeseriesGenerator
 
-    # Get params from data_params_dict
-    n_input = input_params['n_input']
-    n_features= input_params['n_features']
-    batch_size = input_params['batch_size']
-
-
-
     # RESHAPING TRAINING AND TRAINING DATA 
     train_data_index =  train_data_series.index
-    input_params['train_data_index'] = train_data_index
+
+    if model_params is not None:
+        input_params['train_data_index'] = train_data_index
 
     def reshape_train_data_and_target(train_data_series, X_cols=X_cols, y_cols=y_cols,debug=debug):
         # if only 1 column (aka is a series)
@@ -169,7 +165,8 @@ def make_train_test_series_gens(train_data_series,test_data_series,X_cols = None
     # RESHAPING TRAINING AND TEST DATA 
     # test_data = test_data_series.values.reshape(-1,1)
     test_data_index =test_data_series.index
-    input_params['test_data_index'] = test_data_index
+    if model_params is not None:
+        input_params['test_data_index'] = test_data_index
 
 
     ## CREATE TIMESERIES GENERATOR FOR TEST DATA
@@ -178,7 +175,8 @@ def make_train_test_series_gens(train_data_series,test_data_series,X_cols = None
     test_generator = TimeseriesGenerator(data=test_data, targets=test_targets,
                                          length=n_input, batch_size=batch_size )
     
-    model_params['input_params'] = input_params
+    if model_params is not None:
+        model_params['input_params'] = input_params
 
     if verbose>1:
         ji.display_dict_dropdown(model_params)
@@ -189,7 +187,54 @@ def make_train_test_series_gens(train_data_series,test_data_series,X_cols = None
         print(f'Given the Array: \t(with shape={X.shape}) \n{X.flatten()}')
         print(f'\nPredict this y: \n {y}')
 
-    return train_generator,test_generator, model_params
+    if model_params is not None:
+        return train_generator,test_generator, model_params
+    else:
+        return  train_generator, test_generator
+
+
+
+def reshape_train_data_and_target(train_data_series, X_cols=None, y_cols='price',
+                                  n_features=1,debug=False):
+    """Reshapes the X_col and y_col data into proper shape for timeseris generator"""
+    train_data = []
+    train_targets = []
+    import pandas as pd
+    import numpy as np
+
+    if isinstance(train_data_series, pd.DataFrame):
+        # train_data_test = train_data_series.values
+        train_data = train_data_series.values
+        
+        # Train X_data to array (if not specified, use all columns)
+        if X_cols is None:
+            train_data = train_data_series.values
+        else:
+            train_data = train_data_series[X_cols].values
+
+        # if not specified, assume 'price' is taret_col
+        if y_cols is None:
+            y_cols = 'price'
+        ## Train Target y_values
+        train_targets = train_data_series[y_cols].values
+
+    elif isinstance(train_data_series, pd.Series): #        
+        train_data = train_data_series.values.reshape(-1,1)
+        train_targets = train_data
+
+    
+    ## Reshape as neded
+    if train_targets.ndim <2: 
+        train_targets = train_targets.reshape(-1,1)
+
+    if debug==True:
+        print('train_data[0]=\n',train_data[0])
+        print('train_targets[0]=\n',train_targets[0])
+        
+    return train_data, train_targets
+
+
+
 
 
 def def_callbacks_and_params(model_params=None,loss_function='my_rmse',checkpoint_mode='min',filepath=None,
@@ -357,38 +402,51 @@ def fit_model(model,train_generator,model_params=None,epochs=5,callbacks=None,ve
     return model,model_params,history
 
 
-def evaluate_model_plot_history(model, train_generator, test_generator, plot=True):
+def evaluate_model_plot_history(model, train_generator, test_generator,as_df=False, plot=True):
     """ Takes a keras model fit using fit_generator(), a train_generator and test generator.
     Extracts and plots Keras model.history's metrics."""
     from IPython.display import display
     import pandas as pd
     import matplotlib.pyplot as plt
-
-    # # EVALUATE MODEL PREDICTIONS FROM GENERATOR 
-    model_metrics_train = model.evaluate_generator(train_generator)
-    model_metrics_test = model.evaluate_generator(test_generator)
+    import matplotlib as mpl
     print('\n')
     print('---'*28)
     print('\tEVALUATE MODEL:')
     print('---'*28)
-    eval_gen_dict = {}
-    eval_gen_dict['Training Data'] = dict(zip(model.metrics_names,model_metrics_train))
-    eval_gen_dict['Test Data'] = dict(zip(model.metrics_names,model_metrics_test))
-
-
-    display(pd.DataFrame(eval_gen_dict))
-
-    # duration = print(clock._lap_duration_)
+        # duration = print(clock._lap_duration_)
     model_results = model.history.history
     
     if plot==True and len(model.history.epoch)>1:
-        plt.figure(figsize=(6,3))
+        fig, ax = plt.subplots(figsize=(6,3))
+
         for k,v in model_results.items():
-            plt.plot(range(len(v)),v, label=k)
+            ax.plot(range(len(v)),v, label=k)
+                
+        plt.title('Model Training History')
+        ax.set_xlabel('Epoch #',**{'size':12,'weight':70})
+        ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+
         plt.legend()
         plt.show()
 
-    return  eval_gen_dict
+
+    # # EVALUATE MODEL PREDICTIONS FROM GENERATOR 
+    print('Evaluating Train Generator:')
+    model_metrics_train = model.evaluate_generator(train_generator,verbose=1)
+    print('Evaluating Test Generator:')
+    model_metrics_test = model.evaluate_generator(test_generator,verbose=1)
+    # print(model_metrics_test)
+
+    eval_gen_dict = {}
+    eval_gen_dict['Train Data'] = dict(zip(model.metrics_names,model_metrics_train))
+    eval_gen_dict['Test Data'] = dict(zip(model.metrics_names,model_metrics_test))
+    df_eval = pd.DataFrame(eval_gen_dict).round(4).T
+    display(df_eval.style.set_caption('Model Evaluation Results'))
+
+    if as_df:
+        return df_eval
+    else:
+        return  eval_gen_dict
 
 
 # def get_model_config_df(model1, multi_index=True):
@@ -804,16 +862,42 @@ def plot_confusion_matrix(conf_matrix, classes = None, normalize=False,
     return fig
 
 
-def evaluate_regression(y_true, y_pred, metrics=['r2','RMSE','U'], display_thiels_u_info=False):
+def evaluate_regression(y_true, y_pred, metrics=None, show_results=False, display_thiels_u_info=False):
     """Calculates and displays any of the following evaluation metrics: (passed as strings in metrics param)
-    r2, MAE,MSE,RMSE,U """
+    r2, MAE,MSE,RMSE,U 
+    if metrics=None:
+        metrics=['r2','RMSE','U']
+    """
     from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
     import numpy as np
     from bs_ds import list2df
+    import inspect
+    
+    import functions_combined_BEST as ji
+    idx_true_null = ji.find_null_idx(y_true)
+    idx_pred_null = ji.find_null_idx(y_pred)
+    if all(idx_true_null == idx_pred_null):
+        y_true.dropna(inplace=True)
+        y_pred.dropna(inplace=True)
+    else:
+        raise Exception('There are non-overlapping null values in y_true and y_pred')
 
     results=[['Metric','Value']]
+    metric_list = []
+    if metrics is None:
+        metrics=['r2','rmse','u']
 
-    metrics = [m.lower() for m in metrics]
+    else:
+        for metric in metrics:
+            if isinstance(metric,str):
+                metric_list.append(metric.lower())
+            elif inspect.isfunction(metric):
+                custom_res = metric(y_true,y_pred)
+                results.append([metric.__name__,custom_res])
+                metric_list.append(metric.__name__)
+        metrics=metric_list
+
+    # metrics = [m.lower() for m in metrics]
 
     if any(m in metrics for m in ('r2','r squared','R_squared')): #'r2' in metrics: #any(m in metrics for m in ('r2','r squared','R_squared'))
         r2 = r2_score(y_true, y_pred)
@@ -845,7 +929,11 @@ def evaluate_regression(y_true, y_pred, metrics=['r2','RMSE','U'], display_thiel
     
     results_df = list2df(results)#, index_col='Metric')
     results_df.set_index('Metric', inplace=True)
-    return results_df.round(3)
+    if show_results:
+        from IPython.display import display
+        dfs = results_df.round(3).reset_index().style.hide_index().set_caption('Evaluation Metrics')
+        display(dfs)
+    return results_df.round(4)
 
 
 
@@ -1278,12 +1366,17 @@ def compare_time_shifted_model(df_model,true_colname='true test',pred_colname='p
 #         df_combined = pd.concat([df_true_v_preds_train, df_true_v_preds_test],axis=1)
 #         df_combined.columns=['true train','pred train','true test','pred test']
 #         return df_combined
+# def get_true_vs_preds_df(model, true_test_series=None,test_generator=None):
+#     import pandas as pd
+#     import functions_combined_BEST as ji
+#     import bs_ds  as bs
 
-def get_model_preds_df(model, true_train_series,true_test_series, test_generator=None, preds_from_gen=True, 
-preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=True,  model_params=None,
- x_window=None, n_features=None, train_data_index=None,
-  test_data_index=None,return_combined=True,inverse_tf=False, 
-  scaler=None, iplot=True, plot_with_train_data=True, return_fig=False):
+
+#     pass
+
+def get_model_preds_df(model, true_train_series,true_test_series, test_generator,model_params=None,
+x_window=None, n_features=None, inverse_tf=False, scaler=None, include_train_data=True,
+ preds_from_gen=True, preds_from_train_preds =False, preds_from_test_preds=False, iplot=False,verbose=1):#  train_data_index=None, test_data_index=None
     """ Gets predictions for training data from the 3 options: 
     1) from generator  --  len(output) = (len(true_test_series)-n_input)
     2) from predictions on test data  --  len(output) = (len(true_test_series)-n_input)
@@ -1294,30 +1387,37 @@ preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=Tru
     import bs_ds  as bs
     # x_window=n_input
 
-    if model_params is not None:
-
-        if scaler is None and inverse_tf == True:
-            scaler = model_params['scaler_library']['price']
-
-        n_features = model_params['input_params']['n_features']
-        train_data_index = model_params['input_params']['train_data_index']
-        test_data_index = model_params['input_params']['test_data_index']
-
-
-        if model_params['data_params']['x_window'] == model_params['input_params']['n_input']:
-            x_window = model_params['input_params']['n_input']
-        else:
-            print('x_window and n_input params are not the same, using n_input as x_window...')
-
-
+    ## If no model params
     if model_params is None:
 
-        if scaler is None and inverse_tf==True:
-            raise Exception('Must provide model_params with "scaler_library" or define scaler.')
+        ## get the seires indices from the true input series
+        train_data_index = true_train_series.index
+        test_data_index = true_test_series.index
 
-        if (x_window is None) or (n_features is None):
-            if preds_from_gen:
-                raise Exception('Must provide model params or define n_input and n_features')
+        ## Get x_window and n_features from the generator
+        if x_window is None:
+            x_window = test_generator.length
+        if n_features is None:
+            n_features=test_generator.data[0].shape[0]
+
+        if inverse_tf and scaler is None:
+            raise Exception('if inverse_tf, must provide previously fit scaler.')
+
+    
+    if model_params is not None:
+        if scaler is None and inverse_tf == True:
+            scaler = model_params['scaler_library']['price']
+        ## get n_features,x_window from model_params
+        n_features = model_params['input_params']['n_features']
+        x_window = model_params['input_params']['n_input']
+
+        ## get indices from model_params
+        train_data_index = model_params['input_params']['train_data_index']
+        test_data_index = model_params['input_params']['test_data_index']
+        # if model_params['data_params']['x_window'] == model_params['input_params']['n_input']:
+        #     x_window = model_params['input_params']['n_input']
+        # else:
+        #     print('x_window and n_input params are not the same, using n_input as x_window...')
             
     if (preds_from_gen == True) and (test_generator == None):
         raise Exception('If from_gen=True, must provide generator.')
@@ -1325,10 +1425,8 @@ preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=Tru
             
     ### GET the 3 DIFERENT TYPES OF PREDICTIONS    
     df_list = []
-
-
     if preds_from_gen:
-
+        ## get predictions from generator and return gen_df with correct data indices
         gen_df = get_model_preds_from_gen(model=model, test_generator=test_generator,true_test_data=true_test_series,
          model_params=model_params, n_input=x_window, n_features=n_features,  suffix='_from_gen',return_df=True)
 
@@ -1355,9 +1453,9 @@ preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=Tru
 
 
     # bs.display_side_by_side(func_df,func_df_from_train)
-    if return_combined:
-        df_all_preds = pd.concat([df for df in df_list],axis=1)
-        df_all_preds = bs.drop_cols(df_all_preds,['i_']);
+    ## combine into df
+    df_all_preds = pd.concat([df for df in df_list],axis=1)
+    df_all_preds = bs.drop_cols(df_all_preds,['i_']);
 
 
     ## ADD TRAINING DATA TO DATAFRAME IF REQUESTED
@@ -1367,17 +1465,9 @@ preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=Tru
         
     ## INVERSE TRANSOFRM BACK TO PRICE
     if inverse_tf:
-        df_out = ji.transform_cols_from_library(df_all_preds,single_scaler=model_params['scaler_library']['price'],inverse=True)
+        df_out = ji.transform_cols_from_library(df_all_preds,single_scaler=scaler,inverse=True)
     else:
         df_out = df_all_preds
-
-    # ## IPLOT
-    # if iplot:
-    #     fig = ji.plotly_true_vs_preds_subplots(df_out, true_train_col='true_train_price',
-    #     true_test_col='true_test_price',
-    #     pred_test_columns=['pred_from_gen','pred_from_test_preds','pred_from_train_preds'])
-
-    # return df_out # added on 08/20 weird it was missing
 
     
     def get_plot_df_with_one_true_series(df_out,train_data = true_train_series, include_train_data=include_train_data):
@@ -1437,26 +1527,23 @@ preds_from_train_preds =True, preds_from_test_preds=True, include_train_data=Tru
                 # continue            
 
         return df_plot 
-
-
+    
     df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) 
-    from IPython.display import display
-    display(df_plot.head())
-    if iplot:
-        fig = ji.plotly_true_vs_preds_subplots(df_plot, true_train_col='true_train_price', true_test_col='true_test_price', pred_test_columns=['pred_from_gen','pred_from_test_preds','pred_from_train_preds'])
-        # df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) #df_out.copy().drop(['true_from_test_preds','true_from_train_preds'],axis=1)
-        # df_plot = df_plot.rename(mapper={'true_from_gen':'true price'},axis='columns')
-        # if plot_with_train_data == False:
-            # ji.plotly_time_series(df_plot.drop('true_train_price')) 
-        # else:
 
-            # scaler = model_params['scaler_library']['price']
-            # true_train_price = ji.transform_series(true_train_series,scaler=scaler,inverse=True)
-            # print(type(true_train_price))
-            # df_plot = pd.concat([true_train_price,df_plot],axis=1)
-            # ji.plotly_time_series(df_plot)
+    ## display head if verbose
+    if verbose>0:
+        ji.disp_df_head_tail(df_plot)
 
-    return df_plot
+    if iplot==False:
+        return df_plot
+    else:
+        # from plotly.offline import 
+        # df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) 
+        fig = ji.plotly_true_vs_preds_subplots(df_plot, true_train_col='true_train_price',
+        true_test_col='true_test_price', pred_test_columns=['pred_from_gen','pred_from_test_preds','pred_from_train_preds'])
+        return df_plot
+
+
 
 
 def get_eval_dict_for_paired_cols(df,col_regex_tokens='(true|pred)_(from_\w*_?\w+?)'):
@@ -1508,8 +1595,8 @@ def get_predictions_df_and_evaluate_model(model, test_generator,
     # Call helper to get predictions and return as dataframes 
     # df_true_v_preds_train, df_true_v_preds_test 
     df_model = get_model_preds_df(model,  test_generator=test_generator,
-    true_train_series=true_train_data, true_test_series = true_test_data, model_params=model_params,train_data_index=None, test_data_index=None,
-        x_window=None, inverse_tf = inverse_tf, return_combined=True)
+    true_train_series=true_train_data, true_test_series = true_test_data, model_params=model_params,
+        x_window=None, inverse_tf = inverse_tf)
     ## Concatenate into one dataframe
     # df_model_preds = pd.concat([df_true_v_preds_train, df_true_v_preds_test],axis=1)
     
@@ -1672,7 +1759,7 @@ def get_model_preds_from_preds(model,true_train_data, true_test_data,
 
 
 def get_model_preds_from_gen(model,test_generator, true_test_data, model_params=None,
-                       n_input=None, n_features=None, suffix=None, return_df=True):
+                       n_input=None, n_features=None, suffix=None, verbose=0,return_df=True):
         """
         Gets prediction from model using the generator's timeseries using model.predict_generator()
         Must provide a model_params dictionary with 'input_params' OR must define ('n_input','n_features').
@@ -1687,8 +1774,10 @@ def get_model_preds_from_gen(model,test_generator, true_test_data, model_params=
             n_features = model_params['input_params']['n_features']
 
         if model_params is None:
-            if n_input is None or n_features is None:
-                raise Exception('Must provide model params or define n_input and n_features')
+            if n_input is None:
+                n_input= test_generator.length
+            if n_features is None:
+                n_features=test_generator.data[0].shape[0]
 
         # GET TRUE VALUES AND DATETIME INDEX FROM GENERATOR
         
@@ -1696,18 +1785,20 @@ def get_model_preds_from_gen(model,test_generator, true_test_data, model_params=
         gen_index = true_test_data.index[test_generator.start_index:test_generator.end_index+1]
         gen_true_targets = test_generator.targets[test_generator.start_index:test_generator.end_index+1]
         
-        
         # Generate predictions from the test_generator
         gen_preds = model.predict_generator(test_generator)
         gen_preds_flat = gen_preds.ravel()
-        
         gen_true_targets = gen_true_targets.ravel()
         
         
         # RETURN OUTPUT AS DATAFRAME OR ARRAY OF PREDS
-        if return_df==True:
+        if return_df == False:
+            return gen_preds
+
+        else:
             # Combine the outputs
-            print(len(gen_index),len(gen_true_targets), len(gen_preds_flat))
+            if verbose>0:
+                print(len(gen_index),len(gen_true_targets), len(gen_preds_flat))
 
             gen_pred_df = pd.DataFrame({'index':gen_index,'true':gen_true_targets,'pred':gen_preds_flat})
             gen_pred_df['index'] = pd.to_datetime(gen_pred_df['index'])
@@ -1719,8 +1810,6 @@ def get_model_preds_from_gen(model,test_generator, true_test_data, model_params=
                 colnames = gen_pred_df.columns
             gen_pred_df.columns=colnames
             return gen_pred_df
-        else:
-            return gen_preds
 
 
 def compare_model_pred_methods(model, true_train_series,true_test_series, test_generator=None,
@@ -1774,6 +1863,8 @@ def compare_model_pred_methods(model, true_train_series,true_test_series, test_g
     df_all_preds = pd.concat([df for df in df_list],axis=1)
     df_all_preds = bs.drop_cols(df_all_preds,['i_'])
     # print(df_all_preds.shape)
+    if plot_with_train_data:
+        df_all_preds=pd.concat([true_train_series.rename('true_train_price'),df_all_preds],axis=1)
 
     if inverse_tf:
         df_out = ji.transform_cols_from_library(df_all_preds,single_scaler=model_params['scaler_library']['price'],inverse=True)
@@ -1781,15 +1872,7 @@ def compare_model_pred_methods(model, true_train_series,true_test_series, test_g
         df_out = df_all_preds
 
     if iplot:
-        if plot_with_train_data == False:
-            ji.plotly_time_series(df_out)
-        
-        else:
-            scaler = model_params['scaler_library']['price']
-            true_train_price = ji.transform_series(true_train_series,scaler=scaler,inverse=True)
-            # print(type(true_train_price))
-            df_plot = pd.concat([true_train_price,df_out],axis=1)
-            ji.plotly_time_series(df_plot)
+        ji.plotly_time_series(df_out)
 
     if return_df:
         return df_out
@@ -1910,3 +1993,5 @@ def evaluate_classification(model, history, X_train,X_test,y_train,y_test, binar
     if save_conf_matrix_png:
         fig.savefig(png_filename,facecolor='white', format='png', frameon=True)
     return df_report, fig
+
+

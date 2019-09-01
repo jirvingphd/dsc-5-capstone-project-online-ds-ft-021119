@@ -2,14 +2,12 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
 
 ## IMPORT STANDARD PACKAGES
 from bs_ds.imports import *
 import bs_ds as bs
 
 ## Import custom capstone functions
-import functions_combined_BEST as ji
 from functions_combined_BEST import ihelp, ihelp_menu, reload
 from pprint import pprint
 import pandas as pd
@@ -21,114 +19,137 @@ import plotly.graph_objs as go
 import plotly.offline as pyo 
 import cufflinks as cf
 # cf.go_offline()
+import functions_combined_BEST as ji
+
 
 # Suppress warnings
 import warnings
-warnings.filterwarnings('ignore')
+# warnings.filterwarnings('ignore')
 dash.Dash(assets_ignore='z_external_stylesheet')
-
-
-## Open file firectory 
-with open('data/filename_dictionary.json', 'r') as f:
-    import json
-    file_dict_json = f.read()
-    file_dict = json.loads(file_dict_json)
-
-## Load in data
-stock_df_filename = file_dict['stock_df']['stock_df_with_indicators']
-stock_df = ji.load_processed_stock_data(stock_df_filename)
-
-df_models_dict = {}
-for model in ['model_0A','model_0B','model_1','model_2','model_3']:
-    
-    for res in ['df_model','df_results']:
-        filename = file_dict[model][res]
-        model_dict[model][res] = pd.read_csv(filename,index_col=0,parse_dates=True)
-        # model_dict[model]['df_results'] = pd.read_excel()
-
-
 # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-app = dash.Dash(__name__)#, external_stylesheets=external_stylesheets)
 
-fig = ji.plotly_time_series(stock_df,y_col='price', as_figure=True)
-fig_indicators = ji.plotly_technical_indicators(stock_df)
+## Load in text to display
+with open ('assets/text/intro.txt','r') as f:
+    md_intro = f.read() 
+
+with open ('assets/text/model_details_stocks.txt','r') as f:
+    md_model_details_stocks=f.read()
+
+with open ('assets/text/model_details_nlp.txt','r') as f:
+    md_model_details_nlp=f.read()
+
+with open('assets/text/technical_indicators.txt','r') as f:
+    md_tech_indicators = f.read()
+
+with open('assets/text/nlp_intro.txt','r') as f:
+    md_nlp_intro = f.read()
+
+with open('assets/text/nlp_data_intro.txt','r') as f:
+    md_nlp_data_intro = f.read()
 
 
+## Load in data
+stock_df_filename = 'data/_stock_df_with_technical_indicators.csv'
+stock_df = ji.load_processed_stock_data_plotly(stock_df_filename)
 
-app.layout = html.Div(id='main_container',children=[
+twitter_df = pd.read_csv('data/_twitter_df_with_stock_price.csv',
+index_col=0,parse_dates=True)
+
+df_model1 = pd.read_csv('assets/model_1/df_model.csv',index_col=0,parse_dates=True)
+df_model2 = pd.read_csv('assets/model_2/df_model.csv',index_col=0,parse_dates=True)
+
+fig_model1 = ji.plotly_true_vs_preds_subplots(df_model1, show_fig=False)
+fig_model2 = ji.plotly_true_vs_preds_subplots(df_model1,show_fig=False)
 
 
-    html.Div(id='header',children=[ #main child1
+fig_price = ji.plotly_time_series(stock_df,y_col='price', as_figure=True,show_fig=False)
+fig_indicators = ji.plotly_technical_indicators(stock_df, as_figure=True, show_fig=False)
+# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-        html.H1(children="Predicting Stock Market Fluctuations With Donald Trump's Tweets"),
-        html.P(id='my_name', children=dcc.Markdown('''
+md_example_tweet_forms = ji.display_same_tweet_diff_cols(twitter_df, columns=['content','content_min_clean',
+'cleaned_stopped_content'], for_dash=True)#,'cleaned_stopped_tokens'
+
+
+##
+nlp_df = pd.read_csv('data/_twitter_df_only_delta_price_pos_neg.csv',
+index_col=0,parse_dates=True)
+
+get_floats =nlp_df['cleaned_stopped_lemmas'].apply(lambda x: isinstance(x,float))
+nlp_df =nlp_df[~get_floats]
+
+
+twitter_df_groups,twitter_group_text = ji.get_group_texts_for_word_cloud(nlp_df, 
+                                                                      text_column='cleaned_stopped_tokens', 
+                                                                      groupby_column='delta_price_class')
+
+
+fig_wordcloud =ji.compare_word_clouds(text1=twitter_df_groups['pos']['joined'],
+                       label1='Stock Market Increased',
+                       text2= twitter_df_groups['neg']['joined'],
+                       label2='Stock Market Decreased',
+                       twitter_shaped = True, verbose=1,
+                       suptitle_y_loc=0.75,
+                       suptitle_text='Most Frequent Words by Stock Price +/- Change',
+                       save_file=False,
+                       wordcloud_cfg_dict={'collocations':True},
+                       filepath_folder='',**{'subplot_titles_fontdict':{'fontsize':26,'fontweight':'bold'},
+                        'suptitle_fontdict':{'fontsize':40,'fontweight':'bold'},
+                         'group_colors':{'group1':'green','group2':'red'},
+                        })
+app = dash.Dash(__name__)# external_stylesheets=external_stylesheets)
+
+app.layout = html.Div(children=[
+    html.H1(id='main_header',className='main_header', children="Predicting Stock Market Fluctuations With Donald Trump's Tweets"),
+
+    html.P(id='my_name', children=dcc.Markdown('''
         James M. Irving, Ph.D.
 
         https://github.com/jirvingphd
 
         [LinkedIn](https://www.linkedin.com/in/james-irving-4246b571/)
 
-        '''))
-        ]
-        ),
+        ''')),
+    
+        html.Div(id='1_intro',
+        children=[ #main child2
+        dcc.Markdown(md_intro)
+        ]),
 
-    html.Div(id='intro',children=[ #main child2
-        dcc.Markdown('''
-        ___
-        
-        ## PROJECT GOAL:
-        * **Use President Trump's tweets (NLP and other features) to predict fluctuations in the stock market (using S&P 500 as index).**
-
-            
-        ### DATA USED:
-
-        * **All Donald Trump tweets from inaugaration day 2017 to today (for now) - 06/20/19**
-            * Extracted from http://www.trumptwitterarchive.com/
-        * **Minute-resolution data for the S&P500 covering the same time period.**
-            * IVE S&P500 Index from - http://www.kibot.com/free_historical_data.aspx
-            
-        ### MAJOR REFERENCES / INSPIRATION / PRIOR WORK IN FIELD:
-        1. **Stanford Scientific Poster Using NLP ALONE to predict if stock prices increase or decrease 5 mins after Trump tweets.**  
-            - [Poster PDF LINK](http://cs229.stanford.edu/proj2017/final-posters/5140843.pdf)
-            - [Evernote Summary Notes Link](https://www.evernote.com/l/AAoL1CyhPV1GoIzSgq59GO10x6xfEeVDo5s/)
-        2. **TowardsDataScience Blog Plost on "Using the latest advancements in deep learning to predict stock price movements."** 
-            - [Blog Post link](https://towardsdatascience.com/aifortrading-2edd6fac689d)
-            - [Evernote Summary](https://www.evernote.com/l/AApvQ8Xh8b9GBLhrD0m8w4H1ih1oVM8wkEw/)
-
-
-        ## DATA AND MODEL OUTLINE
-
-        ### Natural Language Processing for Twitter Data:
-
-        - **FEATURES ENGINEERED/USED:**
-            - Extract features from Trump's tweets: perform the NLP analysis to generate the features about his tweets to use in final model
-                * [x] Tweet sentiment score
-                * [x] Tweet frequency per timebin
-                * [x] upper-to-lowercase-ratio
-                * [x] retweet-count
-                * [x] favorite-count
-            
-        * **PREDICTIVE MODEL** 
-            - *Binary classification using Word2Vec Embeddings with an LSTM to predict +/- price change per tweet.*
-                * [x] Fit word2vec model on tweets, use vectors to create an embedding layer for model.
-                * [x] Feed in  X data = content of tweet, y = stock_price change 60 mins after tweet.
-
-            ''')
-            ]
-        ), # end div
-
-        html.Div(id='tweets',children= [ # main child 3
-            
-            html.H2(children="EXPLORING TRUMP'S TWEETS"),
-            html.Div([
-                dcc.Input(id='search',value='russia',type='text'),
-                html.Div(id)
+        html.Div(id="2_NLP", children=[
+            dcc.Markdown(md_nlp_intro),
+            html.Div(id='show_tweet_forms',
+            children=[
+                dcc.Markdown(ji.display_same_tweet_diff_cols(twitter_df,for_dash=True))
+                ]),
+            html.Div(id='nlp_data',children=[
+                dcc.Markdown(md_nlp_data_intro),
+                dcc.Graph(figure=ji.plotly_price_histogram(twitter_df)),
+                dcc.Graph(figure=ji.plotly_pie_chart(twitter_df,show_fig=False))
             ]),
-        ]
-    )
-)
+        ]),
 
+        html.Div(id='3_stock_market_data', children= [ 
+            html.H2('MODELING THE STOCK MARKET'),
+            html.H3('Model 1: Predicting Price Using Price Alone'),
+            html.Div(id='model_1_results', children=[
+                dcc.Graph(figure=fig_price),
+                dcc.Markdown(className='quoted_tweet',children=md_model_details_stocks),
+                dcc.Graph( id='fig_model1_results',figure=fig_model1)
+            ])
+        ]), # stock_market_data children,
+                
+        html.Div(id='tech_indicators',children=[
+        html.H2("Modeling Stock Price + Technical Indicators"),
+        dcc.Graph(id='indicators_figure', figure = fig_indicators),
+        dcc.Markdown(md_tech_indicators),
+        html.H3('Model Results'),
+        dcc.Graph(figure=fig_model2)
+        ])
+    
+
+]
+)
 
 if __name__ == '__main__':
     app.run_server(debug=True)

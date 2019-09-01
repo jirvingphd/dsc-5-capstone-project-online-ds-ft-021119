@@ -1,0 +1,15 @@
+
+### Natural Language Processing for Twitter Data:
+
+- **FEATURES ENGINEERED/USED:**
+    - Extract features from Trump's tweets: perform the NLP analysis to generate the features about his tweets to use in final model
+        * [x] Tweet sentiment score
+        * [x] Tweet frequency per timebin
+        * [x] upper-to-lowercase-ratio
+        * [x] retweet-count
+        * [x] favorite-count
+    
+* **PREDICTIVE MODEL** 
+    - *Binary classification using Word2Vec Embeddings with an LSTM to predict +/- price change per tweet.*
+        * [x] Fit word2vec model on tweets, use vectors to create an embedding layer for model.
+        * [x] Feed in  X data = content of tweet, y = stock_price change 60 mins after tweet.

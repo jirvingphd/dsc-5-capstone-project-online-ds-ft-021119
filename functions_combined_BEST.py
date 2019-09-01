@@ -297,7 +297,7 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
 #################################################### STOCK ##############################################################
 def column_report(twitter_df,index_col='iloc', sort_column='iloc', ascending=True,name_for_notes_col = 'Notes',notes_by_dtype=False,
  decision_map=None, format_dict=None,   as_qgrid=True, qgrid_options=None, qgrid_column_options=None,qgrid_col_defs=None, qgrid_callback=None,
- as_df = False, as_interactive_df=False, show_and_return=True):
+ as_df = False, as_interactive_df=False, show_and_return=False):
 
     """
     Returns a datafarme summary of the columns, their dtype,  a summary dataframe with the column name, column dtypes, and a `decision_map` dictionary of 
@@ -1118,7 +1118,10 @@ def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90
 
     if iplot==True:
         df_plot=pd.concat([train_data[plot_col].rename('train price'),test_data[plot_col].rename('test_price')],axis=1)
-        display(plotly_time_series(df_plot))#, as_figure=True)
+        from plotly.offline import iplot
+        fig = plotly_time_series(df_plot,show_fig=False)
+        iplot(fig)
+        # display()#, as_figure=True)
 
     return train_data, test_data
 
@@ -1178,7 +1181,7 @@ def train_test_split_by_last_days(stock_df, periods_per_day=7,num_test_days = 90
 #     else:        
 #         return scaler_dict, df_out
 
-def make_scaler_library(df,transform=True,columns=None,model_params=None,verbose=1):
+def make_scaler_library(df,transform=True,columns=None,use_model_params=False,model_params=None,verbose=1):
     """Takes a df and fits a MinMax scaler to the columns specified (default is to use all columns).
     Returns a dictionary (scaler_library) with keys = columns, and values = its corresponding fit's MinMax Scaler
      
@@ -1196,13 +1199,12 @@ def make_scaler_library(df,transform=True,columns=None,model_params=None,verbose
         columns = df.columns
          
     # select only compatible columns
-     
     columns_filtered = df[columns].select_dtypes(exclude=['datetime','object','bool']).columns
  
     if len(columns) != len(columns_filtered):
         removed = [x for x in columns if x not in columns_filtered]
         if verbose>0:
-            print(f'These columns were excluded due to incompatible dtypes.\n{removed}\n')
+            print(f'[!] These columns were excluded due to incompatible dtypes.\n{removed}\n')
  
     # Loop throught columns and fit a scaler to each
     scaler_dict = {}
@@ -1222,10 +1224,11 @@ def make_scaler_library(df,transform=True,columns=None,model_params=None,verbose
         return_list.append(df_out)
  
     # add scaler to model_params
-    if model_params is not None:
-        model_params['scaler_library']=scaler_dict
-        return_list.append(model_params)
- 
+    if use_model_params:
+        if model_params is not None:
+            model_params['scaler_library']=scaler_dict
+            return_list.append(model_params)
+    
     return return_list[:]
  
 
@@ -1375,7 +1378,7 @@ def transform_cols_from_library(df,col_list=None,col_scaler_dict=None, scaler_li
 
     # MAKE COL_LIST FROM DICT OR COLUMNS
     if (col_list is None) and (col_scaler_dict is None):
-        print('Using all columns...')
+        print('[i] Using all columns...')
         col_list = df.columns
 
     if col_scaler_dict is not None:
@@ -1387,12 +1390,7 @@ def transform_cols_from_library(df,col_list=None,col_scaler_dict=None, scaler_li
     df_out = df.copy()
     
     # Filter out incompatible data types
-    # columns_filtered = df[col_list].select_dtypes(exclude=['datetime','object','bool']).columns
-    # print('columns_filtered:\n',columns_filtered)
-    # i=0,/
-    # while i 
     for col in col_list:
-        # print(col)
         # if single_scaler, use it in tuple with col
         if single_scaler is not None:
             scaler = single_scaler
@@ -2215,36 +2213,40 @@ def highlight_best(s, criteria='min',color='green',font_weight='bold'):
 
 
 
+def def_plotly_date_range_widgets(my_rangeselector=None,as_layout=True,as_dict=False):
+    """old name; def_my_plotly_stock_layout,
+    REPLACES DEF_RANGE_SELECTOR"""
+    if as_dict:
+        as_layout=False
 
-# define plotly range selector, slider, and layout
-def def_range_selector():
-    
-    my_rangeselector={'bgcolor': 'lightgray', #rgba(150, 200, 250, 1)',
-                          'buttons': [{'count': 1, 'label': '1m', 'step': 'month', 'stepmode': 'backward'},
-                                      {'count':3,'label':'3m','step':'month','stepmode':'backward'},
-                                      {'count':6,'label':'6m','step':'month','stepmode':'backward'},
-                                      {'count': 1, 'label': '1y', 'step': 'year', 'stepmode': 'backward'},
-                                      {'step':'all'}, {'count':1,'step':'year', 'stepmode':'todate'}
-                                      ],
-                      'visible': True}
-    return my_rangeselector
-
-
-def def_my_plotly_stock_layout(my_rangeselector=None):
+    from plotly import graph_objs as go
     if my_rangeselector is None:
-        my_rangeselector=def_range_selector()
+        my_rangeselector={'bgcolor': 'lightgray', #rgba(150, 200, 250, 1)',
+                            'buttons': [{'count': 1, 'label': '1m', 'step': 'month', 'stepmode': 'backward'},
+                                        {'count':3,'label':'3m','step':'month','stepmode':'backward'},
+                                        {'count':6,'label':'6m','step':'month','stepmode':'backward'},
+                                        {'count': 1, 'label': '1y', 'step': 'year', 'stepmode': 'backward'},
+                                        {'step':'all'}, {'count':1,'step':'year', 'stepmode':'todate'}
+                                        ],
+                        'visible': True}
         
-    my_layout = {'title': 
-                 {'font': {'color': '#4D5663'}, 'text': 'S&P500 Hourly Price'},
-                 'xaxis':{'title':{'text':'Date'} ,
-                          'rangeselector': my_rangeselector,
-                           'rangeslider':{'visible':True},
-                         'type':'date'},
-                'yaxis':{'title':{'text':'Closing Price'}}
-                }
-    return my_layout
+    my_layout = {'xaxis':{
+        'rangeselector': my_rangeselector,
+        'rangeslider':{'visible':True},
+                         'type':'date'}}
 
-def cufflinks_solar_theme():
+    if as_layout:
+        return go.Layout(my_layout)
+    else:
+        return my_layout
+
+def def_cufflinks_solar_theme(as_layout=True, as_dict=False):
+    from plotly import graph_objs as go
+    if as_dict:
+        as_layout=False
+    # if as_layout and as_dict:
+        # raise Exception('only 1 of as_layout, as_dict can be True')
+
     theme_dict = {'annotations': {'arrowcolor': 'grey11', 'fontcolor': 'beige'},
      'bargap': 0.01,
      'colorscale': 'original',
@@ -2263,7 +2265,13 @@ def cufflinks_solar_theme():
                           'titlefont': {'color': 'beige'},
                           'zerolinecolor': 'grey'}},
      'linewidth': 1.3}
-    return theme_dict
+
+    theme = go.Layout(theme_dict['layout'])
+    if as_layout:
+        return theme
+    if as_dict:
+        return theme.to_plotly_json()
+    
 
 
 
@@ -2303,18 +2311,160 @@ def replace_keys(orig_dict,new_dict):
     return orig_dict
 
 
-def def_my_layout_solar_theme():
+def def_plotly_solar_theme_with_date_selector_slider(as_layout=True, as_dict=False):
     ## using code above
-    solar_theme = cufflinks_solar_theme()#['layout']
-    my_layout = def_my_plotly_stock_layout()
-    new_layout = merge_dicts_by_keys(solar_theme['layout'],my_layout)    
-    return new_layout
+    if as_dict:
+        as_layout=False
+    solar_theme = def_cufflinks_solar_theme(as_layout=True)#['layout']
+    stock_range_widget_layout = def_plotly_date_range_widgets()
+    new_layout = solar_theme.update(stock_range_widget_layout)
+    # new_layout = merge_dicts_by_keys(solar_theme['layout'],my_layout)
+    if as_layout:
+        return new_layout
+    if as_dict:
+        return new_layout.to_plotly_json()
+        
+        
+        
+
+def match_data_colors(fig1,fig2):
+    color_dict = {}
+    for data in fig1['data']:
+        name = data['name']
+        color_dict[name] = {'color':data['line']['color']}
+
+    data_list =  fig2['data'] 
+    for i,trace in enumerate(data_list):
+        if trace['name'] in color_dict.keys():
+            data_list[i]['line']['color'] = color_dict[trace['name']]['color']
+    fig2['data'] = data_list
+    return fig1,fig2
+
+def plotly_true_vs_preds_subplots(df_model_preds,
+                                true_train_col='true_train_price',
+                                true_test_col='true_test_price',
+                                pred_test_columns='pred_from_gen',
+                                subplot_mode='lines+markers',marker_size=5,
+                                title='S&P 500 True Price Vs Predictions ($)',
+                                theme='solar', 
+                                verbose=0,figsize=(1000,500),
+                                       debug=False,
+                                show_fig=True):
+    """y_col_kws={'col_name':line_color}"""
+
+    import pandas as pd
+    import numpy as np
+    import plotly.graph_objs as go
+    import cufflinks as cf
+    cf.go_offline()
+
+    from plotly.offline import iplot#download_plotlyjs, init_notebook_mode, plot, iplot
+#     init_notebook_mode(connected=True)    
+    import functions_combined_BEST as ji
+    import bs_ds as bs
+
+    
+    ### MAKE THE LIST OF COLUMNS TO CREATE SEPARATE DATAFRAMES TO PLOT
+    if isinstance(pred_test_columns,str):
+        pred_test_columns = [pred_test_columns]
+    if pred_test_columns is None:
+        exclude_list = [true_train_col,true_test_col]
+        pred_test_columns = [col for col in df_model_preds.columns if col not in exclude_list]
+    
+    fig1cols = [true_train_col,true_test_col]
+    fig2cols = [true_test_col]
+
+    [fig1cols.append(x) for x in pred_test_columns]
+    [fig2cols.append(x) for x in pred_test_columns]
+
+    ## CREATE FIGURE DATAFRAMES
+    fig1_df = df_model_preds[fig1cols]
+    fig2_df = df_model_preds[fig2cols].dropna() 
+
+
+    
+    
+    ## Get my_layout
+    fig_1 = ji.plotly_time_series(fig1_df,theme=theme,show_fig=False, as_figure=True,
+                                  iplot_kwargs={'mode':'lines'})
+        
+    fig_2 = ji.plotly_time_series(fig2_df,theme=theme,show_fig=False,as_figure=True,
+                                  iplot_kwargs={'mode':subplot_mode,
+                                               'size':marker_size})
+    
+    fig_1,fig_2 = match_data_colors(fig_1,fig_2)
+
+    ## Create base layout and add figsize
+    base_layout = ji.def_plotly_solar_theme_with_date_selector_slider()
+    update_dict={'height':figsize[1],
+                 'width':figsize[0],
+                 'title': title,
+                'xaxis':{'autorange':True, 'rangeselector':{'y':-0.3}},
+                 'yaxis':{'autorange':True},
+                 'legend':{'orientation':'h',
+                 'y':1.0,
+                 'bgcolor':None}
+                }
+    
+    base_layout.update(update_dict) 
+    base_layout=base_layout.to_plotly_json()
+    
+    # Create combined figure with uneven-sized plots
+    specs= [[{'colspan':3},None,None,{'colspan':2},None]]#specs= [[{'colspan':2},None,{'colspan':1}]]
+    big_fig = cf.subplots(theme=theme,
+                          base_layout=base_layout,
+                          figures=[fig_1,fig_2],
+                          horizontal_spacing=0.1,
+                          shape=[1,5],specs=specs)#,
+    # big_fig['layout']['legend']['bgcolor']=None
+    big_fig['layout']['legend']['y'] = 1.0
+    big_fig['layout']['xaxis']['rangeselector']['y']=-0.3
+    big_fig['layout']['xaxis2']['rangeselector'] = {'bgcolor': 'lightgray',
+                                                    'buttons': [ 
+                                                        {'count': 1,
+                                                         'label': '1d',
+                                                         'step': 'day',
+                                                         'stepmode': 'backward'},
+                                                        {'step':'all'}
+                                                    ],'visible': True,
+                                                    'y':-0.5}
+    update_layout_dict={
+                        'yaxis':{
+                            'title':{'text': 'True Train/Test Price vs Predictions',
+                                     'font':{'color':'white'}}},
+                        'yaxis2':{'title':{'text':'Test Price vs Pred Price',
+                                           'font':{'color':'white'}}},
+                        'title':{'text':'S&P 500 True Price Vs Predictions ($)',
+                        'font':{'color':'white'},
+                        'y':0.95, 'pad':{'b':0.1,'t':0.1}
+                        }
+                       }
+                                  
+
+    layout = go.Layout(big_fig['layout'])
+    # title_layout = go.layout.Title(text='S&P 500 True Price Vs Predictions ($)',font={'color':'white'},pad={'b':0.1,'t':0.1}, y=0.95)#                                'font':{'color':'white'}
+    layout = layout.update(update_layout_dict)
+    # big_fig['layout'] = layout.to_plotly_json()
+    big_fig = go.Figure(data=big_fig['data'],layout=layout)
+
+    fig_dict={}
+    fig_dict['fig_1']=fig_1
+    fig_dict['fig_2'] =fig_2
+    fig_dict['big_fig']=big_fig
+
+
+    if show_fig:
+        iplot(big_fig)
+    if debug == True:
+        return fig_dict
+    else:
+        return big_fig
 
 
 
 
-def plotly_time_series(stock_df,x_col=None, y_col=None,title='S&P500 Hourly Price',theme='solar',
-as_figure = False,show_fig=True): #,name='S&P500 Price'):
+def plotly_time_series(stock_df,x_col=None, y_col=None,layout_dict=None,title='S&P500 Hourly Price',theme='solar',
+as_figure = True,show_fig=True,fig_dim=(900,400),iplot_kwargs=None): #,name='S&P500 Price'):
     import plotly
     from IPython.display import display
         
@@ -2336,38 +2486,54 @@ as_figure = False,show_fig=True): #,name='S&P500 Price'):
     # %matplotlib inline
     if plotly.__version__<'4.0':
         if theme=='solar':
-            my_layout = def_my_layout_solar_theme()
+            solar_layout = def_cufflinks_solar_theme(as_layout=True)
+            range_widgets = def_plotly_date_range_widgets(as_layout=True)
+            my_layout = solar_layout.update(range_widgets)
         else:
-            my_rangeselector={'bgcolor': 'rgba(150, 200, 250, 1)',
-                        'buttons': [{'count': 1, 'label': '1m', 'step': 'month', 'stepmode': 'backward'},
-                                    {'count':3,'label':'3m','step':'month','stepmode':'backward'},
-                                    {'count':6,'label':'6m','step':'month','stepmode':'backward'},
-                                    {'count': 1, 'label': '1y', 'step': 'year', 'stepmode': 'backward'}
-                                    ],
-                        'visible': True}
+            my_layout = def_plotly_date_range_widgets()
 
-            my_layout = {'title': 
-                        {'font': {'color': '#4D5663'}, 'text': title},
-                        'xaxis':{'title':{'text':'Date'} ,
-                                'rangeselector': my_rangeselector,
-                                'rangeslider':{'visible':True},
-                                'type':'date'},
-                        'yaxis':{'title':{'text':'Closing Price'}}
-                        }
+        ## Define properties to update layout
+        update_dict = {'title':
+                    {'text': title},
+                    'xaxis':{'title':{'text':'Market Trading Day-Hour'}},
+                    'yaxis':{'title':{'text':'Closing Price (USD)'}},
+                    'height':fig_dim[1],
+                    'width':fig_dim[0]}        
+        my_layout.update(update_dict)
 
 
-        # if no columns specified, use the whole df
-        if (y_col is None) and (x_col is None):
-            fig = stock_df.iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True)
+        ## UPDATE LAYOUT WITH ANY OTHER USER PARAMS
+        if layout_dict is not None:
+            my_layout = my_layout.update(layout_dict)
 
-        # else plot y_col 
-        elif (y_col is not None) and (x_col is None):
-            fig = stock_df[y_col].iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True)
+        if iplot_kwargs is None:
+
+            # if no columns specified, use the whole df
+            if (y_col is None) and (x_col is None):
+                fig = stock_df.iplot( layout=my_layout,world_readable=True,asFigure=True)#asDates=True,
+
+            # else plot y_col 
+            elif (y_col is not None) and (x_col is None):
+                fig = stock_df[y_col].iplot(layout=my_layout,world_readable=True,asFigure=True)#asDates=True,
+            
+            #  else plot x_col vs y_col
+            else:
+                fig = stock_df.iplot(x=x_col,y=y_col,  layout=my_layout,world_readable=True,asFigure=True)#asDates=True,
+            
+        else:
+
+            # if no columns specified, use the whole df
+            if (y_col is None) and (x_col is None):
+                fig = stock_df.iplot( layout=my_layout,world_readable=True,asFigure=True,**iplot_kwargs)#asDates=True,
+
+            # else plot y_col 
+            elif (y_col is not None) and (x_col is None):
+                fig = stock_df[y_col].iplot(asDates=True, layout=my_layout,world_readable=True,asFigure=True,**iplot_kwargs)
+            
+            #  else plot x_col vs y_col
+            else:
+                fig = stock_df.iplot(x=x_col,y=y_col,  layout=my_layout,world_readable=True,asFigure=True,**iplot_kwargs)#asDates=True,
         
-        #  else plot x_col vs y_col
-        else:
-            fig = stock_df.iplot(x=x_col,y=y_col, asDates=True, layout=my_layout,world_readable=True,asFigure=True)
-    
     
     ## IF using verson v4.0 of plotly
     else:
@@ -2423,15 +2589,11 @@ as_figure = False,show_fig=True): #,name='S&P500 Price'):
                         )
                 )
             )
-        
-    # fig.show()
-    # display(fig)
+
     if show_fig:
         iplot(fig)
     if as_figure:
         return fig
-    # else:
-        # return iplot(fig)#display(fig)#fig
 
 
 def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):
@@ -2505,20 +2667,21 @@ def plot_technical_indicators(dataset, last_days=90,figsize=(12,8)):
     return fig
 
 def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21', '26ema', '12ema', 
-'upper_band', 'lower_band', 'ema', 'momentum'],x_col=None, theme='solar', as_figure =True, verbose=0,figsize=(14,4)):
+'upper_band', 'lower_band', 'ema', 'momentum'],x_col=None, theme='solar', as_figure =True,show_fig=True, verbose=0,figsize=(14,4)):
 
     from plotly.offline import init_notebook_mode, plot, iplot, iplot_mpl
+    import functions_combined_BEST as ji
 
     if theme=='solar':
-        my_layout = def_my_layout_solar_theme()
+        my_layout = def_cufflinks_solar_theme()
     else:
-        my_layout = def_my_plotly_stock_layout()
+        my_layout = def_plotly_date_range_widgets()
     
     # Plot train_price if it is not empty.
     # if len(train_price)>0:
     df=stock_df[plot_indicators].copy()
     df.dropna(inplace=True)
-    fig = plotly_time_series(df,x_col=x_col,y_col=plot_indicators, show_fig=False, as_figure=True)
+    fig = ji.plotly_time_series(df,x_col=x_col,y_col=plot_indicators, show_fig=False, as_figure=True)
 
     # FIND THE PRICE TRACE AND CHANGE ITS PROPERTIES, PUT IT ON TOP
     temp_data = list(fig['data'])
@@ -2541,7 +2704,8 @@ def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21'
     # Reverse legend so last entry (price) is on top
     fig['layout']['legend']['traceorder'] = 'reversed'
 
-    iplot(fig)
+    if show_fig:
+        iplot(fig)
     return fig
 
 #BOOKMARK    
@@ -2676,19 +2840,24 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, figsize=(14
         return fig, ax1
 
 
-def plotly_true_vs_preds_subplots(df_model_preds, true_train_col, true_test_col,
-                                  pred_test_columns, x_col=None, y_col = None,
-                                  subplot_mode='lines+markers',
-                                  subplots=True,theme='solar', 
-                                  verbose=0,figsize=(1000,500)):
+
+
+def plotly_true_vs_preds_subplots_old(df_model_preds,
+                                true_train_col='true_train_price',
+                                true_test_col='true_test_price',
+                                pred_test_columns='pred_from_gen',
+                                 x_col=None, y_col = None,
+                                subplot_mode='lines+markers',
+                                subplots=True,theme='solar', 
+                                verbose=0,figsize=(1000,500),
+                                show_fig=True):
     """y_col_kws={'col_name':line_color}"""
 
     import pandas as pd
     import numpy as np
     import plotly.graph_objs as go
 
-    from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot, iplot_mpl
-
+    from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
     
     init_notebook_mode(connected=True)
     
@@ -2705,9 +2874,9 @@ def plotly_true_vs_preds_subplots(df_model_preds, true_train_col, true_test_col,
 
     ## Get my_layout
     if theme=='solar':
-        my_layout = ji.def_my_layout_solar_theme()
+        my_layout = ji.def_plotly_solar_theme_with_date_selector_slider(as_dict=True)
     else:
-        my_layout = ji.def_my_plotly_stock_layout()
+        my_layout = ji.def_plotly_date_range_widgets(as_dict=True)
         
     
     ## Copy and split dataframe
@@ -2718,8 +2887,11 @@ def plotly_true_vs_preds_subplots(df_model_preds, true_train_col, true_test_col,
     df_train = df.pop(true_train_col)#[true_train_col].dropna()
     df_train.dropna(inplace=True)
 
-    df_test = df
-    df_test.dropna(inplace=True)
+    df_test = df.dropna()
+
+
+    ### WHY CANT USE CUFFLINKS HERE
+    fig1 = plotly_time_series(df_train,show_fig=False)
     
 
     ## FIGURE 1- TRAINING DATA + TEST DATA    
@@ -2813,7 +2985,7 @@ def plotly_true_vs_preds_subplots(df_model_preds, true_train_col, true_test_col,
     
     
     ## Add general fields from my_layout  
-    layout_fields_copy = ['paper_bgcolor','plot_bgcolor','legend', 'titlefont', 'plot_bgcolor', 'title']
+    layout_fields_copy = ['paper_bgcolor','plot_bgcolor','legend', 'plot_bgcolor', 'title']
     for field in layout_fields_copy:
         temp_ax_layout[field] = my_layout[field]
     
@@ -2822,7 +2994,10 @@ def plotly_true_vs_preds_subplots(df_model_preds, true_train_col, true_test_col,
     temp_ax_layout['legend']['y']=1
     
     ## Update spacing/position for rangeselector
-    temp_ax_layout['xaxis']['rangeselector']['y']=-0.06
+    try:
+        temp_ax_layout['xaxis']['rangeselector']['y']=-0.06
+    except:
+        print('no xaxis rangeselctor found')
 
 #     temp_ax_layout['legend']['y'] = -0.1
         
@@ -2834,7 +3009,8 @@ def plotly_true_vs_preds_subplots(df_model_preds, true_train_col, true_test_col,
     big_fig['layout']['width'] = figsize[0]
     big_fig['layout']['height'] = figsize[1]
 
-    iplot(big_fig)
+    if show_fig:
+        iplot(big_fig)
     return big_fig
     
     
@@ -3509,7 +3685,8 @@ def unpack_match_stocks(stock_dict):
 ## twitter_df, stock_price = load_twitter_df_stock_price()
 ## twitter_df = get_stock_prices_for_twitter_data(twitter_df, stock_prices)
 #  
-def load_twitter_df_stock_price(twitter_df = None, stock_price_file = 'IVE_bidask1min_08_23_2019.csv',get_stock_prices_per_tweet=False,price_mins_after_tweet=60):# del stock_price
+def load_twitter_df_stock_price(twitter_df = None, stock_price_file = 'IVE_bidask1min_08_23_2019.csv', display_header=False,
+get_stock_prices_per_tweet=False,price_mins_after_tweet=60):# del stock_price
     """Loads in stock_price data from original text souce in minute frequency using 
     load_stock_price_series(filename= #'IVE_bidask1min_08_23_2019.csv)
     if twitter_df not provided, it is created from scratch using processing functions. 
@@ -3521,13 +3698,17 @@ def load_twitter_df_stock_price(twitter_df = None, stock_price_file = 'IVE_bidas
     """
     from IPython.display import display
     import functions_combined_BEST as ji
-    try: stock_price
-    except NameError: stock_price = None
+    try: 
+        stock_price
+    except NameError: 
+        stock_price = None
+
     if stock_price is  None:    
-        print('loading stock_price')
+        print('[io] Loading 1-minute-resolution stock_prices...')
         stock_price = ji.load_stock_price_series()
+
     else:
-        print('using pre-existing stock_price')
+        print('[i] Using pre-existing stock_price.')
 
     # Make sure stock_price is loaded as minute data
     stock_price = stock_price.asfreq('T')
@@ -3537,16 +3718,19 @@ def load_twitter_df_stock_price(twitter_df = None, stock_price_file = 'IVE_bidas
     ## LOAD TWEETS, SELECT THE PROPER DATE RANGE AND COLUMNS
     # twitter_df = load_twitter_df(verbose=0)
     if twitter_df is None: 
-        print('Creating twitter_df using `load_raw_twitter_file()`, `full_twitter_df_processing`')
+        print('[i] Creating twitter_df using `load_raw_twitter_file()`, `full_twitter_df_processing`')
         twitter_df= ji.load_raw_twitter_file()
         twitter_df = ji.full_twitter_df_processing(twitter_df)
 
     stock_price.sort_index(inplace=True)
     twitter_df.sort_index(inplace=True)
     
-    display(twitter_df.head())
-    print(stock_price.index[0],stock_price.index[-1])
-    print(twitter_df.index[0],twitter_df.index[-1])
+    if display_header:
+        display(twitter_df.head(3))
+        ji.index_report(twitter_df,label='twitter_df')
+        ji.index_report(stock_price, label='stock_price')
+        # print(stock_price.index[0],stock_price.index[-1])
+        # print(twitter_df.index[0],twitter_df.index[-1])
     
     if get_stock_prices_per_tweet:
 
@@ -3557,8 +3741,8 @@ def load_twitter_df_stock_price(twitter_df = None, stock_price_file = 'IVE_bidas
            print(f'[!] Found columns created by `get_stock_prices_for_twitter_data`\nReturning input df.')
            return twitter_df
         else:
-            print('Adding stock_price data for tweets using `get_stock_prices_for_twitter_data`...')
-            print('Limiting twitter_df timeindex to match stock_price.')
+            print(f'[i] Adding stock_price data for {price_mins_after_tweet} mins post-tweets using `get_stock_prices_for_twitter_data`...')
+            print('[i] Limiting twitter_df timeindex to match stock_price.')
             twitter_df = twitter_df.loc[stock_price.index[0]:stock_price.index[-1]]
 
             twitter_df = get_stock_prices_for_twitter_data(twitter_df=twitter_df, stock_prices=stock_price,
@@ -3805,7 +3989,7 @@ def df2png(df, filename_prefix = 'results/summary_table',sep='_',filename_suffix
 
 
 # from __future__ import print_function  # for Python2
-def inspect_variables(local_vars = None,sort_col='size',exclude_funcs_mods=True, top_n=None,return_df=False,always_display=True,
+def inspect_variables(local_vars = None,sort_col='size',exclude_funcs_mods=True, top_n=10,return_df=False,always_display=True,
 show_how_to_delete=True,print_names=False):
     """Displays a dataframe of all variables and their size in memory, with the
     largest variables at the top."""
@@ -3898,9 +4082,11 @@ show_how_to_delete=True,print_names=False):
 
 def display_same_tweet_diff_cols(df_sampled,index=None,columns = ['content' ,'content_min_clean',
                                                                 'cleaned_stopped_content',
-                                                                'cleaned_stopped_tokens'],
+                                                                'cleaned_stopped_tokens',
+                                                                'cleaned_stopped_lemmas'],
                                                                  as_df = False, as_md=True,
-                                                                 time_format='%m-%d-%Y %T'):
+                                                                 time_format='%m-%d-%Y %T',
+                                                                 for_dash=False):
     """Displays the contents each column for a specific index = i; 
     If i=None then defaults to randomly selected row."""
     import pandas as pd
@@ -3970,22 +4156,47 @@ def display_same_tweet_diff_cols(df_sampled,index=None,columns = ['content' ,'co
 
     elif as_md:
 
-        for ii in range(len(print_index)):#range(num_tweets):
-            i = print_index[ii]
-            tweet_to_print = df_sampled.loc[i]
+        if for_dash==False:
+            for ii in range(len(print_index)):#range(num_tweets):
+                i = print_index[ii]
+                tweet_to_print = df_sampled.loc[i]
+            
+                if num_tweets>1:
+                    display(Markdown("<br>"))
+                    display(Markdown(f'### Tweet #{ii+1} of {len(print_index)}: sent @ *{i}*:'))#index[i]
+                else:
+                    display(Markdown(f'#### TWEET FROM {i}:'))#index[i]
+                # print(f'* TWEETED ON {df_sampled.index[i]}')
+                for col in columns:
 
-            if num_tweets>1:
-                display(Markdown("<br>"))
-                display(Markdown(f'### Tweet #{ii+1} of {len(print_index)}: sent @ *{i}*:'))#index[i]
-            else:
-                display(Markdown(f'#### TWEET FROM {i}:'))#index[i]
-            # print(f'* TWEETED ON {df_sampled.index[i]}')
-            for col in columns:
+                    col_name = f'* **["{col}"] column:**<p><blockquote>***"{tweet_to_print[col]}"***'
+                    
+                    display(Markdown(col_name))
+        else:
+            markdown_list= []
+            for ii in range(len(print_index)):#range(num_tweets):
+                i = print_index[ii]
+                tweet_to_print = df_sampled.loc[i]
+            
+                if num_tweets>1:
+                    markdown_list.append(["\n"])
+                    markdown_list.append([f'### Tweet #{ii+1} of {len(print_index)}: sent @ *{i}*:'])
+                    # display(Markdown("<br>"))
+                    # display(Markdown(f'### Tweet #{ii+1} of {len(print_index)}: sent @ *{i}*:'))#index[i]
+                else:
+                    markdown_list.append([f'#### TWEET FROM {i}:'])
+                    # display(Markdown(f'#### TWEET FROM {i}:'))#index[i]
+                # print(f'* TWEETED ON {df_sampled.index[i]}')
+                for col in columns:
 
-                col_name = f'* **["{col}"] column:**<p><blockquote>***"{tweet_to_print[col]}"***'
-                
-                display(Markdown(col_name))
-
+                    col_name = f'* **"{col}" column:**'
+                    quote=f'> ***"{tweet_to_print[col]}"***'
+                    markdown_list.append([col_name])
+                    markdown_list.append([quote])
+                    # display(Markdown(col_name))
+            markdown_out = [' '.join(x) for x in markdown_list]
+            markdown_out = '\n'.join(markdown_out)
+            return markdown_out
             
     elif as_df:
 
@@ -4050,6 +4261,7 @@ def check_if_str_is_date(string, fuzzy=False):
 
 def check_class_balance(df,col ='delta_price_class_int',note='',
                         as_percent=True, as_raw=True):
+    import numpy as np
     dashes = '---'*20
     # print('\n')
     print(dashes)
@@ -4061,11 +4273,13 @@ def check_class_balance(df,col ='delta_price_class_int',note='',
     class_counts = df[col].value_counts()
     
     if as_percent:
-        print('class by %:\n',class_counts/len(df))
+        print('class by %:')
+        print(np.round(class_counts/len(df)*100,2))
     if as_percent and as_raw:
         print('\n')
     if as_raw:
-        print('class raw counts:\n',class_counts)
+        print('raw class counts:')
+        print(class_counts)
     
 
 
@@ -4133,7 +4347,7 @@ verbose_help=True,verbose=1,debug=False):
 
     if display_header:            
         print(dashes)
-        print('STRING LENGTH REPORT:')
+        print(f'\tSTRING LENGTH REPORT:\t"{str_col}" column')
         print(dashes)
     if debug:
         pass_verbose = 1
@@ -4179,7 +4393,7 @@ verbose_help=True,verbose=1,debug=False):
 
 
 
-def index_report(df, time_fmt = '%Y-%m-%d %T', return_index_dict=False):
+def index_report(df, label='',time_fmt = '%Y-%m-%d %T', return_index_dict=False):
     """Sorts dataframe index, prints index's start and end points and its datetime frequency.
     if return_index_dict=True then it returns these values in a dictionary as well as printing them."""
     import pandas as pd
@@ -4196,7 +4410,7 @@ def index_report(df, time_fmt = '%Y-%m-%d %T', return_index_dict=False):
     dashes = '---'*20
     # print('\n')
     print(dashes)
-    print("INDEX REPORT:")
+    print(f"\tINDEX REPORT:\t{label}")
     print(dashes)
     print(f"* Index Endpoints:\n\t{df.index[0].strftime(time_fmt)} -- to -- {df.index[-1].strftime(time_fmt)}")
     print(f'* Index Freq:\n\t{df.index.freq}')
@@ -4338,3 +4552,437 @@ def check_y_class_balance(data):#,var_list=locals()):
         res = (df_check_class.value_counts()/len(y))*100
         display(res) #df_check_class.value_counts()/len(y))
         # ji.check_class_balance(df_check_class,y,as_percent=True, as_raw=False)
+
+
+def check_null_small(df,null_index_column=None):# return_idx=False):
+    import pandas as pd
+    import numpy as np
+
+    res = df.isna().sum()
+    idx = res.loc[res>0].index        
+    print('\n')
+    print('---'*10)
+    print('Columns with Null Values')
+    print('---'*10)
+    print(res[idx])
+    print('\n')
+    if null_index_column is not None:
+        idx_null = df.loc[ df[null_index_column].isna()==True].index
+        # return_index = idx_null[idx_null==True]
+        return idx_null
+
+
+
+def find_null_idx(df,column=None):
+    """returns the indices of null values found in the series/column.
+    if df is a dataframe and column is none, it returns a dictionary
+    with the column names as a value and  null_idx for each column as the values.
+    Example Usage:
+    1)
+    >> null_idx = get_null_idx(series)
+    >> series_null_removed = series[null_idx]
+    2) 
+    >> null_dict = get_null_idx()
+    """
+    import pandas as pd
+    import numpy as np
+    idx_null = []
+    # Raise an error if df is a series and a column name is given
+    if isinstance(df, pd.Series) and column is not None:
+        raise Exception('If passing a series, column must be None')
+    # else if its a series, get its idx_null
+    elif isinstance(df, pd.Series):
+        series = df
+        idx_null = series.loc[series.isna()==True].index
+    
+    # else if its a dataframe and column is a string:
+    elif isinstance(df,pd.DataFrame) and isinstance(column,str):
+            series=df[column]
+            idx_null = series.loc[series.isna()==True].index
+    
+    # else if its a dataframe
+    elif isinstance(df, pd.DataFrame):
+        idx_null = {}
+        
+        # if no column name given, use all columns as col_list
+        if column is None:
+            col_list =  df.columns
+        # else use input column as col_list
+        else:
+            col_list = column
+        
+        ## for each column, get its null idx and add to dictioanry
+        for col in col_list:
+            series = df[col]
+            idx_null[col] = series.loc[series.isna()==True].index
+    else:
+        raise Exception('Input df must be a pandas DataFrame or Series.')
+    ## return the index or dictionary idx_null
+    return idx_null
+
+
+
+## FUNCTIONS FOR SAVING MODEL
+# def df2png(df, filename_prefix = 'results/summary_table',sep='_',filename_suffix='',file_ext='.png',
+#            auto_filename_suffix=True, check_if_exists=True,save_excel=True,auto_increment_name=True, CSS=''):
+#     '''Accepts a dataframe and a filename (without extention). Saves an image of the stylized table.'''
+#     # Now save the css and html dataframe to the same text file before conversion
+#     import imgkit
+#     import os 
+#     import time
+#     import functions_combined_BEST as ji
+    
+#     ## Specify file_format for imgkit
+#     if '.png' not in file_ext:
+#         file_format = file_ext.replace('.','')
+#         imgkitoptions = {'format':file_format}
+#     else:
+#         imgkitoptions = {'format':'png'}
+     
+#     ## Provide path to required wkhtmltoimage.exe
+#     exe_path = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
+#     imgconfig = imgkit.config(wkhtmltoimage = exe_path) #'C:/Users/james/Anaconda3/envs/learn-env-ext/Lib/site-packages/wkhtmltopdf/bin/wkhtmltoimage.exe')
+
+#     ## CREATE ANY MISSING FOLDERS FOR DESIRED FOLDERPATH
+#     ji.create_required_folders(filename_prefix,verbose=0)
+    
+#     ## CREATING FILENAMES
+#     # add auto suffix
+#     if auto_filename_suffix:
+#         suffix_time_format = '%m-%d-%Y_%I%M%p'
+#         filename = ji.auto_filename_time(prefix=filename_prefix, sep=sep, timeformat=suffix_time_format )
+#     else:
+#         filename = filename_prefix
+
+#     ## Add suffix to filename
+#     full_filename = filename + sep + filename_suffix + file_ext
+
+
+#     ## CHECK_IF_FILE_EXISTS
+#     if check_if_exists:
+#         import os
+#         import pandas as pd
+#         current_files = os.listdir()
+        
+#         # check if file already exists and raise errror if no auto_increment_name
+#         if full_filename in current_files and auto_increment_name==False:
+#             raise Exception('Filename already exists')
+        
+#         # if file already exists, find version number and increase by 1 
+#         elif full_filename in current_files and auto_increment_name==True:
+        
+#             # check if filename ends in version #
+#             import re
+#             num_ending = re.compile(r'[vV].?(\d+)')#.json')
+            
+#             curr_file_num = num_ending.findall(full_filename)
+#             if len(curr_file_num)==0:
+#                 v_num = '_v01'
+#             else:
+#                 v_num = f"_{int(curr_file_num)+1}"
+
+#             ## CHANGE FOR FILE EXTENTSION TYPE
+#             full_filename = filename +sep+ v_num +file_ext
+#             print(f'{filename} already exists... incrementing filename to {full_filename}.')
+
+    
+    
+#     ## Make temp filename for css/html text file export
+#     base_filename = full_filename.split('.')[0]
+#     text_file_name = base_filename +'_to_convert.html'
+    
+#     ## Add text_file_name to Path [cant remmeber why?]
+#     from pathlib import Path
+#     config = Path(text_file_name)    
+#     if config.is_file():
+#         # Store configuration file values
+#         os.remove(text_file_name)
+
+    
+#     ### GET HTML TABLE TO OUTPUT
+#     # Check df is styler or normal df
+#     if isinstance(df,pd.io.formats.style.Styler):
+#         html_df = df.render()
+        
+#         if save_excel == True:
+#             df.to_excel(base_filename+'.xlsx')
+            
+#     elif isinstance(df, pd.DataFrame):
+#         html_df = df.to_html()
+        
+#         if save_excel == True:
+#             df.to_excel(base_filename+'.xlsx')
+#     elif isinstance(df,str):
+#         html_df=df
+
+    
+#     ## Create text file with CSS and dataframe as cs
+#     with open(text_file_name,'a') as text_file:
+#         text_file.write(CSS)
+#         text_file.write(html_df)
+# #         text_file.close()
+
+#     ## Create image filename and produce figure from text file
+#     imagename = base_filename+file_ext
+#     imgkit.from_file(text_file_name, imagename, options = imgkitoptions, config=imgconfig)
+    
+#     # report
+# #     print('')
+
+#     ## delete temporary text file
+#     os.remove(text_file_name)
+    
+#     return 
+
+#################################################################
+
+def save_model_dfs(file_dict,model_key,df_model=None, df_results=None, df_shifted=None):
+    import pandas as pd
+    
+    filenames = file_dict[model_key]
+    
+    list_to_save = ['df_model', 'df_results','df_shifted']
+    dfs_to_save= [df_model, df_results,df_shifted]
+    dict_to_save = dict(zip(list_to_save,dfs_to_save))#[eval(x) for x in list_to_save] ))
+
+    for k,v in dict_to_save.items():
+        fname = filenames[k]
+        
+        if isinstance(v,pd.DataFrame):
+            v.to_csv(fname)
+            print(f"[i] {k} saved as {fname}")
+        
+        elif isinstance(v,pd.io.formats.style.Styler):
+            if '.' in fname:
+                name_parts = fname.split('.')
+                file_ext = name_parts[-1]
+                filename_prefix = name_parts[0]
+            else:
+                filename_prefix=fname
+            
+                
+            df2png(v, filename_prefix=fname,file_ext='.png',
+                  auto_filename_suffix=False, auto_increment_name=False,
+                  save_excel=True)
+            show_name = filename_prefix+"."+file_ext
+            print(f'[i] {k} saved as {show_name}')
+        else:
+            print(f'input df for {k} is neither a DataFrame or a Styler')
+
+
+def define_filename_dictionary(json_filename = 'data/test_filename_dictionary.json',show_dict=True,
+                              create_folders=True,load_prior=True,save_directory=True):#,overwrite=False):
+    """ Creates a file_dict with either the model_# or twitter_df/stock_df as kwds.
+    Value is the filename (with extension) that should be used for saving/loading the file.
+    filename_dictionary is reutrned and also saved to disk.
+    
+    Ex: For using with save_model_dfs():
+        >>save_model_dfs(file_dict,'model1',
+                       df_model=df_model1,
+                      df_results=dfs_results1,
+                      df_shifted=df_shifted1)
+                      
+    Ex: Using on its own:
+        file_dict = define_filename_dictionary()
+        >> twitter_df.read_csv(file_dict['twitter_df']['twitter_df_pre_stock_price'])
+    """                  
+    import os
+    if load_prior ==True and os.path.isfile(json_filename):# and overwrite==False
+        with open(json_filename,'r') as f:
+            import json
+            file_dict = json.loads(f.read())
+            print(f"[i] filename_directory loaded from {json_filename}.")
+    else:
+        file_dict = {}
+        
+    if 'file_directory' not in file_dict.keys():
+        file_dict['file_directory']={}
+        file_dict['file_directory']['history'] = ''
+        file_dict['file_directory']['filename'] = json_filename
+                  
+    ## Create entries for #'d models
+    for i in ['0A','0B']:
+        
+        if f"model_{i}" not in file_dict.keys():
+            file_dict[f"model_{i}"] ={}
+                    
+            file_dict[f'model_{i}'] = {'base_filename':f'models/NLP/nlp_model{i}',
+                                   'output_filenames':{'model':'',
+                                                       'weights':'',
+                                                       'excel':'',
+                                                       'params':''}}
+        
+            file_dict[f'model_{i}']['fig'] = f'results/model{i}/model{i}_conf_matrix'
+            file_dict[f'model_{i}']['fig.ext'] = f'results/model{i}/model{i}_conf_matrix.png'
+        
+        
+    for i in ['sarima','1','2','3']:
+        
+        if f"model_{i}" not in file_dict.keys():
+
+            file_dict[f"model_{i}"] ={}
+            file_dict[f'model_{i}'] = {'base_filename':f'models/stocks/model{i}_',
+                               'output_filenames':{'model':'',
+                                                   'weights':'',
+                                                   'excel':'',
+                                                   'params':''}}
+
+            file_dict[f'model_{i}']['df_model'] = f'results/model{i}/model{i}_df_model_true_vs_preds.csv'
+            file_dict[f'model_{i}']['df_results'] = f'results/model{i}/model{i}_df_results.xlsx' 
+            file_dict[f'model_{i}']['df_shifted'] = f'results/model{i}/model{i}_df_shifted.csv'
+
+            file_dict[f'model_{i}']['fig'] = f'results/model{i}/model{i}_true_vs_preds'
+            file_dict[f'model_{i}']['fig.ext'] = f'results/model{i}/model{i}_true_vs_preds.png'
+            file_dict[f'model_{i}']['fig_shifted'] = f'results/model{i}/model{i}_true_vs_preds_shifted'
+            file_dict[f'model_{i}']['fig_shifted.ext'] = f'results/model{i}/model{i}_true_vs_preds_shifted.png'
+
+
+    ## ADD NAMES OF OTHER FILES
+    if 'twitter_df' not in file_dict.keys():
+        file_dict['twitter_df']={
+            'raw_tweet_file':'data/trumptwitterarchive_export_iphone_only__08_23_2019.csv',
+            'twitter_df_pre_stock_price':'data/_twitter_df_before_stock_price.csv',
+            'twitter_df_post_stock_price':'data/_twitter_df_with_stock_price.csv'}
+        
+    if 'stock_df' not in file_dict.keys():
+
+        file_dict['stock_df'] ={'raw_text_file':'data/IVE_bidask1min_08_23_2019.txt',
+                                'raw_csv_file':'data/IVE_bidask1min_08_23_2019.csv',
+                                'stock_df_with_indicators':'data/_stock_df_with_technical_indicators.csv',
+                               'stock_df_input_model1':'data/stock_df_for_model1.csv',
+                               'stock_price_for_twitter_df':"data/IVE_bidask1min_08_23_2019.csv"}
+
+    if 'nlp_figures' not in file_dict.keys():
+        file_dict['nlp_figures']={'word_clouds_compare':'figures/wordcloud_top_words_by_delta_price.png',
+                                 'word_clouds_compare_unique':'figures/wordcloud_unique_words_by_delta_price.png',
+                                  'freq_dist_plots':'figures/freq_dist_plots_by_delta_price.png'
+                                 }
+        
+    if 'nlp_model_for_predictions' not in file_dict.keys():
+
+        file_dict['nlp_model_for_predictions'] = {'base_filename':'models/best_final/nlp_classifier_model',
+                                                 'output_filenames':{'model':'','weights':'',
+                                                                     'excel':'','params':''}}
+        
+    if 'word2vec' not in file_dict.keys():
+        file_dict['word2vec'] = {'base_filename':'models/word2vec/word2vec_model.pkl'}
+    
+    if 'df_combined' not in file_dict.keys():
+        file_dict['df_combined'] = {}
+        file_dict['df_combined']['pre_nlp'] = 'data/_combined_stock_data_raw_tweets.csv'
+        file_dict['df_combined']['post_nlp'] = 'data/_combined_stock_data_plus_nlp.csv'
+        file_dict['df_combined']['with_preds'] = 'data/_combined_stock_data_with_tweet_preds.csv'
+    
+    if show_dict:
+        display_dict_dropdown(file_dict)
+        
+    if save_directory:
+        # check if file already exists and raise errror if no auto_increment_name
+#         if full_filename in current_files and auto_increment_name==False:
+        ## save the directory json file
+        with open(json_filename,'w') as f:
+            import json
+            json_file_dict = json.dumps(file_dict)
+            f.write(json_file_dict)
+            print(f"[i] filename_directory saved to {json_filename}.")
+            print('\t - use `update_file_directory(file_dict)` to update file.')
+
+    if create_folders:
+        print(f"[i] creating all required folders...")
+        for k,v in file_dict.items():
+            if isinstance(v,dict):
+                 for k2,v2 in file_dict[k].items():
+                    if '/' in v2:
+                        create_required_folders(v2,verbose=1)
+
+            elif '/' in v:
+                create_required_folders(v,verbose=1)
+
+
+
+    return file_dict
+
+# def load_file_directory(file_dict_filename='')
+
+def update_file_directory(file_dict):
+    file_dir = file_dict['file_directory']
+    
+    with open(file_dir,'w+') as f:
+        import json
+        json_file_dict = json.dumps(file_dict)
+        f.write(json_file_dict)
+        f.seek(0)
+    print(f"[i]filename_directory updated, filename='{file_dir}'")
+    
+
+def load_processed_stock_data_plotly(processed_data_filename = 'data/_stock_df_with_technical_indicators.csv', verbose=0):
+    import functions_combined_BEST as ji
+    import os
+    import pandas as pd
+    
+
+    stock_df=pd.read_csv(processed_data_filename, index_col=0, parse_dates=True)
+    stock_df['date_time_index'] = stock_df.index.to_series()
+    stock_df.index.freq=ji.custom_BH_freq()
+    
+    if verbose>0:
+        # -print(stock_df.index[[0,-1]],stock_df.index.freq)
+        index_report(stock_df)
+#     display(stock_df.head(3))
+    stock_df.sort_index(inplace=True)
+
+    return stock_df        
+
+
+def plotly_price_histogram(twitter_df, column='delta_price', as_figure=True, show_fig=False):
+    import cufflinks as cf
+    from plotly.offline import iplot
+    from plotly import graph_objs as go
+    cf.go_offline()
+    fig = twitter_df[column].iplot(kind='hist',theme='solar',title='Histogram of S&P 500 Changes 1 Hr Post-Tweets ',
+                                yTitle='# of Tweets',xTitle ='Change in $ USD',asFigure=True)
+    if show_fig:
+        iplot(fig)
+    if as_figure:
+        return fig 
+
+
+
+def plotly_pie_chart(df,column_to_plot='delta_price_class',layout_kwds=None,as_figure=True,show_fig=True, label_mapper={'pos':'Increased Price', 'neg':'Decreased Price','no_change':'No Change'}):
+    import pandas as pd
+    import cufflinks as cf
+    from plotly.offline import iplot
+    cf.go_offline()
+    
+    df_pie = pd.DataFrame(df[column_to_plot].value_counts())
+    df_pie.reset_index(inplace=True)
+    if label_mapper is None:
+        label_mapper={'pos':'Increased Price','neg':'Decreased Price','no_change':'No Change'}
+        
+    df_pie['labels'] = df_pie['index'].apply(lambda x: label_mapper[x])
+    
+    title="Distribution of 'Delta Price Class' by %"
+    fig = df_pie.iplot(kind='pie',title=title,
+                 values='delta_price_class',
+                 labels='labels',
+                 theme='solar',
+                colors=('green','darkred','gray'), asFigure=True)
+    if show_fig:
+        iplot(fig)
+    if as_figure:
+        return fig
+
+
+
+def keras_forecast(scaled_train_ts, scaled_test_ts, model, n_input, n_feature):
+    import numpy as np
+    preds = []
+    eval_batch = scaled_train_ts[-n_input:]
+    working_batch = eval_batch.reshape(1, n_input, n_feature)
+    
+    for i in range(len(scaled_test_ts)):
+        current_pred = model.predict(working_batch)[0]
+        preds.append(current_pred)
+        working_batch = np.append(working_batch[:,1:,:], [[current_pred]], axis=1)
+        
+    return preds

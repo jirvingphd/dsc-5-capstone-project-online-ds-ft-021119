@@ -1,0 +1,7 @@
+### When Trump Tweets, Stocks...Change?
+- In order to test the effect of Trump's Tweets on the stock market, 
+we took each tweet that occured either during market hours, or within 1 day before the market reopened.
+- We took the S&P 500 price at the time of the tweet (or closing price for the day if tweeted at night)
+and then took the price 60 mins later and calculated the "delta" price, displayed below.
+- We then assigned each tweet a 'delta_price_class' of "decrease",'no change", or "increase".
+	 - Note: "no change" actually refers to tweets with changes < +/- $0.05.

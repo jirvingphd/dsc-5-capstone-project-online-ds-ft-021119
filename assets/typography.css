@@ -1,24 +1,35 @@
-h1 {
+#main_header{
+    color: cornflowerblue;
+    width: 100%;
+    font-family:Cambria;
+    text-align: center;
+    font-size: 4em;
+    font-stretch: ultra-expanded;
+    font-weight: bold;
+}
+h1:not(#main_header) {
     color: blue;
     width: 100%;
+    font-family:Cambria;
     text-align: center;
-    font-size: 3.5em;
+    font-size: 3em;
     font-weight: bold;
 }
 
 #my_name {
     color: white;
+    font-family:Cambria;
     font-size: 1em;
     text-align: right;
     padding-left: 50%;
     line-height: 95%;
     padding-bottom: 3%;
-    color: pink
+    color: white
 }
 
 
 body {
-    font-family: serif;
+    font-family:Cambria;
     background-color: black;
     color : white;
     font-size: 1.01em;
@@ -26,26 +37,42 @@ body {
     width: 70%;
 }
 
-ol,ul {
+#quoted_tweet{
+    text-align: center;
+}
+
+blockquote{
+    font-family:Cambria;
+    width:70%;
     margin-left: 5%;
+    margin-right: 20%;
+    font-style: italic;
+    border-color: white;
+    border-left: 2pt solid white;
+    line-height: 110%;
+    font-size:1.2em;
+    color : lightskyblue;
+    padding-left : 3%;
+    
+}
+code{
+    width:75%
+}
+ol,ul {
+    font-family:Cambria;
+    margin-left: 1%;
     margin-top: 1%;
     font-size: 1.02em;
     /* font-size: 1.05em; */
 }
 
-blockquote{
-    margin-left: 5%;
-    margin-right: 20%;
-    font-style: italic;
-    border-color: white;
-    line-height: 110%;
-}
 
 
 h2 {
-    color: blue;
+    color: gray;
     font-size: 2.5em;
     line-height: 1.1em;
+    font-family:Cambria;
     /* font-style: italic; */
     padding-top: 3%;
 }

@@ -1,0 +1,50 @@
+___
+# NATURAL LANGUAGE PROCESSING
+
+> To prepare Donald Trump's tweets for modeling, **it is essential to preprocess the text** and simplify its contents.
+
+
+1. **At a minimum, things like:**
+    - punctuation
+    - numbers
+    - upper vs lowercase letters
+
+    ***must*** be addressed before any initial analyses. I refer tho this initial cleaning as **"minimal cleaning"** of the text content
+
+    
+> Version 1 of the tweet processing removes these items, as well as the removal of any urls in a tweet. The resulting data column is referred to here as "content_min_clean".
+
+
+
+
+2. It is **always recommended** that go a step beyond this and
+ remove **commonly used words that contain little information** 
+ for our machine learning algorithms. Words like: (the,was,he,she, it,etc.)
+ are called **"stopwords"**, and it is critical to address them as well.
+
+> Version 2 of the tweet processing removes these items and the resulting data column is referred here as `cleaned_stopped_content`
+
+
+
+
+3. Additionally, many analyses **need the text tokenzied** into a list of words
+ and not in a natural sentence format. Instead, they are a list of words (**tokens**) separated by ",", which tells the algorithm what should be considered one word.
+
+ For the tweet processing, I used a version of tokenization, called `regexp_tokenziation` 
+which uses pattern of letters and symbols (the `expression`) 
+that indicate what combination of alpha numeric characters should be considered a single token.
+
+The pattern I used was `"([a-zA-Z]+(?:'[a-z]+)?)"`, which allows for words such as "can't" that contain "'" in the middle of word. This processes was actually applied in order to process Version 1 and 2 of the Tweets, but the resulting text was put back into sentence form. 
+
+> Version 3 of the tweets keeps the text in their regexp-tokenized form and is reffered to as `cleaned_stopped_tokens`
+
+
+
+4. While not always required, it is often a good idea to reduce similar words down to a shared core.
+There are often **multiple variants of the same word with the same/simiar meaning**,
+ but one may plural **(i.e. "democrat" and "democrats")**, or form of words is different **(i.e. run, running).**
+ Simplifying words down to the basic core word (or word *stem*) is referred to as **"stemming"**. 
+
+ A more advanced form of this also understands things like words that are just in a **different tense** such as  i.e.  **"ran", "run", "running"**. This process is called  **"lemmatization**, where the words are reduced to their simplest form, called "**lemmas**"
+
+> Version 4 of the tweets are all reduced down to their word lemmas, futher aiding the algorithm in learning the meaning of the texts.

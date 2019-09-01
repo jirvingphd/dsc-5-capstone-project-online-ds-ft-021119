@@ -567,6 +567,12 @@ def replace_embedding_layer(nlp_keras_model, word2vec_model,input_text_series, v
 ## NEW FUNCTIONS FOR WORD2VEC AND KERAS TOKENIZATION/SEQUENCE GENERATION
 def make_word2vec_model(df, text_column='content_min_clean', regex_pattern ="([a-zA-Z]+(?:'[a-z]+)?)",verbose=0,
                        vector_size=300,window=3,min_count=1, workers=3,epochs=10,summary=True, return_full=False,**kwargs):
+    """    w2v_params = {'sg':1, #skip-gram=1
+                'hs':0, #1=heirarchyical softmarx, if 0, and 'negative' is non-zero, use negative sampling
+                'negative': 5, # number of 'noisy" words to remove by negative sampling
+                'ns_exponent': 0.75, # value between -1 to 1. 0.0 samples all words equaly, 
+                1.0 samples proportional to frequency, negative value=lowfrequency words sampled more
+    }"""
     
 
     ## Regexp_tokenize text_column
@@ -658,11 +664,31 @@ def make_embedding_matrix(word2vec_model,verbose=1):#,X_sequences = None,input_s
         
         return embedding_matrix
 
-def make_keras_embedding_layer(word2vec_model,X_sequences,embedding_matrix= None):
+def make_keras_embedding_layer(word2vec_model,X_sequences,embedding_matrix= None,verbose=1):
         """Creates an embedding layer for Kera's neural networks using the 
-        embedding matrix and text X_sequences"""
+        embedding matrix and text X_sequences
+        embedding_layer =layers.Embedding(vocab_size+1,
+                                    vector_size,
+                                    input_length=X_sequences.shape[1],
+                                    weights=[embedding_matrix],
+                                    trainable=False)"""
         if embedding_matrix is None:
-            embedding_matrix = make_embedding_matrix(word2vec_model,verbose=0)
+            # embedding_matrix = make_embedding_matrix(word2vec_model,verbose=0)
+            import numpy as np
+            import pandas as pd     
+            
+            wv = get_wv_from_word2vec(word2vec_model)
+            vocab_size = len(wv.vocab)
+            vector_size = wv.vector_size
+                
+            ## Create the embedding matrix from the vectors in wv model 
+            embedding_matrix = np.zeros((vocab_size + 1, vector_size))
+            for i, vec in enumerate(wv.vectors):
+                embedding_matrix[i] = vec
+                embedding_matrix.shape
+                
+            if verbose:
+                print(f'embedding_matrix.shape = {embedding_matrix.shape}')
         
         wv = get_wv_from_word2vec(word2vec_model)
         vocab_size = len(wv.vocab)
@@ -1118,7 +1144,7 @@ def load_raw_twitter_file(filename ='data/trumptwitterarchive_export_iphone_only
     Rename columns indicated in rename_map and sets the index to a datetimeindex copy of date column."""    
     # old link'data/trump_tweets_01202017_06202019.csv'
     import pandas as pd
-
+    print(f'[io] Loading raw tweet text file: {filename}')
     df = pd.read_csv(filename, encoding='utf-8')
     mapper=rename_map
     df.rename(axis=1,mapper=mapper,inplace=True)
@@ -1188,11 +1214,36 @@ def get_group_sentiment_scores(df, score_col='sentiment_scores'):
 
 
 
-
+def get_tweet_lemmas(df, text_column = 'cleaned_stopped_tokens',name_for_lemma_col='cleaned_stopped_lemmas'):
+        
+    text_data = df[text_column]
+    
+    def lemmatize_tweet(x):
+        
+        import functions_combined_BEST as ji
+        if isinstance(x,str):
+            from nltk import regexp_tokenize
+            pattern = ji.make_regexp_pattern()
+            x = regexp_tokenize(x,pattern)
+            
+            
+        from nltk.stem import WordNetLemmatizer
+        lemmatizer=WordNetLemmatizer()
+        output = []
+        for word in x:
+            output.append(lemmatizer.lemmatize(word))
+        output = ' '.join(output)
+        return output
+            
+        
+    df[name_for_lemma_col] = df[text_column].apply(lambda x:lemmatize_tweet(x))
+    return df
+    
 
 
 def full_twitter_df_processing(df,raw_tweet_col='content', name_for_cleaned_tweet_col='content_cleaned', name_for_stopped_col=None,
-name_for_tokenzied_stopped_col = None, use_col_for_case_ratio=None, use_col_for_sentiment='content_min_clean', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
+name_for_tokenzied_stopped_col = None,lemmatize=True,name_for_lemma_col='cleaned_stopped_lemmas' ,use_col_for_case_ratio=None,
+ use_col_for_sentiment='cleaned_stopped_lemmas', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
     """Accepts df_full, which contains the raw tweets to process, the raw_col name, the column to fill.
     If force=False, returns error if the fill_content_col already exists.
     Processing Workflow:1) Create has_RT, starts_RT columns. 2) Creates [fill_content_col,`content_min_clean`] cols after removing 'RT @mention:' and urls.
@@ -1255,7 +1306,7 @@ name_for_tokenzied_stopped_col = None, use_col_for_case_ratio=None, use_col_for_
     if use_col_for_case_ratio is None or 'content_min_clean' in use_col_for_case_ratio:
         use_col_for_case_ratio='content_min_clean'
         df['case_ratio'] = df[use_col_for_case_ratio].apply(lambda x: case_ratio(x))
-        print(f'[i] case_ratio calculated from {use_col_for_case_ratio}')
+        print(f'[i] case_ratio calculated from {use_col_for_case_ratio} before text to lowercase')
 
 
     def quick_fix(x):
@@ -1332,10 +1383,15 @@ name_for_tokenzied_stopped_col = None, use_col_for_case_ratio=None, use_col_for_
     df[stop_col_name] = df[fill_content_col].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=False, pattern=pattern))
     df[stopped_tok_col_name] = df[stop_col_name].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=True, pattern=pattern))
 
-    ## Calculate case ratio is non-default was used
-    if use_col_for_case_ratio is not None and 'content_min_clean' not in use_col_for_case_ratio:
-        df['case_ratio'] = df[use_col_for_case_ratio].apply(lambda x: case_ratio(x))
-        print(f'[i] case_ratio calculated from {use_col_for_case_ratio}')
+    if lemmatize:
+        # text_data = df[stopped_tok_col_name]
+        df = get_tweet_lemmas(df, text_column=stopped_tok_col_name, name_for_lemma_col=name_for_lemma_col)
+        print(f'[i] lemmaztied columns: {name_for_lemma_col}')
+
+    # ## Calculate case ratio is non-default was used
+    # if use_col_for_case_ratio is not None and 'content_min_clean' not in use_col_for_case_ratio:
+    #     df['case_ratio'] = df[use_col_for_case_ratio].apply(lambda x: case_ratio(x))
+    #     print(f'[i] case_ratio calculated from {use_col_for_case_ratio}')
 
     ## Sentiment Analysis (optional)
     if use_col_for_sentiment is not None:
@@ -1485,3 +1541,4 @@ def make_tweet_bigrams_by_group(twitter_df_groups,top_n=20,text_key=None,
         else:
             return df_1,df_2
         
+
