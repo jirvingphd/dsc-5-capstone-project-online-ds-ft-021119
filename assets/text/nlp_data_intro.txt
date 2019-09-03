@@ -1,4 +1,3 @@
-### When Trump Tweets, Stocks...Change?
 - In order to test the effect of Trump's Tweets on the stock market, 
 we took each tweet that occured either during market hours, or within 1 day before the market reopened.
 - We took the S&P 500 price at the time of the tweet (or closing price for the day if tweeted at night)

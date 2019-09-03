@@ -1,5 +1,3 @@
-___
-# NATURAL LANGUAGE PROCESSING
 
 > To prepare Donald Trump's tweets for modeling, **it is essential to preprocess the text** and simplify its contents.
 

@@ -1,0 +1,4 @@
+## NLP Classification Models
+### NLP Models - S&P 500 'delta_price' Classification
+- Here we created an embedding layer for our neural networks using word embeddings
+- Our word embeddings were Word2Bev 

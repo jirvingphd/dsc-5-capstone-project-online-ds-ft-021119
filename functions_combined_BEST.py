@@ -1,10 +1,13 @@
 import my_keras_functions as jik
 import function_widgets as jiw
 import functions_nlp as jin
+import functions_io as io
 
 from my_keras_functions import *
 from function_widgets import *
 from functions_nlp import *
+from functions_io import *
+
 
 def reload(mod,verbose=False):
     """Reloads the module from file. 
@@ -31,7 +34,8 @@ def reload(mod,verbose=False):
         reload(mod)
         return 
 
-reload([jin,jiw,jik])
+reload([jin,jiw,jik,io])
+
 
 # def import_packages(import_list_of_tuples = None,  display_table=True): #append_to_default_list=True, imports_have_description = True):
 #     """Uses the exec function to load in a list of tuples with:
@@ -1862,24 +1866,21 @@ def train_test_val_split(X,y,test_size=0.20,val_size=0.1):
 
 
 
-def plot_keras_history(history, title_text='',fig_size=(6,6)):
+def plot_keras_history(history, title_text='',fig_size=(6,6),save_fig=False,no_val_data=False, filename_base='results/keras_history'):
     """Plots the history['acc','val','val_acc','val_loss']"""
+    import functions_combined_BEST as ji
+
 
     metrics = ['acc','loss','val_acc','val_loss']
 
     import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    
     plot_metrics={}
     for metric in metrics:
         if metric in history.history.keys():
             plot_metrics[metric] = history.history[metric]
 
-    # x = range(1,len(acc)+1)
-    ## CREATE SUBPLOTS
-    fig,ax = plt.subplots(nrows=2, ncols=1, figsize=fig_size, sharex=True)
-    
-    # Set color scheme for data type
-    color_dict = {'val':'red','default':'b'}
-    
     # Set font styles:
     fontDict = {
         'xlabel':{
@@ -1896,39 +1897,78 @@ def plot_keras_history(history, title_text='',fig_size=(6,6)):
             'ha':'center',
             }
         }
+    # x = range(1,len(acc)+1)
+    if no_val_data == True:
+        fig_size = (fig_size[0],fig_size[1]//2)
+        fig, ax = plt.subplots(figsize=fig_size)
 
-    # Title Subplots
-    fig.suptitle(title_text,y=1.01,**fontDict['title'])
-    ax[1].set_xlabel('Training Epoch',**fontDict['xlabel'])
+        for k,v in plot_metrics.items():
+            if 'acc' in k:
+                color='b'
+                label = 'Accuracy'
+            if 'loss' in k:
+                color='r'
+                label = 'Loss'
+            ax.plot(range(len(v)),v, label=label,color=color)
+                
+        plt.title('Model Training History')    
+        fig.suptitle(title_text,y=1.01,**fontDict['title'])
+        ax.set_xlabel('Training Epoch',**fontDict['xlabel'])
+        ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
 
-    ## Set plot params by metric and data type
-    for metric, data in plot_metrics.items():
-        x = range(1,len(data)+1)
-        ## SET AXIS AND LABEL BY METRIC TYPE
-        if 'acc' in metric.lower():            
-            ax_i = 0
-            metric_title = 'Accuracy'
+        plt.legend()
+        plt.show()
+    
+    else:
+        ## CREATE SUBPLOTS
+        fig,ax = plt.subplots(nrows=2, ncols=1, figsize=fig_size, sharex=True)
         
-        elif 'loss' in metric.lower():
-            ax_i=1
-            metric_title = 'Loss'
+        # Set color scheme for data type
+        color_dict = {'val':'red','default':'b'}
+        
 
-        ## SET COLOR AND LABEL PREFIX BY DATA TYPE
-        if 'val' in metric.lower():
-            color = color_dict['val']
-            data_label = 'Validation '+metric_title
 
+        # Title Subplots
+        fig.suptitle(title_text,y=1.01,**fontDict['title'])
+        ax[1].set_xlabel('Training Epoch',**fontDict['xlabel'])
+
+        ## Set plot params by metric and data type
+        for metric, data in plot_metrics.items():
+            x = range(1,len(data)+1)
+            ## SET AXIS AND LABEL BY METRIC TYPE
+            if 'acc' in metric.lower():            
+                ax_i = 0
+                metric_title = 'Accuracy'
+            
+            elif 'loss' in metric.lower():
+                ax_i=1
+                metric_title = 'Loss'
+
+            ## SET COLOR AND LABEL PREFIX BY DATA TYPE
+            if 'val' in metric.lower():
+                color = color_dict['val']
+                data_label = 'Validation '+metric_title
+
+            else:
+                color = color_dict['default']
+                data_label='Training ' + metric_title
+            
+            ## PLOT THE CURRENT METRIC AND LABEL
+            ax[ax_i].plot(x, data, color=color,label=data_label)
+            ax[ax_i].set_ylabel(metric_title,**fontDict['ylabel'])
+            ax[ax_i].legend()
+
+        plt.tight_layout()
+        plt.show()
+    
+    if save_fig:
+        if '.' not in filename_base:
+            filename = filename_base+'.png'
         else:
-            color = color_dict['default']
-            data_label='Training ' + metric_title
-        
-        ## PLOT THE CURRENT METRIC AND LABEL
-        ax[ax_i].plot(x, data, color=color,label=data_label)
-        ax[ax_i].set_ylabel(metric_title,**fontDict['ylabel'])
-        ax[ax_i].legend()
+            filename = filename_base
+        fig.savefig(filename,facecolor='white', format='png', frameon=True)
 
-    plt.tight_layout()
-    plt.show()
+        print(f'[io] Figure saved as {filename}')
     return fig, ax
 
 
@@ -2036,9 +2076,11 @@ def quick_table(tuples, col_names=None, caption =None,display_df=True):
 
 
 def get_time(timeformat='%m-%d-%y_%T%p',raw=False,filename_friendly= False,replacement_seperator='-'):
-    """Gets current time in local time zone. 
+    """
+    Gets current time in local time zone. 
     if raw: True then raw datetime object returned without formatting.
-    if filename_friendly: replace ':' with replacement_separator """
+    if filename_friendly: replace ':' with replacement_separator
+    """
     from datetime import datetime
     from pytz import timezone
     from tzlocal import get_localzone
@@ -2058,12 +2100,15 @@ def get_time(timeformat='%m-%d-%y_%T%p',raw=False,filename_friendly= False,repla
         return now
 
 
-def auto_filename_time(prefix='model',sep='_',timeformat='%m-%d-%Y_%I%M%p'):
-    """Generates a filename with a  base string + sep+ the current datetime formatted as timeformat."""
+def auto_filename_time(prefix='',sep=' ',suffix='',ext='',fname_friendly=True,timeformat='%m-%d-%Y %T'):
+    '''Generates a filename with a  base string + sep+ the current datetime formatted as timeformat.
+     filename = f"{prefix}{sep}{suffix}{sep}{timesuffix}{ext}
+    '''
     if prefix is None:
         prefix=''
-    timesuffix=get_time(timeformat=timeformat, filename_friendly=True)
-    filename = f"{prefix}{sep}{timesuffix}"
+    timesuffix=get_time(timeformat=timeformat, filename_friendly=fname_friendly)
+
+    filename = f"{prefix}{sep}{suffix}{sep}{timesuffix}{ext}"
     return filename
 
 
@@ -4263,7 +4308,6 @@ def check_class_balance(df,col ='delta_price_class_int',note='',
                         as_percent=True, as_raw=True):
     import numpy as np
     dashes = '---'*20
-    # print('\n')
     print(dashes)
     print(f'CLASS VALUE COUNTS FOR COL "{col}":')
     print(dashes)
@@ -4273,14 +4317,15 @@ def check_class_balance(df,col ='delta_price_class_int',note='',
     class_counts = df[col].value_counts()
     
     if as_percent:
-        print('class by %:')
+        print('- Classes (%):')
         print(np.round(class_counts/len(df)*100,2))
-    if as_percent and as_raw:
-        print('\n')
+    # if as_percent and as_raw:
+    #     # print('\n')
     if as_raw:
-        print('raw class counts:')
+        print('- Class Counts:')
         print(class_counts)
-    
+    print('---\n')
+
 
 
 def check_for_duplicated_columns(twitter_df, always_return_df=True, remove=False):
@@ -4423,37 +4468,69 @@ def index_report(df, label='',time_fmt = '%Y-%m-%d %T', return_index_dict=False)
         return
 
 
-def undersample_df_to_match_classes(df,class_column='delta_price_class' , verbose=1):
-    """Resamples (undersamples) input df so that the classes in class_column have equal number of occruances."""
+def undersample_df_to_match_classes(df,class_column='delta_price_class', class_values_to_keep=None,verbose=1):
+    """Resamples (undersamples) input df so that the classes in class_column have equal number of occruances.
+    If class_values_to_keep is None: uses all classes. """
     import pandas as pd
+    import numpy as np
+    
     ##  Get value counts and classes
     class_counts = df[class_column].value_counts()
     classes = list(class_counts.index)
-    class0, class1 = classes
-
+    
     if verbose>0:
         print('Initial Class Value Counts:')
         print('%: ',class_counts/len(df))
 
+    ## use all classes if None 
+    if class_values_to_keep is None:
+        class_values_to_keep = classes
+    
+    
+    ## save each group's indices in dict
+    class_dict = {}
+    for curr_class in classes:
+
+        if curr_class in class_values_to_keep:
+            class_dict[curr_class] = {}
+            
+            idx = df.loc[df[class_column]==curr_class].index
+            
+            class_dict[curr_class]['idx'] = idx
+            class_dict[curr_class]['count'] = len(idx)
+        else:
+            continue
+
+    
+    ## determine which class count to match
+    counts = [class_dict[k]['count'] for k in class_dict.keys()]    
+    # get number of samples to match
+    count_to_match = np.min(counts)
+    
+
+
     ## Check counts to determine which classes' counts should be matched
-    if class_counts[classes[0]] > class_counts[classes[1]]:
-        class_to_match = classes[1]
+    # if class_counts[classes[0]] > class_counts[classes[1]]:
+    #     class_to_match = classes[1]
         
-    elif class_counts[classes[1]] > class_counts[classes[0]]:
-        class_to_match = classes[0]
-    else:
+    # elif class_counts[classes[1]] > class_counts[classes[0]]:
+    #     class_to_match = classes[0]
+    # else:
+    if len(np.unique(counts))==1:
         raise Exception('Classes are already balanced')
         
-    # get number of samples to match
-    count_to_match = class_counts[class_to_match]
+    # dict_resample = {}
+    df_sampled = pd.DataFrame()
+    for k,v in class_dict.items():
+        temp_df = df.loc[class_dict[k]['idx']]
+        temp_df =  temp_df.sample(n=count_to_match)
+        # dict_resample[k] = temp_df
+        df_sampled =pd.concat([df_sampled,temp_df],axis=0)
 
-    ## Separate classes to sample count_to_match from each.
-    df_sampled_class0 =  df.loc[df[class_column] == classes[0]].sample(n=count_to_match)
-    df_sampled_class1 =  df.loc[df[class_column] == classes[1]].sample(n=count_to_match)
-    
-    ## Combine class dfs and sort_index
-    df_sampled = pd.concat([df_sampled_class0,df_sampled_class1], axis=0)
-    df_sampled.sort_index(inplace=True)
+    ## sort index of final
+    df_sampled.sort_index(ascending=False, inplace=True)
+
+    # print(df_sampled[class_column].value_counts())
 
     if verbose>0:
         check_class_balance(df_sampled, col=class_column)
@@ -4479,7 +4556,7 @@ def show_del_me_code(called_by_inspect_vars=False):
             exec(f'del {me}')
             print(f'del {me} succeeded')
         except:
-            print(f'del {me} succeeded')
+            print(f'del {me} failed')
             continue
         """
     print(del_me)
@@ -4766,153 +4843,11 @@ def save_model_dfs(file_dict,model_key,df_model=None, df_results=None, df_shifte
                   save_excel=True)
             show_name = filename_prefix+"."+file_ext
             print(f'[i] {k} saved as {show_name}')
+            v.to_excel(filename_prefix+'.xlsx')
         else:
             print(f'input df for {k} is neither a DataFrame or a Styler')
 
 
-def define_filename_dictionary(json_filename = 'data/test_filename_dictionary.json',show_dict=True,
-                              create_folders=True,load_prior=True,save_directory=True):#,overwrite=False):
-    """ Creates a file_dict with either the model_# or twitter_df/stock_df as kwds.
-    Value is the filename (with extension) that should be used for saving/loading the file.
-    filename_dictionary is reutrned and also saved to disk.
-    
-    Ex: For using with save_model_dfs():
-        >>save_model_dfs(file_dict,'model1',
-                       df_model=df_model1,
-                      df_results=dfs_results1,
-                      df_shifted=df_shifted1)
-                      
-    Ex: Using on its own:
-        file_dict = define_filename_dictionary()
-        >> twitter_df.read_csv(file_dict['twitter_df']['twitter_df_pre_stock_price'])
-    """                  
-    import os
-    if load_prior ==True and os.path.isfile(json_filename):# and overwrite==False
-        with open(json_filename,'r') as f:
-            import json
-            file_dict = json.loads(f.read())
-            print(f"[i] filename_directory loaded from {json_filename}.")
-    else:
-        file_dict = {}
-        
-    if 'file_directory' not in file_dict.keys():
-        file_dict['file_directory']={}
-        file_dict['file_directory']['history'] = ''
-        file_dict['file_directory']['filename'] = json_filename
-                  
-    ## Create entries for #'d models
-    for i in ['0A','0B']:
-        
-        if f"model_{i}" not in file_dict.keys():
-            file_dict[f"model_{i}"] ={}
-                    
-            file_dict[f'model_{i}'] = {'base_filename':f'models/NLP/nlp_model{i}',
-                                   'output_filenames':{'model':'',
-                                                       'weights':'',
-                                                       'excel':'',
-                                                       'params':''}}
-        
-            file_dict[f'model_{i}']['fig'] = f'results/model{i}/model{i}_conf_matrix'
-            file_dict[f'model_{i}']['fig.ext'] = f'results/model{i}/model{i}_conf_matrix.png'
-        
-        
-    for i in ['sarima','1','2','3']:
-        
-        if f"model_{i}" not in file_dict.keys():
-
-            file_dict[f"model_{i}"] ={}
-            file_dict[f'model_{i}'] = {'base_filename':f'models/stocks/model{i}_',
-                               'output_filenames':{'model':'',
-                                                   'weights':'',
-                                                   'excel':'',
-                                                   'params':''}}
-
-            file_dict[f'model_{i}']['df_model'] = f'results/model{i}/model{i}_df_model_true_vs_preds.csv'
-            file_dict[f'model_{i}']['df_results'] = f'results/model{i}/model{i}_df_results.xlsx' 
-            file_dict[f'model_{i}']['df_shifted'] = f'results/model{i}/model{i}_df_shifted.csv'
-
-            file_dict[f'model_{i}']['fig'] = f'results/model{i}/model{i}_true_vs_preds'
-            file_dict[f'model_{i}']['fig.ext'] = f'results/model{i}/model{i}_true_vs_preds.png'
-            file_dict[f'model_{i}']['fig_shifted'] = f'results/model{i}/model{i}_true_vs_preds_shifted'
-            file_dict[f'model_{i}']['fig_shifted.ext'] = f'results/model{i}/model{i}_true_vs_preds_shifted.png'
-
-
-    ## ADD NAMES OF OTHER FILES
-    if 'twitter_df' not in file_dict.keys():
-        file_dict['twitter_df']={
-            'raw_tweet_file':'data/trumptwitterarchive_export_iphone_only__08_23_2019.csv',
-            'twitter_df_pre_stock_price':'data/_twitter_df_before_stock_price.csv',
-            'twitter_df_post_stock_price':'data/_twitter_df_with_stock_price.csv'}
-        
-    if 'stock_df' not in file_dict.keys():
-
-        file_dict['stock_df'] ={'raw_text_file':'data/IVE_bidask1min_08_23_2019.txt',
-                                'raw_csv_file':'data/IVE_bidask1min_08_23_2019.csv',
-                                'stock_df_with_indicators':'data/_stock_df_with_technical_indicators.csv',
-                               'stock_df_input_model1':'data/stock_df_for_model1.csv',
-                               'stock_price_for_twitter_df':"data/IVE_bidask1min_08_23_2019.csv"}
-
-    if 'nlp_figures' not in file_dict.keys():
-        file_dict['nlp_figures']={'word_clouds_compare':'figures/wordcloud_top_words_by_delta_price.png',
-                                 'word_clouds_compare_unique':'figures/wordcloud_unique_words_by_delta_price.png',
-                                  'freq_dist_plots':'figures/freq_dist_plots_by_delta_price.png'
-                                 }
-        
-    if 'nlp_model_for_predictions' not in file_dict.keys():
-
-        file_dict['nlp_model_for_predictions'] = {'base_filename':'models/best_final/nlp_classifier_model',
-                                                 'output_filenames':{'model':'','weights':'',
-                                                                     'excel':'','params':''}}
-        
-    if 'word2vec' not in file_dict.keys():
-        file_dict['word2vec'] = {'base_filename':'models/word2vec/word2vec_model.pkl'}
-    
-    if 'df_combined' not in file_dict.keys():
-        file_dict['df_combined'] = {}
-        file_dict['df_combined']['pre_nlp'] = 'data/_combined_stock_data_raw_tweets.csv'
-        file_dict['df_combined']['post_nlp'] = 'data/_combined_stock_data_plus_nlp.csv'
-        file_dict['df_combined']['with_preds'] = 'data/_combined_stock_data_with_tweet_preds.csv'
-    
-    if show_dict:
-        display_dict_dropdown(file_dict)
-        
-    if save_directory:
-        # check if file already exists and raise errror if no auto_increment_name
-#         if full_filename in current_files and auto_increment_name==False:
-        ## save the directory json file
-        with open(json_filename,'w') as f:
-            import json
-            json_file_dict = json.dumps(file_dict)
-            f.write(json_file_dict)
-            print(f"[i] filename_directory saved to {json_filename}.")
-            print('\t - use `update_file_directory(file_dict)` to update file.')
-
-    if create_folders:
-        print(f"[i] creating all required folders...")
-        for k,v in file_dict.items():
-            if isinstance(v,dict):
-                 for k2,v2 in file_dict[k].items():
-                    if '/' in v2:
-                        create_required_folders(v2,verbose=1)
-
-            elif '/' in v:
-                create_required_folders(v,verbose=1)
-
-
-
-    return file_dict
-
-# def load_file_directory(file_dict_filename='')
-
-def update_file_directory(file_dict):
-    file_dir = file_dict['file_directory']
-    
-    with open(file_dir,'w+') as f:
-        import json
-        json_file_dict = json.dumps(file_dict)
-        f.write(json_file_dict)
-        f.seek(0)
-    print(f"[i]filename_directory updated, filename='{file_dir}'")
     
 
 def load_processed_stock_data_plotly(processed_data_filename = 'data/_stock_df_with_technical_indicators.csv', verbose=0):

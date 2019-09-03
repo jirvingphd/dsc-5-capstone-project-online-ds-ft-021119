@@ -4,9 +4,38 @@
     font-family:Cambria;
     text-align: center;
     font-size: 4em;
-    font-stretch: ultra-expanded;
+    font-stretch: expanded;
     font-weight: bold;
 }
+#show-tweet-forms{
+    padding:0;
+}
+#logo{
+    display:block;
+    margin-left:0;
+}
+img{
+    align-content: center;
+    align-items:center;
+    align-self: center;
+
+    width:80%;
+    display:block;
+    margin-left:auto;
+    margin-right:auto;
+    /* border: 20px solid pink; */
+}
+#main-div{
+    width: 75%;
+    margin-left: auto;
+    margin-right:auto;
+}
+#wordcloud-figures{
+    display:block;
+    margin-left: auto;
+    margin-right:auto;
+}
+
 h1:not(#main_header) {
     color: blue;
     width: 100%;
@@ -14,6 +43,7 @@ h1:not(#main_header) {
     text-align: center;
     font-size: 3em;
     font-weight: bold;
+    padding-top:2em;
 }
 
 #my_name {
@@ -22,8 +52,8 @@ h1:not(#main_header) {
     font-size: 1em;
     text-align: right;
     padding-left: 50%;
-    line-height: 95%;
-    padding-bottom: 3%;
+    line-height: 90%;
+    padding-bottom: 1%;
     color: white
 }
 
@@ -56,20 +86,23 @@ blockquote{
     
 }
 code{
-    width:75%
+    width:90%;
+    /* background-color:white; */
 }
 ol,ul {
+    width: 90%;
     font-family:Cambria;
     margin-left: 1%;
     margin-top: 1%;
-    font-size: 1.02em;
+    font-size: 1.1em;
+    padding-bottom:1.1em;
     /* font-size: 1.05em; */
 }
 
 
 
 h2 {
-    color: gray;
+    color: indigo;
     font-size: 2.5em;
     line-height: 1.1em;
     font-family:Cambria;
@@ -78,11 +111,11 @@ h2 {
 }
 
 h3{
-    padding-top:1%;
+    padding-top:1.5em;
     font-style: italic;
+    text-align:center;
     color: lightblue;
     font-size: 1.8em;
-    padding-left: 2%;
 }
 
 h4, h5, h6 {
