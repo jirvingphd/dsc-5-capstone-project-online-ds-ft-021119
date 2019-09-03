@@ -1,29 +1,50 @@
 ___
 
 # PROJECT GOAL:
-* **Use President Trump's tweets (NLP and other features) to predict fluctuations in the stock market (using S&P 500 as index).**
+## BIG QUESTION:
+
+> **Can the Twitter activity of Donald Trump explain fluctuations in the stock market?**
+
+**We will use a combination of traditional stock market forecasting combined with Natural Language Processing and word embeddings from President Trump's tweets to predict fluctuations in the stock market (using S&P 500 as index).**
+
+- **Question 1: Can we predict if stock prices will go up or down at a fixed time point, based on the language in Trump's tweets?**
+    - NLP Model 0
+
 
     
-### DATA USED:
+- **Question 2: How well can explain stock market fluctuations using only historical price data?**
+    - Stock Market Model 1
 
-* **All Donald Trump tweets from 12/01/2016 (pre-inaugaration day) to end of 08/23/2018**
-    *          Extracted from http://www.trumptwitterarchive.com/
 
-* **Minute-resolution data for the S&P500 covering the same time period.**
-    *         IVE S&P500 Index from - http://www.kibot.com/free_historical_data.aspx
+- **Question 3: Does adding technical market indicators to our model improve its ability to predict stock prices?**
+    - Stock Market Model 2
+
+
+- **Question 4: Can the NLP predictions from Question 1, combined with all of the features from Question 3, as well as additional information regarding Trump's Tweets explain even more of the stock market fluctuations?**
+    - Stock Market Model 3
+    - Stock Market Model X
+
+
     
-    
-* NOTE: Both sources required manual extraction, as both data types are difficult to obtain without paying $150-$2000 monthly developer memberships. 
-
-
-  
-### MAJOR REFERENCES / INSPIRATION / PRIOR WORK IN FIELD:
+   
+### References / Inspiration / Prior Work in the Field:
 
 1. **Stanford Scientific Poster Using NLP ALONE to predict if stock prices increase or decrease 5 mins after Trump tweets.**  
     - [Poster PDF LINK](http://cs229.stanford.edu/proj2017/final-posters/5140843.pdf)
     - Best accuracy was X, goal 1 is to create a classifier on a longer timescale with superior results.
     
 
-2. **TowardsDataScience Blog Plost on "Using the latest advancements in deep learning to predict stock price movements."** [Blog Post link](https://towardsdatascience.com/aifortrading-2edd6fac689d)
-    - [Evernote Summary](https://www.evernote.com/l/AApvQ8Xh8b9GBLhrD0m8w4H1ih1oVM8wkEw/)
+2. **TowardsDataScience Blog Plost on "Using the latest advancements in deep learning to predict stock price movements."** 
+     - [Blog Post link](https://towardsdatascience.com/aifortrading-2edd6fac689d)
+
+### DATA SOURCES:
+
+* **All Donald Trump tweets from 12/01/2016 (pre-inaugaration day) to end of 08/23/2018**
+    * Extracted from http://www.trumptwitterarchive.com/
+
+* **Minute-resolution data for the S&P500 covering the same time period.**
+    * IVE S&P500 Index from - http://www.kibot.com/free_historical_data.aspx
+    
+    
+* NOTE: Both sources required manual extraction, as both data types are difficult to obtain without paying $150-$2000 monthly developer memberships. 
 

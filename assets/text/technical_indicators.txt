@@ -1,5 +1,3 @@
-## DATA ANALYSIS DETAILS AND EQUATIONS 
-### Technical Indicators - Explanation & Equations
 1. **7 and 21 day moving averages**
 ```python
 df['ma7'] df['price'].rolling(window = 7 ).mean() #window of 7 if daily data

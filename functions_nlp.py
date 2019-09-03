@@ -1544,14 +1544,77 @@ def make_tweet_bigrams_by_group(twitter_df_groups,top_n=20,text_key=None,
 
 
 
+# def merge_stocks_and_tweets(stocks_grouped,twitter_grouped, on='int_bins',how='left', show_summary=True):
+#     """Takes stocks_grouped and twitter_grouped dataframes grouped by hour bins, merges
+#     them on the 'int_bins' columns."""
+#     import pandas as pd
+#     from IPython.display import display
+#     def fix_tweet_times(x):
+#         import numpy as np
+#         import pandas as pd
+#         time_format="%Y-%m-%d %T"
+#         if isinstance(x,pd.Timestamp) | isinstance(x,pd.DatetimeIndex):
+#             return x.strftime(time_format)
+
+#         elif  isinstance(x,list) |  isinstance(x,np.ndarray):
+#             ts = [pd.to_datetime(t,format=time_format) for t in x] 
+#     #         ts = [t.strftime(time_format) for t in x]#ts]
+#             return ts
+
+#         elif pd.isnull(x): 
+#     #         print('null')
+#             return x
+
+#         else: 
+#             ts= pd.to_datetime(str(x)) 
+#             timestring = ts.strftime(time_format)        #x.strftime(time_format)
+#             return timestring
+
+#     ## MERGE DATAFRAMES
+#     df_combined = pd.merge(stocks_grouped,twitter_grouped, on='int_bins',how='left')#,indicator=True)
+
+#     ## ADDING COLUMNS TO WEED THROUGH MISSING DATA FROM MERGER
+#     df_combined['has_tweets'] = ~df_combined['group_content'].isna()
+#     df_combined['has_stocks'] = ~df_combined['price'].isna()
+#     df_combined['has_both'] =(df_combined['has_tweets']==True) & (df_combined['has_stocks']==True)# 
+
+
+#     ## CLEAN UP DATAFRAME
+#     # Drop redundant cols
+#     drop_cols = ['date','int_times_y','time_bin_y','time_bin_x','num_per_bin_x']
+#     df_combined.drop(drop_cols,axis=1,inplace=True)
+
+#     # Rename distinct stock vs tweet columns
+#     rename_map = {'date_time_index_y':'tweet_times',
+#                  'date_time_index_x':'stock_times',
+#                   'int_times_x':'int_times',
+#                   'num_per_bin_y':'num_tweets',
+#                   'int_times_x':'int_tweets_for_stocks'
+#                  }
+#     df_combined  = df_combined.rename(axis=1,mapper=rename_map)
+
+#     ## Add fixed ts for tweet_times
+#     df_combined['tweet_times'] = df_combined['tweet_times'].apply(lambda x: fix_tweet_times(x))
+
+#     df_combined.set_index('date_time', inplace=True,drop=False)
+
+#     if show_summary:
+#         n=3
+#         display(df_combined.groupby('has_both').head(3))
+#         display(df_combined.loc[ df_combined['num_tweets']>1].head(n))
+#     return df_combined
+
+
+
 def merge_stocks_and_tweets(stocks_grouped,twitter_grouped, on='int_bins',how='left', show_summary=True):
     """Takes stocks_grouped and twitter_grouped dataframes grouped by hour bins, merges
     them on the 'int_bins' columns."""
     import pandas as pd
+    import numpy as np
+    import functions_combined_BEST as ji
     from IPython.display import display
+
     def fix_tweet_times(x):
-        import numpy as np
-        import pandas as pd
         time_format="%Y-%m-%d %T"
         if isinstance(x,pd.Timestamp) | isinstance(x,pd.DatetimeIndex):
             return x.strftime(time_format)

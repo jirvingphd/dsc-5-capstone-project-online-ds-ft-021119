@@ -1,3 +1,45 @@
+.interactive_output{
+    padding:5%;
+    border:5px solid cornflowerblue;
+}
+    /* .fetch-tweets{
+    align-content: right;
+    font-size:1.5em;
+    border: 2px cornflowerblue;
+
+} */
+.figure{
+    width:80%;
+    display:block;
+    margin-left:auto;
+    margin-right:auto;
+}
+table{
+    text-align: center;
+    color:black;
+    font-size:1.5em;
+    width:50%;
+}
+th{
+    font-weight: bold;
+    /* background-color: black; */
+    /* display: inline-block; */
+    /* color:white; */
+
+}
+img{
+    display: block;
+    background-color: white;
+}
+button{
+    display:block;
+    margin-block: 2em;
+    font-size:2em;
+    border: 5px solid cornflowerblue;
+    margin-left:15%;
+    margin-right:auto;
+}
+
 #main_header{
     color: cornflowerblue;
     width: 100%;
@@ -7,9 +49,23 @@
     font-stretch: expanded;
     font-weight: bold;
 }
-#show-tweet-forms{
-    padding:0;
+
+blockquote{
+    font-family:Cambria;
+    display:block;
+    width:70%;
+    margin-left: 5%;
+    margin-right: 20%;
+    font-style: italic;
+    border-color: white;
+    border-left: 2pt solid white;
+    line-height: 110%;
+    font-size:1.1em;
+    color : lightskyblue;
+    padding-left : 3%;
+    
 }
+
 #logo{
     display:block;
     margin-left:0;
@@ -37,7 +93,7 @@ img{
 }
 
 h1:not(#main_header) {
-    color: blue;
+    color: darkblue;
     width: 100%;
     font-family:Cambria;
     text-align: center;
@@ -71,20 +127,6 @@ body {
     text-align: center;
 }
 
-blockquote{
-    font-family:Cambria;
-    width:70%;
-    margin-left: 5%;
-    margin-right: 20%;
-    font-style: italic;
-    border-color: white;
-    border-left: 2pt solid white;
-    line-height: 110%;
-    font-size:1.2em;
-    color : lightskyblue;
-    padding-left : 3%;
-    
-}
 code{
     width:90%;
     /* background-color:white; */
@@ -102,7 +144,7 @@ ol,ul {
 
 
 h2 {
-    color: indigo;
+    color: blue;
     font-size: 2.5em;
     line-height: 1.1em;
     font-family:Cambria;
@@ -112,7 +154,7 @@ h2 {
 
 h3{
     padding-top:1.5em;
-    font-style: italic;
+    /* font-style: italic; */
     text-align:center;
     color: lightblue;
     font-size: 1.8em;

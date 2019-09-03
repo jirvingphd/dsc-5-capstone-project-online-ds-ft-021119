@@ -1,0 +1,33 @@
+### OVERVIEW OF DATA USED/ FEATURES ENGINEERED
+
+
+#### TWITTER DATA - CLASSIFICATION MODEL
+**Trained Word2Vec embeddings on collection of Donal Trump's Tweets.**
+- Used negative skip-gram method and negative sampling to best represent infrequently used words.
+    
+**Classified tweets based on change in stock price (delta_price)**
+- Calculated price change from time of tweet to 60 mins later.
+    - "No Change" if the delta price was < \\$0.05 
+    - "Increase" if delta price was >+\\$0.05
+    - "Decrease if delta price was >-\\$0.05
+    
+*NOTE: This model's predictions will become a feature in our final model.*
+
+#### STOCK MARKET (S&P 500) DATA :
+##### TIME SERIES FORECASTING USING MARKET DATA
+**Model 1: Use price alone to forecast hourly price.**
+- Train model using time sequences of 7-trading-hours (1 day) to predict the following hour. 
+    * [x] ~~SARIMAX model~~
+    * [x] LSTM neural network 
+
+**Model 2: Use price combined with technical indicators.**
+- **Calculate 7 technical indicators from S&P 500 hourly closing price.**
+    * [x] 7 days moving average 
+    * [x] 21 days moving average
+    * [x] exponential moving average
+    * [x] momentum
+    * [x] Bollinger bands
+    * [x] MACD
+- [x] LSTM neural network
+    
+  
