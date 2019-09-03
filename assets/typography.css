@@ -8,12 +8,13 @@
     border: 2px cornflowerblue;
 
 } */
-.figure{
-    width:80%;
-    display:block;
-    margin-left:auto;
-    margin-right:auto;
-}
+/* .figure{
+    width:100%;
+    padding-right:10%;
+    /* display:block; */
+    /* margin-left:auto; */
+    /* margin-right:auto; 
+} */
 table{
     text-align: center;
     color:black;
@@ -30,6 +31,18 @@ th{
 img{
     display: block;
     background-color: white;
+}
+
+img{
+    align-content: center;
+    align-items:center;
+    align-self: center;
+
+    width:80%;
+    display:block;
+    margin-left:auto;
+    margin-right:auto;
+    /* border: 20px solid pink; */
 }
 button{
     display:block;
@@ -66,21 +79,7 @@ blockquote{
     
 }
 
-#logo{
-    display:block;
-    margin-left:0;
-}
-img{
-    align-content: center;
-    align-items:center;
-    align-self: center;
 
-    width:80%;
-    display:block;
-    margin-left:auto;
-    margin-right:auto;
-    /* border: 20px solid pink; */
-}
 #main-div{
     width: 75%;
     margin-left: auto;
@@ -93,13 +92,13 @@ img{
 }
 
 h1:not(#main_header) {
-    color: darkblue;
+    color: greenyellow;
     width: 100%;
     font-family:Cambria;
     text-align: center;
     font-size: 3em;
     font-weight: bold;
-    padding-top:2em;
+    /* padding-top:1em; */
 }
 
 #my_name {
@@ -145,6 +144,8 @@ ol,ul {
 
 h2 {
     color: blue;
+    margin-top:3em;
+    border-top:2px solid white;
     font-size: 2.5em;
     line-height: 1.1em;
     font-family:Cambria;
@@ -156,14 +157,14 @@ h3{
     padding-top:1.5em;
     /* font-style: italic; */
     text-align:center;
-    color: lightblue;
+    color: skyblue;
     font-size: 1.8em;
 }
 
 h4, h5, h6 {
-    padding-top:1%;
-    font-style: italic;
+    /* padding-top:1%; */
+    /* font-style: italic; */
     color: lightblue;
-    font-size: 1.8em;
+    font-size: 1.5em;
     padding-left: 2%;
 }

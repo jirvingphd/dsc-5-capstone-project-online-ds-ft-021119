@@ -1,6 +1,3 @@
-___
-
-# PROJECT GOAL:
 ## BIG QUESTION:
 
 > **Can the Twitter activity of Donald Trump explain fluctuations in the stock market?**

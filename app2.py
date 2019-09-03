@@ -51,6 +51,9 @@ with open('assets/text/nlp_intro.txt','r') as f:
 with open('assets/text/nlp_data_intro.txt','r') as f:
     md_nlp_data_intro = f.read()
 
+with open('assets/text/abstract.txt','r') as f:
+    md_abstract = f.read()
+
 ## NLP Figure Image locations
 wordclouds_top_words = "assets/images/wordcloud_top_words_by_delta_price.png"
 wordclouds_unique_words = "assets/images/wordcloud_unique_words_by_delta_price.png"
@@ -122,7 +125,7 @@ fig_model3 = ji.plotly_true_vs_preds_subplots(df_model3, show_fig=False)
 ## Specify all assets for model 2
 df_modelxgb = pd.read_csv('results/modelxgb/modelxgb_df_model_true_vs_preds.csv',index_col=0,parse_dates=True)
 df_resultsxgb = pd.read_excel('results/modelxgb/modelxgb_df_results.xlsx',index_col=0)
-df_importance = pd.read_csv('results/modelxgb/df_importance.csv')
+df_importance = pd.read_csv('results/modelxgb/df_importance.csv',index_col=0)
 importance_fig = df_importance.sort_values(by='weight', ascending=True).iplot(kind='barh',theme='solar',
                                                                     title='Feature Importance',
                                                                     xTitle='Relative Importance<br>(sum=1.0)',
@@ -133,9 +136,9 @@ fig_modelxgb = ji.plotly_true_vs_preds_subplots(df_modelxgb, true_train_col='tru
                                 true_test_col='true_test_price', pred_test_columns='pred_test_price',
                                 show_fig=False)
 
-fig_feature_importance = df_importance.sort_values(by='weight', ascending=True).iplot(kind='barh',theme='solar',
+fig_feature_importance = df_importance.sort_values(by='weight', ascending=True).iplot(kind='bar',theme='solar',
                                                                     title='Feature Importance',
-                                                                    xTitle='Relative Importance<br>(sum=1.0)',
+                                                                    yTitle='Relative Importance<br>(sum=1.0)',
                                                                     asFigure=True)
 
 
@@ -165,6 +168,7 @@ app.layout = html.Div(id='main-div',children=[
     
         html.Div(id='1_intro',
         children=[ #main child2
+        dcc.Markdown(md_abstract),
         dcc.Markdown(md_intro),
         dcc.Markdown(md_data_overview)
         ]),
@@ -267,7 +271,7 @@ app.layout = html.Div(id='main-div',children=[
         ]), 
 
         html.Div(id='summary',children=[
-            html.H1('Summary'),
+            html.H1('SUMMARY'),
             dcc.Markdown('Final Conclusions')
         ])
 ]
