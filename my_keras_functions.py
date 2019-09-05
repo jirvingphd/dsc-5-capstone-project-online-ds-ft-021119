@@ -1992,37 +1992,45 @@ def evaluate_classification(model, history, X_train,X_test,y_train,y_test, binar
     y_hat_train = model.predict_classes(X_train)
     y_hat_test = model.predict_classes(X_test)
 
-    if binary_classes==False:
+    if y_test.ndim>1 or binary_classes==False:
+        if binary_classes==False: 
+            pass
+        else:
+            binary_classes = False
+            print(f"[!] y_test was >1 dim, setting binary_classes to False")
+        
+        ## reduce dimensions of y_train and y_test
         y_train = y_train.argmax(axis=1)
         y_test = y_test.argmax(axis=1)
-        # y_hat_train = y_hat_train.argmax(axis=1)
-        # y_hat_test = y_hat_test.argmax(axis=1)
-        # matrix = metrics.confusion_matrix(y_test.argmax(axis=1), y_pred.argmax(axis=1))
-    # if binary_classes:
-        # get both versions of classification report output
+
+    print('---'*num_dashes)
+    print('\tCLASSIFICATION REPORT:')
+    print('---'*num_dashes)
+
+    # get both versions of classification report output
     report_str = classification_report(y_test,y_hat_test)
     report_dict = classification_report(y_test,y_hat_test,output_dict=True)
+
+    try:
+        ## Create and display classification report
+        # df_report =pd.DataFrame.from_dict(report_dict,orient='columns')#'index')#class_rows,orient='index')
+        df_report_temp = pd.DataFrame(report_dict)
+        df_report_temp = df_report_temp.T#reset_index(inplace=True)
+
+        df_report = df_report_temp[['precision','recall','f1-score','support']]
+        display(df_report.round(4).style.set_caption('Classification Report'))
+        print('\n')
+    
+    except:
+        print(report_str)
+        # print(report_dict)
+        df_report = pd.DataFrame()
 
     if save_summary:
         with open(summary_filename,'w') as f:
             model.summary(print_fn=lambda x: f.write(x+"\n"))
             f.write(f"\nSaved at {time_suffix}\n")
             f.write(report_str)
-
-
-
-    ## Create and display classification report
-    df_report =pd.DataFrame.from_dict(report_dict,orient='index')#class_rows,orient='index')
-    df_report.reset_index(inplace=True)
-
-        
-    print('---'*num_dashes)
-    print('\tCLASSIFICATION REPORT:')
-    print('---'*num_dashes)
-
-    display(df_report.round(4).style.hide_index().set_caption('Classification Report'))
-    print('\n')
-    
 
     ## Create and plot confusion_matrix
     conf_mat = confusion_matrix(y_test, y_hat_test)

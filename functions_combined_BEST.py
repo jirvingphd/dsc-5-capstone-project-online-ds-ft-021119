@@ -1612,106 +1612,7 @@ def arr2series(array,series_index=[],series_name='predictions'):
     preds_series = pd.Series(array.ravel(), index=series_index, name=series_name)
     return preds_series
 
-    
-# def get_true_vs_model_pred_df(model, n_input, test_generator, test_data_index, df_test, train_generator, train_data_index, df_train, scaler=None,
-#                               inverse_tf=True, plot=True, verbose=2):
-#     """Accepts a model, the training and testing data TimeseriesGenerators, the test_index and train_index.
-#     Returns a dataframe with True and Predicted Values for Both the Training and Test Datasets."""
-#     import pandas as pd
-#     ## GET PREDICTIONS FROM MODEL
-#     test_predictions = pd.Series(model.predict_generator(test_generator).ravel(), 
-#                                  index=test_data_index[n_input:], name='Predicted Test Price')
-
-#     train_predictions = pd.Series(model.predict_generator(train_generator).ravel(), 
-#                                   index=train_data_index[n_input:], name='Predicted Training Price')
-
-#     # Make a series for true price to plot
-#     test_true_price = pd.Series( df_test['price'].rename('True Test Price').iloc[n_input:],
-#                                 index= test_data_index[n_input:], name='True Test Price')
-
-#     train_true_price = pd.Series(df_train['price'].rename('True Training Price').iloc[n_input:],
-#                                  index = train_data_index[n_input:], name='True Train Price')
-    
-#     # Combine all 4 into one dataframe
-#     df_show = pd.concat([train_true_price,train_predictions,test_true_price,test_predictions], axis=1)
-    
-    
-#     # CONVERT BACK TO ORIGINAL UNIT SCALE 
-#     if inverse_tf==True:
-        
-#         if scaler:
-#             for col in df_show.columns:
-#                 df_show[col] = inverse_transform_series(df_show[col],scaler)
-            
-#         else:
-#             raise Exception('Must pass a fit scaler to inverse_tf the units.')
-            
-
-#     # PREVIEW DATA
-#     if verbose>1:
-#         df_show.head()
-        
-#     if plot==True:
-#         plot_true_vs_preds_subplots(df_show['True Train Price'],df_show['True Test Price'], 
-#                                     df_show['Predicted Test Price'], subplots=True)
-        
-#     return df_show
-
-
-
-
-# def thiels_U(ys_true, ys_pred):
-#     import numpy as np
-#     sum_list = []
-#     num_list=[]
-#     denom_list=[]
-#     for t in range(len(ys_true)-1):
-#         num_exp = (ys_pred[t+1] - ys_true[t+1])/ys_true[t]
-#         num_list.append([num_exp**2])
-#         denom_exp = (ys_true[t+1] - ys_true[t])/ys_true[t]
-#         denom_list.append([denom_exp**2])
-#     U = np.sqrt( np.sum(num_list) / np.sum(denom_list))
-#     return U        
-
-
-# def get_u_for_shifts(df_U, shift_list,plot_all=False,plot_best=True):
-#     import matplotlib.pyplot as plt
-#     import matplotlib as mpl
-#     from bs_ds import list2df
-#     import pandas as pd
-#     results=[['true_data_shift','U']]
-    
-#     if plot_all==True:
-#         df_U['preds_from_gen'].plot(label = 'Prediction')
-#         plt.legend()
-#         plt.title('Shifted Time Series vs Predicted')
-        
-        
-#     for i,shift in enumerate(shift_list):
-#         if plot_all==True:
-#             df_U['true_from_gen'].shift(shift).plot(label = f'True + Shift({shift})')
-
-#         df_shift=pd.DataFrame()
-#         df_shift['true'] = df_U['true_from_gen'].shift(shift)
-#         df_shift['pred'] =df_U['preds_from_gen']
-#         df_shift.dropna(inplace=True)
-
-#         U =thiels_U(df_shift['true'], df_shift['pred'])
-#         results.append([shift,U])
-    
-    
-#     df_results = list2df(results, index_col='true_data_shift')
-#     if plot_best==True:
-#         shift = df_results.idxmin()[0]
-#         df_U['preds_from_gen'].plot(label = 'Prediction')
-#         df_U['true_from_gen'].shift(shift).plot(ls='--',label = f'True + Shift({shift})')
-#         plt.legend()
-#         plt.title("Best Thiel's U for Shifted Time Series")
-# #         plt.show()
-#     return df_results
-
-
-
+ 
 
 ## TO CHECK FOR STRINGS IN BOTH DATASETS:
 def check_dfs_for_exp_list(df_controls, df_trolls, list_of_exp_to_check):
@@ -2023,21 +1924,6 @@ def plot_auc_roc_curve(y_test, y_test_pred):
     plt.show()
 
 
-# def plot_fit_cloud(troll_cloud,contr_cloud,label1='Troll',label2='Control'):
-#     import matplotlib.pyplot as plt
-#     fig,ax = plt.subplots(nrows=1,ncols=2,figsize=(18,18))
-
-#     ax[0].imshow(troll_cloud, interpolation='gaussian')
-#     # ax[0].set_aspect(1.5)
-#     ax[0].axis("off")
-#     ax[0].set_title(label1, fontsize=40)
-
-#     ax[1].imshow(contr_cloud, interpolation='bilinear',)
-#     # ax[1].set_aspect(1.5)
-#     ax[1].axis("off")
-#     ax[1].set_title(label2, fontsize=40)
-#     plt.tight_layout()
-#     return fig, ax
 
 
 def transform_image_mask_white(val):
@@ -4507,15 +4393,6 @@ def undersample_df_to_match_classes(df,class_column='delta_price_class', class_v
     # get number of samples to match
     count_to_match = np.min(counts)
     
-
-
-    ## Check counts to determine which classes' counts should be matched
-    # if class_counts[classes[0]] > class_counts[classes[1]]:
-    #     class_to_match = classes[1]
-        
-    # elif class_counts[classes[1]] > class_counts[classes[0]]:
-    #     class_to_match = classes[0]
-    # else:
     if len(np.unique(counts))==1:
         raise Exception('Classes are already balanced')
         
@@ -4699,117 +4576,6 @@ def find_null_idx(df,column=None):
 
 
 
-## FUNCTIONS FOR SAVING MODEL
-# def df2png(df, filename_prefix = 'results/summary_table',sep='_',filename_suffix='',file_ext='.png',
-#            auto_filename_suffix=True, check_if_exists=True,save_excel=True,auto_increment_name=True, CSS=''):
-#     '''Accepts a dataframe and a filename (without extention). Saves an image of the stylized table.'''
-#     # Now save the css and html dataframe to the same text file before conversion
-#     import imgkit
-#     import os 
-#     import time
-#     import functions_combined_BEST as ji
-    
-#     ## Specify file_format for imgkit
-#     if '.png' not in file_ext:
-#         file_format = file_ext.replace('.','')
-#         imgkitoptions = {'format':file_format}
-#     else:
-#         imgkitoptions = {'format':'png'}
-     
-#     ## Provide path to required wkhtmltoimage.exe
-#     exe_path = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
-#     imgconfig = imgkit.config(wkhtmltoimage = exe_path) #'C:/Users/james/Anaconda3/envs/learn-env-ext/Lib/site-packages/wkhtmltopdf/bin/wkhtmltoimage.exe')
-
-#     ## CREATE ANY MISSING FOLDERS FOR DESIRED FOLDERPATH
-#     ji.create_required_folders(filename_prefix,verbose=0)
-    
-#     ## CREATING FILENAMES
-#     # add auto suffix
-#     if auto_filename_suffix:
-#         suffix_time_format = '%m-%d-%Y_%I%M%p'
-#         filename = ji.auto_filename_time(prefix=filename_prefix, sep=sep, timeformat=suffix_time_format )
-#     else:
-#         filename = filename_prefix
-
-#     ## Add suffix to filename
-#     full_filename = filename + sep + filename_suffix + file_ext
-
-
-#     ## CHECK_IF_FILE_EXISTS
-#     if check_if_exists:
-#         import os
-#         import pandas as pd
-#         current_files = os.listdir()
-        
-#         # check if file already exists and raise errror if no auto_increment_name
-#         if full_filename in current_files and auto_increment_name==False:
-#             raise Exception('Filename already exists')
-        
-#         # if file already exists, find version number and increase by 1 
-#         elif full_filename in current_files and auto_increment_name==True:
-        
-#             # check if filename ends in version #
-#             import re
-#             num_ending = re.compile(r'[vV].?(\d+)')#.json')
-            
-#             curr_file_num = num_ending.findall(full_filename)
-#             if len(curr_file_num)==0:
-#                 v_num = '_v01'
-#             else:
-#                 v_num = f"_{int(curr_file_num)+1}"
-
-#             ## CHANGE FOR FILE EXTENTSION TYPE
-#             full_filename = filename +sep+ v_num +file_ext
-#             print(f'{filename} already exists... incrementing filename to {full_filename}.')
-
-    
-    
-#     ## Make temp filename for css/html text file export
-#     base_filename = full_filename.split('.')[0]
-#     text_file_name = base_filename +'_to_convert.html'
-    
-#     ## Add text_file_name to Path [cant remmeber why?]
-#     from pathlib import Path
-#     config = Path(text_file_name)    
-#     if config.is_file():
-#         # Store configuration file values
-#         os.remove(text_file_name)
-
-    
-#     ### GET HTML TABLE TO OUTPUT
-#     # Check df is styler or normal df
-#     if isinstance(df,pd.io.formats.style.Styler):
-#         html_df = df.render()
-        
-#         if save_excel == True:
-#             df.to_excel(base_filename+'.xlsx')
-            
-#     elif isinstance(df, pd.DataFrame):
-#         html_df = df.to_html()
-        
-#         if save_excel == True:
-#             df.to_excel(base_filename+'.xlsx')
-#     elif isinstance(df,str):
-#         html_df=df
-
-    
-#     ## Create text file with CSS and dataframe as cs
-#     with open(text_file_name,'a') as text_file:
-#         text_file.write(CSS)
-#         text_file.write(html_df)
-# #         text_file.close()
-
-#     ## Create image filename and produce figure from text file
-#     imagename = base_filename+file_ext
-#     imgkit.from_file(text_file_name, imagename, options = imgkitoptions, config=imgconfig)
-    
-#     # report
-# #     print('')
-
-#     ## delete temporary text file
-#     os.remove(text_file_name)
-    
-#     return 
 
 #################################################################
 
@@ -4921,3 +4687,99 @@ def keras_forecast(scaled_train_ts, scaled_test_ts, model, n_input, n_feature):
         working_batch = np.append(working_batch[:,1:,:], [[current_pred]], axis=1)
         
     return preds
+
+from sklearn.model_selection._split import _BaseKFold
+class BlockTimeSeriesSplit(_BaseKFold): #sklearn.model_selection.TimeSeriesSplit):
+    """A variant of sklearn.model_selection.TimeSeriesSplit that keeps train_size and test_size
+    constant across folds. 
+    Requires n_splits,train_size,test_size. train_size/test_size can be integer indices or float ratios """
+    def __init__(self, n_splits=5,train_size=None, test_size=None, step_size=None, method='sliding'):
+        super().__init__(n_splits, shuffle=False, random_state=None)
+        self.train_size = train_size
+        self.test_size = test_size
+        self.step_size = step_size
+        if 'sliding' in method or 'normal' in method:
+            self.method = method
+        else:
+            raise  Exception("Method may only be 'normal' or 'sliding'")
+        
+    def split(self,X,y=None, groups=None):
+        import numpy as np
+        import math 
+        method = self.method
+        ## Get n_samples, trian_size, test_size, step_size
+        n_samples = len(X)
+        test_size = self.test_size
+        train_size =self.train_size
+      
+                
+        ## If train size and test sze are ratios, calculate number of indices
+        if train_size<1.0:
+            train_size = math.floor(n_samples*train_size)
+        
+        if test_size <1.0:
+            test_size = math.floor(n_samples*test_size)
+            
+        ## Save the sizes (all in integer form)
+        self._train_size = train_size
+        self._test_size = test_size
+        
+        ## calcualte and save k_fold_size        
+        k_fold_size = self._test_size + self._train_size
+        self._k_fold_size = k_fold_size    
+        
+
+    
+        indices = np.arange(n_samples)
+        
+        ## Verify there is enough data to have non-overlapping k_folds
+        if method=='normal':
+            import warnings
+            if n_samples // self._k_fold_size <self.n_splits:
+                warnings.warn('The train and test sizes are too big for n_splits using method="normal"\n\
+                switching to method="sliding"')
+                method='sliding'
+                self.method='sliding'
+                              
+                  
+            
+        if method=='normal':
+
+            margin = 0
+            for i in range(self.n_splits):
+
+                start = i * k_fold_size
+                stop = start+k_fold_size
+
+                ## change mid to match my own needs
+                mid = int(start+self._train_size)
+                yield indices[start: mid], indices[mid + margin: stop]
+        
+
+        elif method=='sliding':
+            
+            step_size = self.step_size
+            if step_size is None: ## if no step_size, calculate one
+                ## DETERMINE STEP_SIZE
+                last_possible_start = n_samples-self._k_fold_size #index[-1]-k_fold_size)\
+                step_range =  range(last_possible_start)
+                step_size = len(step_range)//self.n_splits
+            self._step_size = step_size
+                
+            
+            for i in range(self.n_splits):
+                if i==0:
+                    start = 0
+                else:
+                    start = prior_start+self._step_size #(i * step_size)
+
+                stop =  start+k_fold_size            
+                ## change mid to match my own needs
+                mid = int(start+self._train_size)
+                prior_start = start
+                yield indices[start: mid], indices[mid: stop]
+
+
+
+
+
