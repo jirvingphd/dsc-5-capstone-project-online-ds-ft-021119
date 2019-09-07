@@ -452,76 +452,80 @@ def evaluate_model_plot_history(model, train_generator, test_generator,as_df=Fal
         return  eval_gen_dict
 
 
-# def get_model_config_df(model1, multi_index=True):
+def get_model_config_df(model1, multi_index=True):
 
-#     import bs_ds as bs
-#     import functions_combined_BEST as ji
-#     import pandas as pd
-#     pd.set_option('display.max_rows',None)
+    import bs_ds as bs
+    import functions_combined_BEST as ji
+    import pandas as pd
+    pd.set_option('display.max_rows',None)
 
-#     model_config_dict = model1.get_config()
-#     model_layer_list=model_config_dict['layers']
-#     output = [['#','layer_name', 'layer_config_level','layer_param','param_value']]#,'param_sub_value','param_sub_value_details' ]]
+    model_config_dict = model1.get_config()
+    try:
+        model_layer_list=model_config_dict['layers']
+    except:
+        return model_config_dict
+        raise Exception()
+    output = [['#','layer_name', 'layer_config_level','layer_param','param_value']]#,'param_sub_value','param_sub_value_details' ]]
 
-#     for num,layer_dict in enumerate(model_layer_list):
-#     #     layer_dict = model_layer_list[0]
-
-
-#         # layer_dict['config'].keys()
-#         # config_keys = list(layer_dict.keys())
-#         # combine class and name into 1 column
-#         layer_class = layer_dict['class_name']
-#         layer_name = layer_dict['config'].pop('name')
-#         col_000 = f"{num}: {layer_class}"
-#         col_00 = layer_name#f"{layer_class} ({layer_name})"
-
-#         # get layer's config dict
-#         layer_config = layer_dict['config']
+    for num,layer_dict in enumerate(model_layer_list):
+    #     layer_dict = model_layer_list[0]
 
 
-#         # config_keys = list(layer_config.keys())
+        # layer_dict['config'].keys()
+        # config_keys = list(layer_dict.keys())
+        # combine class and name into 1 column
+        layer_class = layer_dict['class_name']
+        layer_name = layer_dict['config'].pop('name')
+        col_000 = f"{num}: {layer_class}"
+        col_00 = layer_name#f"{layer_class} ({layer_name})"
+
+        # get layer's config dict
+        layer_config = layer_dict['config']
 
 
-#         # for each parameter in layer_config
-#         for param_name,col2_v_or_dict in layer_config.items():
-#             # col_1 is the key( name of param)
-#         #     col_1 = param_name
+        # config_keys = list(layer_config.keys())
 
 
-#             # check the contents of col2_:
-
-#             # if list, append col2_, fill blank cols
-#             if isinstance(col2_v_or_dict,dict)==False:
-#                 col_0 = 'top-level'
-#                 col_1 = param_name
-#                 col_2 = col2_v_or_dict
-
-#                 output.append([col_000,col_00,col_0,col_1 ,col_2])#,col_3,col_4])
+        # for each parameter in layer_config
+        for param_name,col2_v_or_dict in layer_config.items():
+            # col_1 is the key( name of param)
+        #     col_1 = param_name
 
 
-#             # else, set col_2 as the param name,
-#             if isinstance(col2_v_or_dict,dict):
+            # check the contents of col2_:
 
-#                 param_sub_type = col2_v_or_dict['class_name']
-#                 col_0 = param_name +'  ('+param_sub_type+'):'
+            # if list, append col2_, fill blank cols
+            if isinstance(col2_v_or_dict,dict)==False:
+                col_0 = 'top-level'
+                col_1 = param_name
+                col_2 = col2_v_or_dict
 
-#                 # then loop through keys,vals of col_2's dict for col3,4
-#                 param_dict = col2_v_or_dict['config']
-
-#                 for sub_param,sub_param_val in param_dict.items():
-#                     col_1 =sub_param
-#                     col_2 = sub_param_val
-#                     # col_3 = ''
+                output.append([col_000,col_00,col_0,col_1 ,col_2])#,col_3,col_4])
 
 
-#                     output.append([col_000,col_00,col_0, col_1 ,col_2])#,col_3,col_4])
+            # else, set col_2 as the param name,
+            if isinstance(col2_v_or_dict,dict):
+
+                param_sub_type = col2_v_or_dict['class_name']
+                col_0 = param_name +'  ('+param_sub_type+'):'
+
+                # then loop through keys,vals of col_2's dict for col3,4
+                param_dict = col2_v_or_dict['config']
+
+                for sub_param,sub_param_val in param_dict.items():
+                    col_1 =sub_param
+                    col_2 = sub_param_val
+                    # col_3 = ''
+
+
+                    output.append([col_000,col_00,col_0, col_1 ,col_2])#,col_3,col_4])
         
-#     df = bs.list2df(output)    
-#     if multi_index==True:
-#         df.sort_values(by=['#','layer_config_level'], ascending=False,inplace=True)
-#         df.set_index(['#','layer_name','layer_config_level','layer_param'],inplace=True) #=pd.MultiIndex()
-#         df.sort_index(level=0, inplace=True)
-#     return df
+    df = bs.list2df(output)    
+    if multi_index==True:
+        df.sort_values(by=['#','layer_config_level'], ascending=False,inplace=True)
+        df.set_index(['#','layer_name','layer_config_level','layer_param'],inplace=True) #=pd.MultiIndex()
+        df.sort_index(level=0, inplace=True)
+    return df
 
 
 
@@ -601,11 +605,18 @@ def save_model_weights_params(model,model_params=None, filename_prefix = 'models
     if save_model_layer_config_xlsx == True:
 
         excel_filename=filename+'_model_layers.xlsx'
-        # Get modelo config df
         df_model_config = get_model_config_df(model)
-        df_model_config.to_excel(excel_filename, sheet_name='Keras Model Config')
-        print(f"Model configuration table saved as {excel_filename }")
-           
+
+        try:
+            # Get modelo config df
+            df_model_config.to_excel(excel_filename, sheet_name='Keras Model Config')
+            print(f"Model configuration table saved as {excel_filename }")
+        except:
+            print('ERROR:df_model_config = get_model_config_df(model)')
+            print(type(df_model_config))
+            # print(df_model_config)
+
+            
 
 
     ## SAVE MODEL PARAMS TO PICKLE 
