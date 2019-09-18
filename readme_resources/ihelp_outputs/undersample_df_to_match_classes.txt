@@ -1,0 +1,67 @@
+### SOURCE:
+```python
+def undersample_df_to_match_classes(df,class_column='delta_price_class', class_values_to_keep=None,verbose=1):
+    """Resamples (undersamples) input df so that the classes in class_column have equal number of occruances.
+    If class_values_to_keep is None: uses all classes. """
+    import pandas as pd
+    import numpy as np
+    
+    ##  Get value counts and classes
+    class_counts = df[class_column].value_counts()
+    classes = list(class_counts.index)
+    
+    if verbose>0:
+        print('Initial Class Value Counts:')
+        print('%: ',class_counts/len(df))
+
+    ## use all classes if None 
+    if class_values_to_keep is None:
+        class_values_to_keep = classes
+    
+    
+    ## save each group's indices in dict
+    class_dict = {}
+    for curr_class in classes:
+
+        if curr_class in class_values_to_keep:
+            class_dict[curr_class] = {}
+            
+            idx = df.loc[df[class_column]==curr_class].index
+            
+            class_dict[curr_class]['idx'] = idx
+            class_dict[curr_class]['count'] = len(idx)
+        else:
+            continue
+
+    
+    ## determine which class count to match
+    counts = [class_dict[k]['count'] for k in class_dict.keys()]    
+    # get number of samples to match
+    count_to_match = np.min(counts)
+    
+    if len(np.unique(counts))==1:
+        raise Exception('Classes are already balanced')
+        
+    # dict_resample = {}
+    df_sampled = pd.DataFrame()
+    for k,v in class_dict.items():
+        temp_df = df.loc[class_dict[k]['idx']]
+        temp_df =  temp_df.sample(n=count_to_match)
+        # dict_resample[k] = temp_df
+        df_sampled =pd.concat([df_sampled,temp_df],axis=0)
+
+    ## sort index of final
+    df_sampled.sort_index(ascending=False, inplace=True)
+
+    # print(df_sampled[class_column].value_counts())
+
+    if verbose>0:
+        check_class_balance(df_sampled, col=class_column)
+        # class_counts = [class_column].value_counts()
+
+        # print('Final Class Value Counts:')
+        # print('%: ',class_counts/len(df))
+    
+    return df_sampled
+
+```

@@ -1,0 +1,41 @@
+### SOURCE:
+```python
+def make_keras_embedding_layer(word2vec_model,X_sequences,embedding_matrix= None,verbose=1):
+        """Creates an embedding layer for Kera's neural networks using the 
+        embedding matrix and text X_sequences
+        embedding_layer =layers.Embedding(vocab_size+1,
+                                    vector_size,
+                                    input_length=X_sequences.shape[1],
+                                    weights=[embedding_matrix],
+                                    trainable=False)"""
+        if embedding_matrix is None:
+            # embedding_matrix = make_embedding_matrix(word2vec_model,verbose=0)
+            import numpy as np
+            import pandas as pd     
+            
+            wv = get_wv_from_word2vec(word2vec_model)
+            vocab_size = len(wv.vocab)
+            vector_size = wv.vector_size
+                
+            ## Create the embedding matrix from the vectors in wv model 
+            embedding_matrix = np.zeros((vocab_size + 1, vector_size))
+            for i, vec in enumerate(wv.vectors):
+                embedding_matrix[i] = vec
+                embedding_matrix.shape
+                
+            if verbose:
+                print(f'embedding_matrix.shape = {embedding_matrix.shape}')
+        
+        wv = get_wv_from_word2vec(word2vec_model)
+        vocab_size = len(wv.vocab)
+        vector_size = wv.vector_size
+                
+        from keras import layers         
+        embedding_layer =layers.Embedding(vocab_size+1,
+                                          vector_size,
+                                          input_length=X_sequences.shape[1],
+                                          weights=[embedding_matrix],
+                                          trainable=False)
+        return embedding_layer
+
+```

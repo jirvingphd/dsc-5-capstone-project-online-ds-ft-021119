@@ -1390,7 +1390,8 @@ def compare_time_shifted_model(df_model,true_colname='true test',pred_colname='p
 
 def get_model_preds_df(model, true_train_series,true_test_series, test_generator,model_params=None,
 x_window=None, n_features=None, inverse_tf=False, scaler=None, include_train_data=True,
- preds_from_gen=True, preds_from_train_preds =False, preds_from_test_preds=False, iplot=False,verbose=1):#  train_data_index=None, test_data_index=None
+ preds_from_gen=True, preds_from_train_preds =False, preds_from_test_preds=False, 
+ iplot=False,iplot_title=None,verbose=1):#  train_data_index=None, test_data_index=None
     """ Gets predictions for training data from the 3 options: 
     1) from generator  --  len(output) = (len(true_test_series)-n_input)
     2) from predictions on test data  --  len(output) = (len(true_test_series)-n_input)
@@ -1554,10 +1555,11 @@ x_window=None, n_features=None, inverse_tf=False, scaler=None, include_train_dat
         # from plotly.offline import 
         # df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) 
         pred_columns = [x for x in df_plot.columns if 'pred' in x]
+        if title is None:
+            title='S&P 500 True Price Vs Predictions ($)'
+        fig = ji.plotly_true_vs_preds_subplots(df_plot, title=title,true_train_col='true_train_price',
+            true_test_col='true_test_price', pred_test_columns=pred_columns)
 
-
-        fig = ji.plotly_true_vs_preds_subplots(df_plot, true_train_col='true_train_price',
-        true_test_col='true_test_price', pred_test_columns=pred_columns)
         return df_plot
 
 

@@ -19,9 +19,10 @@ def reload(mod,verbose=False):
     # or mf.reload([mf1,mf2])"""
     from importlib import reload
     import sys
+
     def print_info(mod):
         print(f'Reloading {mod.__name__}...')
-    # print('your mom')
+
     if type(mod)==list:
         for m in mod:
             reload(m)
@@ -241,9 +242,8 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
 #         globals()[shortname] = eval(modulename + "." + shortname)
 
 
-
-
-def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,colab=False,file_location=False): 
+def ihelp(function_or_mod, show_help=True, show_code=True,
+ return_source_string=False,return_code=False,colab=False,file_location=False): 
     """Call on any module or functon to display the object's
     help command printout AND/OR soruce code displayed as Markdown
     using Python-syntax"""
@@ -252,6 +252,7 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
     from IPython.display import display, Markdown
     page_header = '---'*28
     footer = '---'*28+'\n'
+
     if show_help:
         print(page_header)
         banner = ''.join(["---"*2,' HELP ',"---"*24,'\n'])
@@ -292,8 +293,13 @@ def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,cola
 
     # print(footer)
 
-    if return_code:
+    if return_code & return_source_string:
+        raise Exception('Only one return command may be true.')
+    elif return_code:
         return source_DF
+    elif return_source_string:
+        return output
+
 
 
 
@@ -2773,178 +2779,7 @@ def plot_true_vs_preds_subplots(train_price, test_price, pred_price, figsize=(14
 
 
 
-def plotly_true_vs_preds_subplots_old(df_model_preds,
-                                true_train_col='true_train_price',
-                                true_test_col='true_test_price',
-                                pred_test_columns='pred_from_gen',
-                                 x_col=None, y_col = None,
-                                subplot_mode='lines+markers',
-                                subplots=True,theme='solar', 
-                                verbose=0,figsize=(1000,500),
-                                show_fig=True):
-    """y_col_kws={'col_name':line_color}"""
 
-    import pandas as pd
-    import numpy as np
-    import plotly.graph_objs as go
-
-    from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
-    
-    init_notebook_mode(connected=True)
-    
-    import functions_combined_BEST as ji
-    import bs_ds as bs
-    
-    from sklearn.metrics import mean_squared_error
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    import numpy as np
-    import pandas as pd
-    import cufflinks as cf
-    cf.go_offline()
-
-    ## Get my_layout
-    if theme=='solar':
-        my_layout = ji.def_plotly_solar_theme_with_date_selector_slider(as_dict=True)
-    else:
-        my_layout = ji.def_plotly_date_range_widgets(as_dict=True)
-        
-    
-    ## Copy and split dataframe
-    df = df_model_preds.copy()
-    df.sort_index(inplace=True)    
-
-    ## Separate out train vs test data and dropna for correct indices
-    df_train = df.pop(true_train_col)#[true_train_col].dropna()
-    df_train.dropna(inplace=True)
-
-    df_test = df.dropna()
-
-
-    ### WHY CANT USE CUFFLINKS HERE
-    fig1 = plotly_time_series(df_train,show_fig=False)
-    
-
-    ## FIGURE 1- TRAINING DATA + TEST DATA    
-    true_train_trace = go.Scatter(name='Training Price Data',
-                                  mode='lines', 
-                                  x=df_train.index, #df.index, 
-                                  y= df_train, #df[true_train_col].dropna(),
-                                 line={'color':'orange'})
-    
-    true_test_trace = go.Scatter(name = 'True Test Price',
-                                 mode='lines',
-                                 x=df_test.index,
-                                 y= df_test[true_test_col],
-                                line={'color':'blue'})
-    
-    fig1_data = []
-    fig1_data.append(true_train_trace)
-    fig1_data.append(true_test_trace)
-    
-    
-    ## FIGURE 2 - PREDICTED DATA    
-    true_test_trace_subplot = go.Scatter(name = 'True Test Price',
-                             mode=subplot_mode,
-                             x=df_test.index,
-                             y= df_test[true_test_col],
-                            line={'color':'blue'})
-    
-    fig2_data = [true_test_trace_subplot]
-    
-    
-    if isinstance(pred_test_columns,list)==False:
-        pred_test_trace = go.Scatter(name='Predicted Price',
-                                     mode=subplot_mode,
-                                     x=df_test.index,
-                                     y=df_test[pred_test_columns].dropna(),
-                                     line={'color':'green'})
-        
-        pred_test_trace_lines = go.Scatter(name='Predicted Price',
-                                           mode='lines', 
-                                           x=df_test.index,
-                                           y=df_test[pred_test_columns].dropna(),
-                                           line={'color':'green'})
-        
-        fig2_data.append(pred_test_trace)
-        fig1_data.append(pred_test_trace_lines)
-        
-    else:
-
-        for i,col in enumerate(pred_test_columns):
-            
-            eval(f"pred_trace{i} = go.Scatter(mode='{subplot_mode}', x=df_test.index, y=df_test['{col}'])")
-            
-            eval(f"pred_trace{i}_lines = go.Scatter(mode='lines',x=df_test.index, y=df_test['{col}'])")
-            
-            eval(f"fig1_data.append(pred_trace{i}_lines")
-            eval(f"fig2_data.append(pred_trace{i}")
-            # fig2_data.append(eval(f"pred_trace{i}"))
-
-    
-    ## CREATE FIGURES
-    # Create fig_1 and fig_2
-    fig_1 = go.Figure(data = fig1_data,layout=my_layout)
-    fig_2 = go.Figure(data = fig2_data, layout=my_layout)
-    
-    # Create combined figure with uneven-sized plots
-    specs= [[{'colspan':3},None,None,{'colspan':2},None]]#specs= [[{'colspan':2},None,{'colspan':1}]]
-    big_fig = cf.subplots(theme='solar',
-                          figures=[fig_1,fig_2],
-                          horizontal_spacing=0.1,
-                          shape=[1,5],
-                          specs=specs) #shape=[1,3],specs=specs)
-    
-    
-    
-    ## UPDATE LAYOUTS FOR SUBPLOTS FROM my_layout
-    temp_ax_layout = big_fig['layout']
-    
-    # Update both xaxes and yaxes to match the my_layout's single x and y axis
-    for k,v in my_layout['xaxis'].items():
-        temp_ax_layout['xaxis'][k] = my_layout['xaxis'][k]
-        
-        # don't add range_selector to xaxis2
-        if ('rangeselector' not in k) & ('rangeslider' not in k) :
-            temp_ax_layout['xaxis2'][k] = my_layout['xaxis'][k]
-        
-    for k,v in my_layout['yaxis'].items():
-        temp_ax_layout['yaxis'][k] = my_layout['yaxis'][k]
-        temp_ax_layout['yaxis2'][k] = my_layout['yaxis'][k]
-        
-    temp_ax_layout['yaxis2']['title'] = 'Predicted Price'
-    
-    
-    ## Add general fields from my_layout  
-    layout_fields_copy = ['paper_bgcolor','plot_bgcolor','legend', 'plot_bgcolor', 'title']
-    for field in layout_fields_copy:
-        temp_ax_layout[field] = my_layout[field]
-    
-    ## Update legend layout to save space
-    temp_ax_layout['legend']['orientation']='h'
-    temp_ax_layout['legend']['y']=1
-    
-    ## Update spacing/position for rangeselector
-    try:
-        temp_ax_layout['xaxis']['rangeselector']['y']=-0.06
-    except:
-        print('no xaxis rangeselctor found')
-
-#     temp_ax_layout['legend']['y'] = -0.1
-        
-    ## Replace big_fig's layout with temp_ax_layout
-    big_fig['layout'] = temp_ax_layout
-    
-    
-    # Set graph size 
-    big_fig['layout']['width'] = figsize[0]
-    big_fig['layout']['height'] = figsize[1]
-
-    if show_fig:
-        iplot(big_fig)
-    return big_fig
-    
-    
 
 
 
@@ -4959,3 +4794,111 @@ def ihelp_menu2(function_list, json_file='ihelp_output.txt',to_embed=False):
         return full_layout, output
     else:
         display(full_layout, output)
+
+
+# ## CODE TO EXTRACT MARKDOWN TEXT FOR README FROM MARDKOWN DISPLAY
+# w_out = widgets.Output(layout={'border': '1px solid black'})
+# @w_out.capture()
+# def display_tweet_processing(twitter_df=twitter_df):
+#     ji.display_same_tweet_diff_cols(twitter_df)
+# display_tweet_processing()
+
+# from IPython import display as disp
+# out_list = list(w_out.outputs)
+# save_output = []
+# for output in out_list:
+#     if 'text/markdown' in output['data']:
+#         save_output.append(output['data']['text/markdown'])
+# final_output = '\n'.join(save_output)
+# print(final_output)
+
+
+def save_ihelp_to_file(function,save_help=False,save_code=True, 
+                        as_md=False,as_txt=True,
+                        folder='readme_resources/ihelp_outputs/',
+                        filename=None,file_mode='w'):
+    """Saves the string representation of the ihelp source code as markdown. 
+    Filename should NOT have an extension. .txt or .md will be added based on
+    as_md/as_txt.
+    If filename is None, function name is used."""
+
+    if as_md & as_txt:
+        raise Exception('Only one of as_md / as_txt may be true.')
+
+    import sys
+    from io import StringIO
+    ## save original output to restore
+    orig_output = sys.stdout
+    ## instantiate io stream to capture output
+    io_out = StringIO()
+    ## Redirect output to output stream
+    sys.stdout = io_out
+    
+    if save_code:
+        print('### SOURCE:')
+        help_md = get_source_code_markdown(function)
+        ## print output to io_stream
+        print(help_md)
+        
+    if save_help:
+        print('### HELP:')
+        help(function)
+        
+    ## Get printed text from io stream
+    text_to_save = io_out.getvalue()
+    
+
+    ## MAKE FULL FILENAME
+    if filename is None:
+
+        ## Find the name of the function
+        import re
+        func_names_exp = re.compile('def (\w*)\(')
+        func_name = func_names_exp.findall(text_to_save)[0]    
+        print(f'Found code for {func_name}')
+
+        save_filename = folder+func_name#+'.txt'
+    else:
+        save_filename = folder+filename
+
+    if as_md:
+        ext = '.md'
+    elif as_txt:
+        ext='.txt'
+
+    full_filename = save_filename + ext
+    
+    with open(full_filename,file_mode) as f:
+        f.write(text_to_save)
+        
+    print(f'Output saved as {full_filename}')
+    
+    sys.stdout = orig_output
+
+
+
+def get_source_code_markdown(function):
+    """Retrieves the source code as a string and appends the markdown
+    python syntax notation"""
+    import inspect
+    from IPython.display import display, Markdown
+    source_DF = inspect.getsource(function)            
+    output = "```python" +'\n'+source_DF+'\n'+"```"
+    return output
+
+def save_ihelp_menu_to_file(function_list, filename,save_help=False,save_code=True, 
+    folder='readme_resources/ihelp_outputs/',as_md=True, as_txt=False,verbose=1):
+    """Accepts a list of functions and uses save_ihelp_to_file with mode='a' 
+    to combine all outputs. Note: this function REQUIRES a filename"""
+    if as_md:
+        ext='.md'
+    elif as_txt:
+        ext='.txt'
+
+    for function in function_list:
+        save_ihelp_to_file(function=function,save_help=save_help, save_code=save_code,
+                              as_md=as_md, as_txt=as_txt,folder=folder,
+                              filename=filename,file_mode='a')
+
+    if verbose>0:
+        print(f'Functions saved as {folder+filename+ext}')
