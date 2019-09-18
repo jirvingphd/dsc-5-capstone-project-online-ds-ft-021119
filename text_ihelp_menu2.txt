@@ -1,0 +1,59 @@
+Help on function ihelp in module functions_combined_BEST:
+
+ihelp(function_or_mod, show_help=True, show_code=True, return_code=False, colab=False, file_location=False)
+    Call on any module or functon to display the object's
+    help command printout AND/OR soruce code displayed as Markdown
+    using Python-syntax
+
+def ihelp(function_or_mod, show_help=True, show_code=True,return_code=False,colab=False,file_location=False): 
+    """Call on any module or functon to display the object's
+    help command printout AND/OR soruce code displayed as Markdown
+    using Python-syntax"""
+
+    import inspect
+    from IPython.display import display, Markdown
+    page_header = '---'*28
+    footer = '---'*28+'\n'
+    if show_help:
+        print(page_header)
+        banner = ''.join(["---"*2,' HELP ',"---"*24,'\n'])
+        print(banner)
+        help(function_or_mod)
+        # print(footer)
+        
+    if show_code:
+        print(page_header)
+
+        banner = ''.join(["---"*2,' SOURCE -',"---"*23])
+        print(banner)
+        try:
+            import inspect
+            source_DF = inspect.getsource(function_or_mod)            
+
+            if colab == False:
+                # display(Markdown(f'___\n'))
+                output = "```python" +'\n'+source_DF+'\n'+"```"
+                # print(source_DF)    
+                display(Markdown(output))
+            else:
+
+                print(banner)
+                print(source_DF)
+
+        except TypeError:
+            pass
+            # display(Markdown)
+            
+    
+    if file_location:
+        file_loc = inspect.getfile(function_or_mod)
+        banner = ''.join(["---"*2,' FILE LOCATION ',"---"*21])
+        print(page_header)
+        print(banner)
+        print(file_loc)
+
+    # print(footer)
+
+    if return_code:
+        return source_DF
+
