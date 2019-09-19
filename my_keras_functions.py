@@ -1555,9 +1555,9 @@ x_window=None, n_features=None, inverse_tf=False, scaler=None, include_train_dat
         # from plotly.offline import 
         # df_plot = get_plot_df_with_one_true_series(df_out,train_data=true_train_series, include_train_data=include_train_data ) 
         pred_columns = [x for x in df_plot.columns if 'pred' in x]
-        if title is None:
-            title='S&P 500 True Price Vs Predictions ($)'
-        fig = ji.plotly_true_vs_preds_subplots(df_plot, title=title,true_train_col='true_train_price',
+        if iplot_title is None:
+            iplot_title='S&P 500 True Price Vs Predictions ($)'
+        fig = ji.plotly_true_vs_preds_subplots(df_plot, title=iplot_title,true_train_col='true_train_price',
             true_test_col='true_test_price', pred_test_columns=pred_columns)
 
         return df_plot
@@ -1933,7 +1933,7 @@ from_train_preds=False):
 
 
 
-def evaluate_classification(model, history, X_train,X_test,y_train,y_test, binary_classes=True,
+def evaluate_classification(model, history, X_train,X_test,y_train,y_test,report_as_df=True, binary_classes=True,
                             conf_matrix_classes= ['Decrease','Increase'],
                             normalize_conf_matrix=True,conf_matrix_figsize=(8,4),save_history=False,
                             history_filename ='results/keras_history.png', save_conf_matrix_png=False,
@@ -2023,21 +2023,23 @@ def evaluate_classification(model, history, X_train,X_test,y_train,y_test, binar
     # get both versions of classification report output
     report_str = classification_report(y_test,y_hat_test)
     report_dict = classification_report(y_test,y_hat_test,output_dict=True)
+    if report_as_df:
+        try:
+            ## Create and display classification report
+            # df_report =pd.DataFrame.from_dict(report_dict,orient='columns')#'index')#class_rows,orient='index')
+            df_report_temp = pd.DataFrame(report_dict)
+            df_report_temp = df_report_temp.T#reset_index(inplace=True)
 
-    try:
-        ## Create and display classification report
-        # df_report =pd.DataFrame.from_dict(report_dict,orient='columns')#'index')#class_rows,orient='index')
-        df_report_temp = pd.DataFrame(report_dict)
-        df_report_temp = df_report_temp.T#reset_index(inplace=True)
-
-        df_report = df_report_temp[['precision','recall','f1-score','support']]
-        display(df_report.round(4).style.set_caption('Classification Report'))
-        print('\n')
-    
-    except:
+            df_report = df_report_temp[['precision','recall','f1-score','support']]
+            display(df_report.round(4).style.set_caption('Classification Report'))
+            print('\n')
+        
+        except:
+            print(report_str)
+            # print(report_dict)
+            df_report = pd.DataFrame()
+    else:
         print(report_str)
-        # print(report_dict)
-        df_report = pd.DataFrame()
 
     if save_summary:
         with open(summary_filename,'w') as f:
@@ -2052,7 +2054,11 @@ def evaluate_classification(model, history, X_train,X_test,y_train,y_test, binar
                                    normalize=normalize_conf_matrix, fig_size=conf_matrix_figsize)
     if save_conf_matrix_png:
         fig.savefig(conf_mat_filename,facecolor='white', format='png', frameon=True)
-    return df_report, fig
+
+    if report_as_df:
+        return df_report, fig
+    else:
+        return report_str,fig
 
 
 

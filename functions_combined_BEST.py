@@ -2353,6 +2353,7 @@ def plotly_true_vs_preds_subplots(df_model_preds,
                           figures=[fig_1,fig_2],
                           horizontal_spacing=0.1,
                           shape=[1,5],specs=specs)#,
+
     # big_fig['layout']['legend']['bgcolor']=None
     big_fig['layout']['legend']['y'] = 1.0
     big_fig['layout']['xaxis']['rangeselector']['y']=-0.3
@@ -2371,7 +2372,7 @@ def plotly_true_vs_preds_subplots(df_model_preds,
                                      'font':{'color':'white'}}},
                         'yaxis2':{'title':{'text':'Test Price vs Pred Price',
                                            'font':{'color':'white'}}},
-                        'title':{'text':'S&P 500 True Price Vs Predictions ($)',
+                        'title':{'text':title,
                         'font':{'color':'white'},
                         'y':0.95, 'pad':{'b':0.1,'t':0.1}
                         }
