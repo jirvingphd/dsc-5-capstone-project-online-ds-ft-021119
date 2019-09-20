@@ -3,7 +3,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output,State
 
 ## IMPORT STANDARD PACKAGES
 from bs_ds.imports import *
@@ -30,6 +30,9 @@ import warnings
 dash.Dash(assets_ignore='z_external_stylesheet')
 # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
+## Load in README
+with open('README.md','r') as f:
+    README = f.read()
 
 ## Load in text to display
 with open ('assets/text/intro.txt','r') as f:
@@ -150,6 +153,8 @@ md_example_tweet_forms = ji.display_same_tweet_diff_cols(twitter_df, columns=['c
 'cleaned_stopped_content'], for_dash=True)#,'cleaned_stopped_tokens'
 
 
+
+## DASH APP LAYOUT
 app = dash.Dash(__name__)# external_stylesheets=external_stylesheets)
 
 app.layout = html.Div(id='main-div',children=[
@@ -168,16 +173,57 @@ app.layout = html.Div(id='main-div',children=[
     
         html.Div(id='1_intro',
         children=[ #main child2
+        dcc.Graph(figure=fig_price,className='figure'),
+                ## TWITTER SEARCH APP - Start
+        html.Div(id='app-twitter-search', className='app',
+                 style={'border':'2px solid slategray'}, children=[   
+            # html.H1(id='intro-apps',children="EXPLORE TRUMP's TWEETS"),
+            html.H2(id='app-title',children="SEARCH TRUMP'S TWEETS" ,style={'text-align':'center'},className='app'),
+        
+            html.Div(id='full-search-menu', children= [
+            
+        
+                html.Div(id='menu-input', className='interface',
+                         style={'flex':'30%'}, children=[
+                            
+                        html.Label('Word to Find', className='menu-label',
+                                style={'margin-right':2}),
+                        dcc.Input(id='search-word',
+                                  type='text',
+                                  value='tariff',
+                                  style={'margin-right':'5%'}),
+
+                        html.Label('# of Tweets to Show',className='menu-label'),
+                        dcc.Input(id='display-n', 
+                                value=3,
+                                type='number',
+                                style={'width':'10%','margin-left':'2%'})
+                        ]),
+                
+                html.Button(id='submit-button',
+                        n_clicks=0,
+                        children='Submit'
+                        )
+                ]),
+        dcc.Markdown(id='display_results',
+                    )
+        ]),
+        ## TWITTER SEARCH APP - End
         dcc.Markdown(md_abstract),
+
         dcc.Markdown(md_intro),
         dcc.Markdown(md_data_overview)
         ]),
+        
+
 
         html.Div(id="2_NLP", children=[
             html.H1('NATURAL LANGUAGE PROCESSING'),
             dcc.Markdown(md_nlp_intro),
             html.Div(id='example-tweets', className='interactive_output',
             children=[
+                html.H2(children="EXAMPLE PROCESSED TWEET"),
+            
                 dcc.Markdown(id='show-tweet-forms',children=ji.display_same_tweet_diff_cols(twitter_df,for_dash=True)),
                 html.Button(id='fetch-tweets',n_clicks=0,children='Fetch New Tweet'),#,style={'fontSize':28}),
                 ],                #tyle={'border':'5px solid cornflowerblue'}
@@ -199,6 +245,8 @@ app.layout = html.Div(id='main-div',children=[
                 ])
             ]),
         ]),
+        
+        
 
         html.Div(id='3_stock_market_price_data', children= [ 
             html.H1('MODELING THE S&P 500'),
@@ -283,5 +331,21 @@ def get_new_tweets_to_show(n_clicks, twitter_df=twitter_df):
 
     md_tweets = ji.display_same_tweet_diff_cols(twitter_df,for_dash=True)
     return md_tweets
+
+
+
+@app.callback(Output(component_id='display_results', component_property = 'children'),
+            [Input(component_id='submit-button',component_property='n_clicks'),
+             Input(component_id='display-n',component_property='value')],
+            [State(component_id='search-word',component_property='value')])
+def search_tweets(n_clicks, display_n, word):
+    from IPython.display import Markdown, display
+    from temp_code import search_for_tweets_with_word
+        
+    res = search_for_tweets_with_word(twitter_df,word=word,display_n=display_n,as_md=True,from_column='content')
+    return  res
+
 if __name__ == '__main__':
     app.run_server(debug=True)
+    
+    

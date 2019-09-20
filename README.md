@@ -287,15 +287,125 @@ dataset['momentum'] = dataset['price']-1
 | 1 | Forecasting is about as good as guessing| 
 |>1 | Forecasting is worse than guessing|
 
-### To Do
+## TO DO
 - Add results tables from each model 
+### Model 0A: NLP Classification - LSTM
+```
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+embedding_1 (Embedding)      (None, 35, 300)           1565100   
+_________________________________________________________________
+bidirectional_1 (Bidirection (None, 200)               320800    
+_________________________________________________________________
+dense_1 (Dense)              (None, 3)                 603       
+=================================================================
+Total params: 1,886,503
+Trainable params: 321,403
+Non-trainable params: 1,565,100
+_________________________________________________________________
+```
+#### Model 0A Results
+
+### Model 0B: NLP Classification - GRU
+```
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+embedding_2 (Embedding)      (None, 35, 300)           1565100   
+_________________________________________________________________
+spatial_dropout1d_1 (Spatial (None, 35, 300)           0         
+_________________________________________________________________
+gru_1 (GRU)                  (None, 35, 100)           120300    
+_________________________________________________________________
+gru_2 (GRU)                  (None, 100)               60300     
+_________________________________________________________________
+dense_2 (Dense)              (None, 3)                 303       
+=================================================================
+Total params: 1,746,003
+Trainable params: 180,903
+Non-trainable params: 1,565,100
+_________________________________________________________________
+```
+
+#### Model 0B Results
+
+### Model 1: S&P500 Price Regression from Price Only
+
+```
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+lstm_2 (LSTM)                (None, 7, 50)             10400     
+_________________________________________________________________
+lstm_3 (LSTM)                (None, 50)                20200     
+_________________________________________________________________
+dense_3 (Dense)              (None, 1)                 51        
+=================================================================
+Total params: 30,651
+Trainable params: 30,651
+Non-trainable params: 0
+_________________________________________________________________
+```
+
+#### Model 1 Results
+
+### Model 2: S&P500 Price Regression from Price + Technical Indicators
+
+```
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+lstm_4 (LSTM)                (None, 7, 50)             12400     
+_________________________________________________________________
+lstm_5 (LSTM)                (None, 50)                20200     
+_________________________________________________________________
+dense_4 (Dense)              (None, 1)                 51        
+=================================================================
+Total params: 32,651
+Trainable params: 32,651
+Non-trainable params: 0
+_________________________________________________________________
+```
+
+#### Model 2 Results
+
+### Model 3: S&P500 Price Regression - Usng Twitter NLP + Price + Technical Indicators
+
+```
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+lstm_6 (LSTM)                (None, 14, 100)           48800     
+_________________________________________________________________
+lstm_7 (LSTM)                (None, 100)               80400     
+_________________________________________________________________
+dense_5 (Dense)              (None, 1)                 101       
+=================================================================
+Total params: 129,301
+Trainable params: 129,301
+Non-trainable params: 0
+_________________________________________________________________
+```
+#### Model 3 Results
+
+
+
+### Model X: S&P500 Price XGBoost Regression - Usng Twitter NLP + Price + Technical Indicators
+
 
 ## iNTERPRETATION 
 ### Delta-Stock-Price NLP Models
 GRU performed better than LSTM and was better than guessing.
-Future Directions:
-- Use GloVe Pre-trained twitter vectors in lieu of training Word2Vec on dataset. 
-- Futher tweak the negative sampling parameters for the Word2Vec modeling. 
+#### Future Directions:
+* For NLP Classification:
+    - Use GloVe Pre-trained twitter vectors in lieu of training Word2Vec on dataset. 
+    - Futher tweak the negative sampling parameters for the Word2Vec modeling. 
+    - Try other time periods for delta_price calculatin (30, 45, 75 min, etc)
+     
+* For Time Series Forecasting:
+    - Implement Cross Validation using custom version of Sklearn TimeSeriesSplitter
+    - 
 
     
 ### REFERENCES / INSPIRATION:

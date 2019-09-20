@@ -1,20 +1,71 @@
-.interactive_output{
-    padding:5%;
-    border:5px solid cornflowerblue;
-}
-    /* .fetch-tweets{
-    align-content: right;
-    font-size:1.5em;
-    border: 2px cornflowerblue;
+.figure{
+    display:flexbox;
 
-} */
-/* .figure{
-    width:100%;
-    padding-right:10%;
-    /* display:block; */
+    width:90%;
+    /* border:1px solid slategray; */
+    margin-right:30%;
+    margin-left:0%;
     /* margin-left:auto; */
-    /* margin-right:auto; 
-} */
+    /* margin-right:2%;  */
+}
+.interactive_output{
+    display: block;
+    margin-block-start: 5%;
+    /* padding:1%; */
+    /* margin-top:2%; */
+    border:3px solid white;
+}
+h2#app-title{
+    color: white;
+    /* border-top:2px solid white; */
+    font-size: 2.5em;
+    line-height: 1.1em;
+    font-family:Cambria;
+    /* font-style: italic; */
+}
+h3{
+    /* padding-top:1.5em; */
+    /* font-style: italic; */
+    text-align:center;
+    color: red;
+    font-size: 1.8em;
+}
+
+
+#app{
+    display: block;
+    margin-left:auto;
+    margin-right:auto;
+
+    border: 5px solid white;
+}
+
+#full-search-menu{
+    display: flex;
+    /* text-align: center; */
+    margin-left:auto;
+    margin-right:auto;
+    border:2px solid cornflowerblue;
+    width:80%;
+    padding:2%;
+}
+#submit-button{
+    display:flex;
+    /* margin-block: 2em; */
+    font-size:1.5em;
+    border: 1px solid cornflowerblue;
+
+}
+
+#display_results{
+    display: block;
+    margin-left:auto;
+    margin-right:auto;    
+}
+
+
+
+
 table{
     text-align: center;
     color:black;
@@ -49,9 +100,10 @@ button{
     margin-block: 2em;
     font-size:2em;
     border: 5px solid cornflowerblue;
-    margin-left:15%;
+    margin-left:auto;
     margin-right:auto;
 }
+ 
 
 #main_header{
     color: cornflowerblue;
@@ -142,10 +194,10 @@ ol,ul {
 
 
 
-h2 {
-    color: blue;
+h2:not(.app) {
+    color: slategray;
     margin-top:3em;
-    border-top:2px solid white;
+    /* border-top:2px solid white; */
     font-size: 2.5em;
     line-height: 1.1em;
     font-family:Cambria;
@@ -154,7 +206,7 @@ h2 {
 }
 
 h3{
-    padding-top:1.5em;
+    /* padding-top:1.5em; */
     /* font-style: italic; */
     text-align:center;
     color: skyblue;
