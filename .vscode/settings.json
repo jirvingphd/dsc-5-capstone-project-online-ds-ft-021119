@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "C:\\Users\\james\\Anaconda3\\envs\\learn-env-ext\\python.exe",
+    "python.pythonPath": "C:\\Users\\james\\Anaconda3\\envs\\learn-env\\python.exe",
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": true,
     "python.linting.pycodestyleEnabled": false,
