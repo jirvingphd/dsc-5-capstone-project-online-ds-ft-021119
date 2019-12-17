@@ -47,7 +47,7 @@ reload([jin,jiw,jik,io])
 #     ('matplotlib',  'mpl',  "Matplotlib's base OOP module with formatting artists"),
 #     ('matplotlib.pyplot',   'plt',  "Matplotlib's matlab-like plotting module"),
 #     ('seaborn',     'sns',  "High-level data visualization library based on matplotlib"),
-#     ('bs_ds','bs','Custom data science bootcamp student package')]
+#     ('bs_ds_local','bs','Custom data science bootcamp student package')]
 #     """
 
 
@@ -61,7 +61,7 @@ reload([jin,jiw,jik,io])
 #         ('matplotlib','mpl',"Matplotlib's base OOP module with formatting artists"),
 #         ('matplotlib.pyplot','plt',"Matplotlib's matlab-like plotting module"),
 #         ('seaborn','sns',"High-level data visualization library based on matplotlib"),
-#         ('bs_ds','bs','Custom data science bootcamp student package')]
+#         ('bs_ds_local','bs','Custom data science bootcamp student package')]
 
 #     # if using own list, rename to 'import_list'
 #     else:
@@ -152,7 +152,7 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
 #     ('matplotlib',  'mpl',  "Matplotlib's base OOP module with formatting artists"),
 #     ('matplotlib.pyplot',   'plt',  "Matplotlib's matlab-like plotting module"),
 #     ('seaborn',     'sns',  "High-level data visualization library based on matplotlib"),
-#     ('bs_ds','bs','Custom data science bootcamp student package')]
+#     ('bs_ds_local','bs','Custom data science bootcamp student package')]
 #     """
 
 
@@ -166,7 +166,7 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
 #         ('matplotlib','mpl',"Matplotlib's base OOP module with formatting artists"),
 #         ('matplotlib.pyplot','plt',"Matplotlib's matlab-like plotting module"),
 #         ('seaborn','sns',"High-level data visualization library based on matplotlib"),
-#         ('bs_ds','bs','Custom data science bootcamp student package')]
+#         ('bs_ds_local','bs','Custom data science bootcamp student package')]
 
 #     # if using own list, rename to 'import_list'
 #     else:
@@ -225,7 +225,7 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
 # import numpy as np 
 # import matplotlib.pyplot as plt
 # import matplotlib as mpl
-# import bs_ds as bs
+# import bs_ds_local as bs
 # print('For detailed help as well as source code, use `ihelp(function)`')
 
 # def global_imports(modulename,shortname = None, asfunction = False):
@@ -1661,7 +1661,7 @@ def check_df_groups_for_exp(df_full, list_of_exp_to_check, check_col='content_mi
     """Checks `check_col` column of input dataframe for expressions in list_of_exp_to_check and 
     counts the # present for each group, defined by the groupby_col and groupdict. 
     Returns a dataframe of counts."""
-    from bs_ds import list2df
+    from bs_ds_local import list2df
     list_of_results = []      
 
     header_list= ['Term']
@@ -2305,7 +2305,7 @@ def plotly_true_vs_preds_subplots(df_model_preds,
     from plotly.offline import iplot#download_plotlyjs, init_notebook_mode, plot, iplot
 #     init_notebook_mode(connected=True)    
     import functions_combined_BEST as ji
-    import bs_ds as bs
+    import bs_ds_local as bs
 
     
     ### MAKE THE LIST OF COLUMNS TO CREATE SEPARATE DATAFRAMES TO PLOT
@@ -3080,7 +3080,7 @@ def collapse_df_by_group_index_col(twitter_df,group_index_col='int_bins',date_ti
     import numpy as np
     import pandas as pd
     from IPython.display import display
-    import bs_ds as bs
+    import bs_ds_local as bs
 
     import numpy as np
     import pandas as pd

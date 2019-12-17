@@ -8,7 +8,7 @@ true_test_series,include_train_data=True,return_preds_df = False, save_history=F
     Returns df of classification report and fig object for  confusion matrix's plot."""
 
     from sklearn.metrics import roc_auc_score, roc_curve, classification_report,confusion_matrix
-    import bs_ds as bs
+    # import bs_ds as bs
     import functions_combined_BEST as ji
     from IPython.display import display
     import pandas as pd

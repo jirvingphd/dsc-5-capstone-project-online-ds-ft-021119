@@ -359,7 +359,7 @@ def make_model1(model_params, summary=True):
 
 
 def fit_model(model,train_generator,model_params=None,epochs=5,callbacks=None,verbose=2,workers=3):
-    import bs_ds as bs
+    import bs_ds_local as bs
     import functions_combined_BEST as ji
     from IPython.display import display
 
@@ -454,7 +454,7 @@ def evaluate_model_plot_history(model, train_generator, test_generator,as_df=Fal
 
 def get_model_config_df(model1, multi_index=True):
 
-    import bs_ds as bs
+    import bs_ds_local as bs
     import functions_combined_BEST as ji
     import pandas as pd
     pd.set_option('display.max_rows',None)
@@ -777,7 +777,7 @@ def plot_confusion_matrix(conf_matrix, classes = None, normalize=False,
                           print_raw_matrix=False,fig_size=(5,5), show_help=False):
     """Check if Normalization Option is Set to True. If so, normalize the raw confusion matrix before visualizing
     #Other code should be equivalent to your previous function.
-    Note: Taken from bs_ds and modified"""
+    Note: Taken from bs_ds_local and modified"""
     import itertools
     import numpy as np
     import matplotlib.pyplot as plt
@@ -883,7 +883,8 @@ def evaluate_regression(y_true, y_pred, metrics=None, show_results=False, displa
     """
     from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
     import numpy as np
-    from bs_ds import list2df
+    # from bs_ds_local import list2df
+    from bs_ds_local import list2df
     import inspect
     
     import functions_combined_BEST as ji
@@ -1084,7 +1085,7 @@ color_coded=True, return_results=False, return_styled_df=False, return_shifted_d
     
     ## SHIFT THE TRUE VALUES, PLOT, AND CALC THIEL's U
     import functions_combined_BEST as ji
-    from bs_ds import list2df
+    from bs_ds_local import list2df
     import pandas as pd
     import matplotlib.pyplot as plt
     from IPython.display import display
@@ -1199,7 +1200,7 @@ def compare_u_for_shifts(true_series,pred_series, shift_list=[-2,-1,0,1,2],
     display_U_info=False):
     
     import functions_combined_BEST as ji
-    from bs_ds import list2df
+    from bs_ds_local import list2df
     import pandas as pd
     import matplotlib.pyplot as plt
     from IPython.display import display
@@ -1382,7 +1383,7 @@ def compare_time_shifted_model(df_model,true_colname='true test',pred_colname='p
 # def get_true_vs_preds_df(model, true_test_series=None,test_generator=None):
 #     import pandas as pd
 #     import functions_combined_BEST as ji
-#     import bs_ds  as bs
+#     import bs_ds_local  as bs
 
 
 #     pass
@@ -1398,7 +1399,7 @@ x_window=None, n_features=None, inverse_tf=False, scaler=None, include_train_dat
     """
     import pandas as pd
     import functions_combined_BEST as ji
-    import bs_ds  as bs
+    import bs_ds_local  as bs
     # x_window=n_input
 
     ## If no model params
@@ -1671,7 +1672,7 @@ def get_model_preds_from_preds(model,true_train_data, true_test_data,
     """
     scaled_train_data = true_train_data
     scaled_test_data = true_test_data
-    import bs_ds as bs
+    import bs_ds_local as bs
     import numpy as np
     import pandas as pd
     test_predictions = []
@@ -1785,7 +1786,7 @@ def get_model_preds_from_gen(model,test_generator, true_test_data, model_params=
         """
         import pandas as pd
         import numpy as np
-        import bs_ds as bs
+        import bs_ds_local as bs
         import functions_combined_BEST as ji
         if model_params is not None:
             n_input= model_params['input_params']['n_input']
@@ -1841,7 +1842,7 @@ def compare_model_pred_methods(model, true_train_series,true_test_series, test_g
     """
     import pandas as pd
     import functions_combined_BEST as ji
-    import bs_ds  as bs
+    import bs_ds_local  as bs
     if model_params is not None:
         n_input= model_params['input_params']['n_input']
         n_features = model_params['input_params']['n_features']
@@ -1947,7 +1948,7 @@ def evaluate_classification(*args,**kwargs):
 #     Returns df of classification report and fig object for  confusion matrix's plot."""
 
 #     from sklearn.metrics import roc_auc_score, roc_curve, classification_report,confusion_matrix
-#     import bs_ds as bs
+#     import bs_ds_local as bs
 #     import functions_combined_BEST as ji
 #     from IPython.display import display
 #     import pandas as pd
@@ -2103,7 +2104,7 @@ def evaluate_classification_model(model,  X_train,X_test,y_train,y_test, history
     Returns df of classification report and fig object for  confusion matrix's plot."""
 
     from sklearn.metrics import roc_auc_score, roc_curve, classification_report,confusion_matrix
-    import bs_ds as bs
+    import bs_ds_local as bs
     from IPython.display import display
     import pandas as pd
     import matplotlib as mpl
@@ -2273,7 +2274,7 @@ true_test_series,include_train_data=True,return_preds_df = False, save_history=F
     Returns df of classification report and fig object for  confusion matrix's plot."""
 
     from sklearn.metrics import roc_auc_score, roc_curve, classification_report,confusion_matrix
-    import bs_ds as bs
+    import bs_ds_local as bs
     import functions_combined_BEST as ji
     from IPython.display import display
     import pandas as pd
@@ -2368,7 +2369,7 @@ true_test_series,include_train_data=True,return_preds_df = False, save_history=F
 #     Returns df of classification report and fig object for  confusion matrix's plot."""
 
 #     from sklearn.metrics import roc_auc_score, roc_curve, classification_report,confusion_matrix
-#     import bs_ds as bs
+#     import bs_ds_local as bs
 #     import functions_combined_BEST as ji
 #     from IPython.display import display
 #     import pandas as pd
@@ -2604,7 +2605,7 @@ def my_custom_scorer(y_true,y_pred, model=None,method='sum', **kwargs):
 #     import pandas as pd
     
 #     import functions_combined_BEST as ji
-#     import bs_ds as bs
+#     import bs_ds_local as bs
     
 
 #     ## Wrap create_model with KerasClassifier
@@ -3160,7 +3161,7 @@ def fit_and_eval_model(model, X_train, X_test, X_val, y_train, y_test, y_val,
     - Plots Keras Training History
     - Plots Confusion Matrix
     """
-    import bs_ds as bs
+    import bs_ds_local as bs
     import functions_combined_BEST as ji
     if 'epochs' in kwargs:
         epochs=kwargs['epochs']
@@ -3219,7 +3220,7 @@ def fit_gridsearch(build_fn,parameter_grid,X_train,y_train,score_fn=None,verbose
     import pandas as pd
     
     import functions_combined_BEST as ji
-    import bs_ds as bs
+    import bs_ds_local as bs
     
 
     ## Wrap create_model with KerasClassifier

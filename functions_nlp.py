@@ -750,7 +750,7 @@ def compare_freq_dists(text1,label1,text2,label2,top_n=20,figsize=(12,6),style='
 
 def compare_freq_dists_unique_words(text1,label1,text2, label2,top_n=20, display_dfs=True, return_as_dicts=False):
     from nltk import FreqDist
-    import bs_ds as bs
+    import bs_ds _localas bs
     import pandas as pd
     text1_dist = FreqDist(text1)#twitter_df_groups['text1']['text_tokens'])
     text1_words = list(text1_dist.keys())
@@ -1407,7 +1407,7 @@ def make_tweet_bigrams_by_group(twitter_df_groups,top_n=20,text_key=None,
     from nltk.collocations import BigramAssocMeasures, BigramCollocationFinder, TrigramAssocMeasures, TrigramCollocationFinder
     from nltk import regexp_tokenize
     import functions_combined_BEST as ji
-    import bs_ds as bs
+    import bs_ds _localas bs
     from IPython.display import display
 
     group_names = list(twitter_df_groups.keys())

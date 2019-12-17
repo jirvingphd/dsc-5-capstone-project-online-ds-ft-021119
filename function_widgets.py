@@ -131,7 +131,7 @@
 
 ## REFERNCE FOR CONTENTS OF CONFIG (for writing function below)
 def make_model_menu(model1, multi_index=True):
-    import bs_ds as bs
+    import bs_ds_local as bs
     import functions_combined_BEST as ji
     import pandas as pd
     from IPython.display import display
