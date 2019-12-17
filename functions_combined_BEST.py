@@ -1,9 +1,9 @@
-import my_keras_functions as jik
+import functions_keras as jik
 import function_widgets as jiw
 import functions_nlp as jin
 import functions_io as io
 
-from my_keras_functions import *
+from functions_keras import *
 from function_widgets import *
 from functions_nlp import *
 from functions_io import *
@@ -243,16 +243,24 @@ def save_df_to_csv_ask_to_overwrite(stock_df, filename = '_stock_df_with_technic
 
 
 def ihelp(function_or_mod, show_help=True, show_code=True,
- return_source_string=False,return_code=False,colab=False,file_location=False): 
+ return_source_string=False,return_code=False,file_location=False): 
     """Call on any module or functon to display the object's
     help command printout AND/OR soruce code displayed as Markdown
     using Python-syntax"""
 
     import inspect
     from IPython.display import display, Markdown
+    
+    ## Detect if running on colab (no markdown)
+    import sys 
+    if "google.colab" in sys.modules:
+        colab=True    
+    else:
+        colab=False
+    
     page_header = '---'*28
     footer = '---'*28+'\n'
-
+    
     if show_help:
         print(page_header)
         banner = ''.join(["---"*2,' HELP ',"---"*24,'\n'])
@@ -274,9 +282,8 @@ def ihelp(function_or_mod, show_help=True, show_code=True,
                 output = "```python" +'\n'+source_DF+'\n'+"```"
                 # print(source_DF)    
                 display(Markdown(output))
-            else:
+            elif colab==True:
 
-                print(banner)
                 print(source_DF)
 
         except TypeError:
@@ -1952,7 +1959,7 @@ def quick_table(tuples, col_names=None, caption =None,display_df=True):
     """Accepts a bigram output tuple of tuples and makes captioned table."""
     import pandas as pd
     from IPython.display import display
-    if col_names == None:
+    if col_names is None:
     
         df = pd.DataFrame.from_records(tuples)
         
@@ -4416,6 +4423,15 @@ def find_null_idx(df,column=None):
 #################################################################
 
 def save_model_dfs(file_dict,model_key,df_model=None, df_results=None, df_shifted=None):
+    """Saves DataFrame results for project models using file_dict 
+    
+    Args:
+        file_dict ([type]): [description]
+        model_key ([type]): [description]
+        df_model ([type], optional): [description]. Defaults to None.
+        df_results ([type], optional): [description]. Defaults to None.
+        df_shifted ([type], optional): [description]. Defaults to None.
+    """
     import pandas as pd
     
     filenames = file_dict[model_key]
@@ -4485,7 +4501,20 @@ def plotly_price_histogram(twitter_df, column='delta_price', as_figure=True, sho
 
 
 
-def plotly_pie_chart(df,column_to_plot='delta_price_class',layout_kwds=None,as_figure=True,show_fig=True, label_mapper={'pos':'Increased Price', 'neg':'Decreased Price','no_change':'No Change'}):
+def plotly_pie_chart(df,column_to_plot='delta_price_class',as_figure=True,show_fig=True, label_mapper={'pos':'Increased Price', 'neg':'Decreased Price','no_change':'No Change'}):
+    """Creates a Pie Chart of the value counts from the specified `column_to_plot`. 
+    
+    Args:
+        df ([DataFrame]): DataFrame containing column to plot. 
+        column_to_plot (str, optional): Column to plot value counts for. Defaults to 'delta_price_class'.
+        as_figure (bool, optional): Whether to return the Plotly Figure object. Defaults to True.
+        show_fig (bool, optional): Display the plotly figure. Defaults to True.
+        label_mapper (dict, optional): Renaming dictionary for the column's classes.
+            - Defaults to {'pos':'Increased Price', 'neg':'Decreased Price','no_change':'No Change'}.
+    
+    Returns:
+        fig (Plotly Figure):Generated Figure containing the 'data' and 'layout' to later be used with fig.update
+    """
     import pandas as pd
     import cufflinks as cf
     from plotly.offline import iplot
@@ -4903,3 +4932,83 @@ def save_ihelp_menu_to_file(function_list, filename,save_help=False,save_code=Tr
 
     if verbose>0:
         print(f'Functions saved as {folder+filename+ext}')
+
+
+import numpy as np
+
+
+def load_glove_embeddings(fp, embedding_dim, encoding=None, include_empty_char=True,
+                          as_layer =True, trainable=False,input_length=None,X_train=None):
+    """
+    Loads pre-trained word embeddings (GloVe embeddings)
+        Inputs: - fp: filepath of pre-trained glove embeddings
+                - embedding_dim: dimension of each vector embedding
+                - generate_matrix: whether to generate an embedding matrix
+                - as_layer: if True, returns keras embedding layer
+        Outputs:
+                - word2coefs: Dictionary. Word to its corresponding coefficients
+                - word2index: Dictionary. Word to word-index
+                - embedding_matrix: Embedding matrix for Keras Embedding layer
+    Source of (Modified) Code:
+    - https://jovianlin.io/embeddings-in-keras/
+        - https://gist.github.com/jovianlin/0a6b7c58cde7a502a68914ba001c77bf
+    - Modifications to code:
+        - Added encoding parameter for Python 3+
+        - Added optional Embedding Layer creation
+    """
+    # First, build the "word2coefs" and "word2index"
+    word2coefs = {} # word to its corresponding coefficients
+    word2index = {} # word to word-index
+    
+    with open(fp,'r',encoding=encoding) as f:
+        for idx, line in enumerate(f):
+            try:
+                data = [x.strip().lower() for x in line.split()]
+                word = data[0]
+                coefs = np.asarray(data[1:embedding_dim+1], dtype='float32')
+                word2coefs[word] = coefs
+                if word not in word2index:
+                    word2index[word] = len(word2index)
+            except Exception as e:
+                print('Exception occurred in `load_glove_embeddings`:', e)
+                continue
+        # End of for loop.
+    # End of with open
+    if include_empty_char:
+        word2index[''] = len(word2index)
+    # Second, build the "embedding_matrix"
+    # Words not found in embedding index will be all-zeros. Hence, the "+1".
+    vocab_size = len(word2coefs)+1 if include_empty_char else len(word2coefs)
+    embedding_matrix = np.zeros((vocab_size, embedding_dim))
+    for word, idx in word2index.items():
+        embedding_vec = word2coefs.get(word)
+        if embedding_vec is not None and embedding_vec.shape[0]==embedding_dim:
+            embedding_matrix[idx] = np.asarray(embedding_vec)
+    
+    embedding_matrix = np.asarray(embedding_matrix)
+    if as_layer==False:
+        # return word2coefs, word2index, embedding_matrix
+        return word2index,embedding_matrix #np.asarray(embedding_matrix)
+    
+    else:
+        from keras import layers         
+        vocab_size = embedding_matrix.shape[0]#len(wv.vocab)
+        vector_size = embedding_matrix.shape[1]#wv.vector_size
+        
+        check_input_length = input_length is None
+        check_X_train = X_train is None
+        
+        if check_input_length:
+            if check_X_train:
+                raise Exception('Must provide either input_length or X_train')
+        
+            else:
+                input_length = X_train.shape[1]
+            
+
+        embedding_layer =layers.Embedding(vocab_size,#+1,
+                                        vector_size,
+                                        input_length=input_length,
+                                        weights=[embedding_matrix],
+                                        trainable=trainable)
+        return word2index, embedding_layer

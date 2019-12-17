@@ -1,17 +1,30 @@
 
+####
 class TEXT(object):
     """Class intended for preprocessing text for use with Word2Vec vectors, Kera's Tokenizer, 
     creating FreqDists and an embedding_layer for Kera's models.
     TEXT = TEXT(text_data, text_labels, word2vecmodel)"""
     
-    def __init__(self,df, text_data_col,text_labels_col=None,word2vec_model=None,fit_model=False,verbose=0):
-        """Initializes the class with the text_data (series), text_labels (y data), and a word2vecmodel.
+    def __init__(self,df, text_data_col,text_labels_col=None,word2vec_model=None,fit_model=False,verbose=2):
+        """
+         Initializes the class with the text_data (series), text_labels (y data), and a word2vecmodel.
         Performs all processing steps on entire body of text to generate corupus-wide analyses. 
         i.e. FreqDist, word2vec models, fitting tokenzier
         
         - if no word2vec model is provided, one is fit on the text_data using TEXT.fit_word2vec()
         - calls on fit_tokenizer() to fit keras tokenizer to text_sequences.
-        text_data and text_labels are saved as TEXT._text_data_ and TEXT._text_labels_"""
+        text_data and text_labels are saved as TEXT._text_data_ and TEXT._text_labels_
+
+        Args:
+            df ([DataFrame]): DataFrame containing text to store and analyze.
+            text_data_col (str): Column containing text to process. 
+            text_labels_col (str, optional): Column with text classification labels. Defaults to None.
+            word2vec_model (Word2Vec Model, optional): Previously fit word2vec model. Defaults to None.
+            fit_model (bool, optional): [description]. Fit word2vec model.Defauts to False.
+            verbose (int, optional): [description]. Defaults to 0.
+        """
+        
+       
         import numpy as np
         import pandas as pd
         ## Save text_data
@@ -39,7 +52,7 @@ class TEXT(object):
         ## CALL ON PREPARE_DATA FUNCTIONS
 
         ## Prepare text_body for corpus-wide operations
-        self.prepare_text_body()
+        self.prepare_corpus()
 
         ## Fit word2vec model if not provided
         if word2vec_model is not None:
@@ -58,14 +71,7 @@ class TEXT(object):
         
         if fit_model:
             self.fit_models()
-            # ## Fit keras tokenizer
-            # self.fit_tokenizer()
-            
-            # ## Get FreqDist
-            # self.make_freq_dist()
-            
-            # ## Create Embedding Layer
-            # self.get_embedding_layer(return_layer=False)
+
 
     def fit_models(self):
         
@@ -77,14 +83,14 @@ class TEXT(object):
         self.fit_tokenizer()
         
         ## Get FreqDist
-        self.make_freq_dist()
+        self.fit_FreqDist()
 
         ## Create Embedding Layer
-        self.get_embedding_layer(return_layer=False)
+        # self.get_embedding_layer(return_layer=False)
     
 
         
-    def prepare_text_body(self,text_data_to_prep=None,delim=','):
+    def prepare_corpus(self,text_data_to_prep=None,delim=','):
         """Joins, regexp_tokenizes text_data"""
         #         text_data_to_prep=[]
 
@@ -161,10 +167,10 @@ class TEXT(object):
         return  stopwords_list
 
 
-    def apply_stopwords(self, text_data, stopwords_list=None, tokenize=True,
+    def remove_stopwords(self, text_data, stopwords_list=None, tokenize=True,
                         pattern = "([a-zA-Z]+(?:'[a-z]+)?)",return_tokens=False):
-        """EX: df['text_stopped'] = df['content'].apply(lambda x: apply_stopwords(stopwords_list,x))"""
-        print('return to .apply_stopwords and verify saved vs unused variables')
+        """EX: df['text_stopped'] = df['content'].apply(lambda x: remove_stopwords(stopwords_list,x))"""
+        print('return to .remove_stopwords and verify saved vs unused variables')
         from nltk import regexp_tokenize
 
         if stopwords_list is None:
@@ -292,221 +298,121 @@ class TEXT(object):
 
         return tokenized_data
 
-    def get_embedding_layer(self,X_sequences = None,input_size=None, return_matrix=False, return_layer=True):
-        """Uses the word2vec model to construct an embedding_layer for Keras models.
-        To override the default size of the input for the embedding layer, provide an input_size value
-        (which will likely be the size of hte vocabulary being fed in for predictions)."""
-        import numpy as np
-        import pandas as pd        
-
-        if X_sequences is None:
-            X_sequences = self.X_sequences
-
-        if input_size is not None:
-            print('[!] RETURN TO get_embedding_layer to verify when to override vocab_size / input size if input_size is not None')
-        vocab_size = len(self.wv.vocab)
-        vector_size = self.wv.vector_size
-            
-        ## Create the embedding matrix from the vectors in wv model 
-        embedding_matrix = np.zeros((vocab_size + 1, vector_size))
-        for i, vec in enumerate(self.wv.vectors):
-            embedding_matrix[i] = vec
-            embedding_matrix.shape
-        self._embedding_matrix_ = embedding_matrix
-        
-        from keras import layers 
-
-        
-        embedding_layer =layers.Embedding(vocab_size+1,
-                                          vector_size,
-                                          input_length=X_sequences.shape[1],
-                                          weights=[embedding_matrix],
-                                          trainable=False)
-        self.embedding_layer = embedding_layer
-        
-        ## Return outputs
-        return_list=[]
-        if return_matrix:
-            return_list.append(embedding_matrix)
-        if return_layer:
-            return_list.append(embedding_layer)
-        return return_list[:]
-        
-    def make_freq_dist(self, plot=False):
+    def fit_FreqDist(self, clean_text=True, plot=True):
         """ Fits nltk's FreqDist on tokenized text and saved as .freq_dist"""
+        
+        # if clean_text:
+            
         from nltk import FreqDist
         freq_dist = FreqDist(self.tokenized_text_body)
         self.FreqDist = freq_dist
         
         if plot==True:
-            self.freq_dist_plot()
+            self.plot_FreqDist()
         
-    def freq_dist_plot(self, top_n_words=25):
+    def plot_FreqDist(self, top_n_words=25):
         """Create FreqDist plot of top_n_words"""
         import matplotlib.pyplot as plt
         try:
             self.FreqDist
         except:
-            self.make_freq_dist()
+            self.fit_FreqDist()
 
         with plt.style.context('seaborn-notebook'):
             self.FreqDist.plot(top_n_words)
         
     
-    def summary_report(self):
-        """Print summary info about word2vec vocab, vectors, tokenized_text and embedding matrix"""
-        print(f"Word2Vec Vocabulary Size = {len(self.wv.vocab)}")
-        print(f"Word2Vec vector size = {self.wv.vector_size}")
-        print(f"\nLength of tokenized_text = {len(self.tokenized_text_body)}")
-        print(f"_embedding_matrix_ size = {self._embedding_matrix_.shape}")
+    # def summary_report(self):
+    #     """Print summary info about word2vec vocab, vectors, tokenized_text and embedding matrix"""
+    #     print(f"Word2Vec Vocabulary Size = {len(self.wv.vocab)}")
+    #     print(f"Word2Vec vector size = {self.wv.vector_size}")
+    #     print(f"\nLength of tokenized_text = {len(self.tokenized_text_body)}")
+    #     print(f"_embedding_matrix_ size = {self._embedding_matrix_.shape}")
         
         
-    def prepare_text_sequences(self, process_as_tweets=True, tweet_final_col='cleaned_tweets'):
-        """Individually process each entry in text_data for stopword removal and tokenization:
-        stopwords_list = TEXT.make_stopwords_list()"""
+    def prepare_text_sequences(self, process_as_tweets=False, tweet_final_col='cleaned_tweets'):
+        """
+        Individually process each entry in text_data for stopword removal and tokenization:
+        stopwords_list = TEXT.make_stopwords_list()
+        
+        Args:
+            process_as_tweets (bool, optional): use . Defaults to True.
+            tweet_final_col (str, optional): [description]. Defaults to 'cleaned_tweets'.
+        """
+        
+        
+
         self.make_stopwords_list()
 
-        if process_as_tweets:
-            self.tweet_specific_processing(tweet_final_col='cleaned_tweets')
-            text_to_process = self.df[tweet_final_col]
-            colname_base = tweet_final_col
-        else:
-            text_to_process = self.df['input_text_data']
-            colname_base = 'text'
+        # if process_as_tweets:
+        #     self.tweet_specific_processing(tweet_final_col='cleaned_tweets')
+        #     text_to_process = self.df[tweet_final_col]
+        #     colname_base = tweet_final_col
+        # else:
+        text_to_process = self.df['input_text_data']
+        colname_base = 'text'
         
         # Get stopped, non-tokenzied text
-        proc_text_series = text_to_process.apply(lambda x: self.apply_stopwords(x,
+        proc_text_series = text_to_process.apply(lambda x: self.remove_stopwords(x,
                                                                                 stopwords_list=None,
                                                                                 tokenize=True,
                                                                                 return_tokens=False))
         self.df[colname_base+'_stopped'] = proc_text_series
         
         # Get stopped-tokenized text
-        proc_text_tokens = text_to_process.apply(lambda x: self.apply_stopwords(x,
+        proc_text_tokens = text_to_process.apply(lambda x: self.remove_stopwords(x,
                                                                         stopwords_list=None,
                                                                         tokenize=True,
                                                                         return_tokens=True))
         self.df[colname_base+'_stopped_tokens'] = proc_text_tokens
 
         
-    def tweet_specific_processing(self,tweet_final_col='cleaned_tweets'):
-        import re
-        # Get initiial df
-        df = self.df
+    # def tweet_specific_processing(self,tweet_final_col='cleaned_tweets'):
+    #     import re
+    #     # Get initiial df
+    #     df = self.df
         
-        raw_tweet_col = 'input_text_data'
-        fill_content_col = tweet_final_col
+    #     raw_tweet_col = 'input_text_data'
+    #     fill_content_col = tweet_final_col
 
-        ## PROCESS RETWEETS
-        df['has_RT']=df[raw_tweet_col].str.contains('RT')
-        df['starts_RT']=df[raw_tweet_col].str.contains('^RT')
+    #     ## PROCESS RETWEETS
+    #     df['has_RT']=df[raw_tweet_col].str.contains('RT')
+    #     df['starts_RT']=df[raw_tweet_col].str.contains('^RT')
         
-        re_RT = re.compile('RT [@]?\w*:')
+    #     re_RT = re.compile('RT [@]?\w*:')
 
-        df['content_starts_RT'] = df[raw_tweet_col].apply(lambda x: re_RT.findall(x))
-        df[fill_content_col] =  df[raw_tweet_col].apply(lambda x: re_RT.sub(' ',x))
+    #     df['content_starts_RT'] = df[raw_tweet_col].apply(lambda x: re_RT.findall(x))
+    #     df[fill_content_col] =  df[raw_tweet_col].apply(lambda x: re_RT.sub(' ',x))
         
         
-        ## PROCESS URLS
-        urls = re.compile(r"(http[s]?://\w*\.\w*/+\w+)")
+    #     ## PROCESS URLS
+    #     urls = re.compile(r"(http[s]?://\w*\.\w*/+\w+)")
         
-        check_content_col = fill_content_col
-        df['content_urls'] = df[check_content_col].apply(lambda x: urls.findall(x))
-        df[fill_content_col] =  df[check_content_col].apply(lambda x: urls.sub(' ',x))
+    #     check_content_col = fill_content_col
+    #     df['content_urls'] = df[check_content_col].apply(lambda x: urls.findall(x))
+    #     df[fill_content_col] =  df[check_content_col].apply(lambda x: urls.sub(' ',x))
 
-        ## PROCESS HASHTAGS
-        hashtags = re.compile(r'\#\w*')
+    #     ## PROCESS HASHTAGS
+    #     hashtags = re.compile(r'\#\w*')
 
-        df['content_hashtags'] =  df[check_content_col].apply(lambda x: hashtags.findall(x))
-        df[fill_content_col] =  df[check_content_col].apply(lambda x: hashtags.sub(' ',x))
+    #     df['content_hashtags'] =  df[check_content_col].apply(lambda x: hashtags.findall(x))
+    #     df[fill_content_col] =  df[check_content_col].apply(lambda x: hashtags.sub(' ',x))
         
-        ## PROCESS MENTIONS
-        # Remove and save mentions (@)'s
-        mentions = re.compile(r'\@\w*')
-        df['content_mentions'] =  df[check_content_col].apply(lambda x: mentions.findall(x))
-        df[fill_content_col] =  df[check_content_col].apply(lambda x: mentions.sub(' ',x))
+    #     ## PROCESS MENTIONS
+    #     # Remove and save mentions (@)'s
+    #     mentions = re.compile(r'\@\w*')
+    #     df['content_mentions'] =  df[check_content_col].apply(lambda x: mentions.findall(x))
+    #     df[fill_content_col] =  df[check_content_col].apply(lambda x: mentions.sub(' ',x))
 
         
-        self.df = df 
-        def empty_lists_to_strings(x):
-            """Takes a series and replaces any empty lists with an empty string instead."""
-            if len(x)==0:
-                return ' '
-            else:
-                return ' '.join(x) #' '.join(tokens)
+    #     self.df = df 
+    #     def empty_lists_to_strings(x):
+    #         """Takes a series and replaces any empty lists with an empty string instead."""
+    #         if len(x)==0:
+    #             return ' '
+    #         else:
+    #             return ' '.join(x) #' '.join(tokens)
         
-        def help(self):
-            """
-            Initialize TEXT with a df containing the text_data, text_labels(for classificaiton),
-            and a word2vec model.
-            >> txt = TEXT(df_combined,'content_stop',None,word_model)
-            
-            ## FOR GETTING X SEQUENCES FOR NEW INPUT TEXT
-            * To get sequences for each row in a series:
-            >> text_series = df_combined['content_min_clean']
-            >> X_seq = txt.text_to_sequences(text_series,regexp_tokenize=True)
-            
-            * To revert generated sequneces back to text:
-            >> text_from_seq = txt.sequences_to_text(X_seq)
-            
-            ## TO GET CORPUS-WIDE NLP PROCESSING:
-            * for word frequencies:
-            >> txt.freq_dist.#[anything you can get from nltk's FreqDist]
-            """
-
-
-    def replace_embedding_layer(self, twitter_model, input_text_series, verbose=2):
-        """Takes the original Keras model with embedding_layer, a series of new text, a TEXT object,
-        and replaces the embedding_layer (layer[0]) with a new embedding layer with the correct size for new text"""
-        ## CONVERT MODEL TO JSON, REPLACE OLD INPUT LAYER WITH NEW ONE FROM TEXT object
-        json_model = twitter_model.to_json()
-
-        import functions_combined_BEST as ji
-        # pprint(json_model)
-        import json
-        json_model = json.loads(json_model)
-        # ji.display_dict_dropdown(json_model)
-
-        if verbose>0:## Find the exact parameters for shape size that need to change
-            print('---'*10,'\n',"json_model['config']['layers'][0]:")
-            print('\t','batch_input_shape: ',json_model['config']['layers'][0]['config']['batch_input_shape'])
-            print('\t','input_dim: ',json_model['config']['layers'][0]['config']['input_dim'])
-            print('\t','input_length:',json_model['config']['layers'][0]['config']['input_length'])
-
-
-        # Save layer 0 as separate variable to edit, and then replace in the dict
-        layer_0 = json_model['config']['layers'][0]
-        if verbose>0:
-            ji.display_dict_dropdown(layer_0)
-            
-            
-        ## FOR SEQUENCES FROM EXTERNAL NEW TEXT (tweets):
-        X_seq = self.text_to_sequences(text_data = input_text_series,regexp_tokenize=True)
-
-        if verbose>0:
-            ## To get Text back from X_seq:
-            # text_from_seq = TEXT.sequences_to_text(X_seq)
-            print('(num_rows_in_df, num_words_in_vocab)')
-            print(X_seq.shape)
-            
-        ## Get new embedding layer's config  (that is fit to new text)
-        output = self.get_embedding_layer(X_sequences=X_seq,input_size=X_seq.shape[1])
-        new_emb_config = output[0].get_config()
-        
-        ## Copy original model
-        new_json_model = json_model
-        
-        ## Replace old layer 0  config with new_emb_config
-        new_json_model['config']['layers'][0]['config'] = new_emb_config
-        
-        # convert model to string (json.dumps) so can use model_from_json
-        string_model = json.dumps(json_model)    
-        
-        ## Make model from json to return 
-        from keras.models import model_from_json
-        new_model = model_from_json(string_model)
-        
-        return new_model
 
 
 ########################################################################################    
@@ -1116,8 +1022,8 @@ def make_stopwords_list(incl_punc=True, incl_nums=True, add_custom= ['http','htt
     return  stopwords_list
 
 
-def apply_stopwords(stopwords_list,  text, tokenize=True,return_tokens=False, pattern = "([a-zA-Z]+(?:'[a-z]+)?)"):
-    """EX: df['text_stopped'] = df['content'].apply(lambda x: apply_stopwords(stopwords_list,x))"""
+def remove_stopwords(stopwords_list,  text, tokenize=True,return_tokens=False, pattern = "([a-zA-Z]+(?:'[a-z]+)?)"):
+    """EX: df['text_stopped'] = df['content'].apply(lambda x: remove_stopwords(stopwords_list,x))"""
     from nltk import regexp_tokenize
     pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
     if tokenize==True:
@@ -1241,15 +1147,36 @@ def get_tweet_lemmas(df, text_column = 'cleaned_stopped_tokens',name_for_lemma_c
     
 
 
-def full_twitter_df_processing(df,raw_tweet_col='content', name_for_cleaned_tweet_col='content_cleaned', name_for_stopped_col=None,
-name_for_tokenzied_stopped_col = None,lemmatize=True,name_for_lemma_col='cleaned_stopped_lemmas' ,use_col_for_case_ratio=None,
- use_col_for_sentiment='cleaned_stopped_lemmas', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
-    """Accepts df_full, which contains the raw tweets to process, the raw_col name, the column to fill.
+def full_twitter_df_processing(df,raw_tweet_col='content', name_for_cleaned_tweet_col='content_cleaned', name_for_stopped_col=None, name_for_tokenzied_stopped_col = None,lemmatize=True,name_for_lemma_col='cleaned_stopped_lemmas' ,use_col_for_case_ratio=None,  use_col_for_sentiment='cleaned_stopped_lemmas', RT=True, urls=True,  hashtags=True, mentions=True, str_tags_mentions=True,stopwords_list=[], force=False):
+    """
+    Accepts df_full, which contains the raw tweets to process, the raw_col name, the column to fill.
     If force=False, returns error if the fill_content_col already exists.
     Processing Workflow:1) Create has_RT, starts_RT columns. 2) Creates [fill_content_col,`content_min_clean`] cols after removing 'RT @mention:' and urls.
     3) Removes hashtags from fill_content_col and saves hashtags in new col. 4) Removes mentions from fill_content_col and saves to new column.
-    - if use_cols_for_case_ration is None, the partially completed content_min_clean col is used (only urls and RTs removed)"""
-    # Save 'hashtags' column containing all hastags
+    - if use_cols_for_case_ration is None, the partially completed content_min_clean col is used (only urls and RTs removed)
+     Save 'hashtags' column containing all hastags
+    
+    Args:
+        df ([DataFrame]): extract from twitter archive 
+        raw_tweet_col (str, optional): text column to process. Defaults to 'content'.
+        name_for_cleaned_tweet_col (str, optional): name for new coumn with cleaned tweets   . Defaults to 'content_cleaned'.
+        name_for_stopped_col ([type], optional): name for new coumn with stopwords removed. Defaults to None.
+        name_for_tokenzied_stopped_col ([type], optional): name for new coumn with tokenized version of stopped_col. Defaults to None.
+        lemmatize (bool, optional): [description]. Defaults to True.
+        name_for_lemma_col (str, optional): [description]. Defaults to 'cleaned_stopped_lemmas'.
+        use_col_for_case_ratio ([type], optional): [description]. Defaults to None.
+        use_col_for_sentiment (str, optional): [description]. Defaults to 'cleaned_stopped_lemmas'.
+        RT (bool, optional): [description]. Defaults to True.
+        urls (bool, optional): [description]. Defaults to True.
+        hashtags (bool, optional): [description]. Defaults to True.
+        mentions (bool, optional): [description]. Defaults to True.
+        str_tags_mentions (bool, optional): [description]. Defaults to True.
+        stopwords_list (list, optional): [description]. Defaults to [].
+        force (bool, optional): [description]. Defaults to False.
+    """
+    
+            
+    #
     import re
     from nltk import regexp_tokenize
     pattern = "([a-zA-Z]+(?:'[a-z]+)?)"
@@ -1303,10 +1230,11 @@ name_for_tokenzied_stopped_col = None,lemmatize=True,name_for_lemma_col='cleaned
     ## 08/25 ADDING REMOVAL OF PUNCATUATION to min clean @ And # SYMBOLS FOR MIN CLEAN
        
     ## Case Ratio Calculation (optional)
-    if use_col_for_case_ratio is None or 'content_min_clean' in use_col_for_case_ratio:
+    if use_col_for_case_ratio is None:
         use_col_for_case_ratio='content_min_clean'
-        df['case_ratio'] = df[use_col_for_case_ratio].apply(lambda x: case_ratio(x))
-        print(f'[i] case_ratio calculated from {use_col_for_case_ratio} before text to lowercase')
+        
+    df['case_ratio'] = df[use_col_for_case_ratio].apply(lambda x: case_ratio(x))
+    print(f'[i] case_ratio calculated from {use_col_for_case_ratio} before text to lowercase')
 
 
     def quick_fix(x):
@@ -1380,8 +1308,8 @@ name_for_tokenzied_stopped_col = None,lemmatize=True,name_for_lemma_col='cleaned
     if len(stopwords_list)==0:
         stopwords_list=make_stopwords_list()
 
-    df[stop_col_name] = df[fill_content_col].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=False, pattern=pattern))
-    df[stopped_tok_col_name] = df[stop_col_name].apply(lambda x: apply_stopwords(stopwords_list,x,tokenize=True, return_tokens=True, pattern=pattern))
+    df[stop_col_name] = df[fill_content_col].apply(lambda x: remove_stopwords(stopwords_list,x,tokenize=True, return_tokens=False, pattern=pattern))
+    df[stopped_tok_col_name] = df[stop_col_name].apply(lambda x: remove_stopwords(stopwords_list,x,tokenize=True, return_tokens=True, pattern=pattern))
 
     if lemmatize:
         # text_data = df[stopped_tok_col_name]

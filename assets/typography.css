@@ -3,11 +3,12 @@
 
     width:90%;
     /* border:1px solid slategray; */
-    margin-right:30%;
-    margin-left:0%;
+    /* margin-right:30%; */
+    /* margin-left:0%; */
     /* margin-left:auto; */
     /* margin-right:2%;  */
 }
+
 .interactive_output{
     display: block;
     margin-block-start: 5%;

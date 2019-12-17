@@ -2,6 +2,7 @@
 .ipynb_checkpoints
 *.pyc
 *.pyc
+models/*
 data/IVE_tickbidask.txt
 __pycache__/capstone_functions_jmi.cpython-36.pyc
 *.hdf5

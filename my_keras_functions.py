@@ -2002,19 +2002,45 @@ def evaluate_classification(model, history, X_train,X_test,y_train,y_test,report
 
 
     ## Get model predictions
-    y_hat_train = model.predict_classes(X_train)
-    y_hat_test = model.predict_classes(X_test)
+    
+    if hasattr(model, 'predict_classes'):
+        y_hat_train = model.predict_classes(X_train)
+        y_hat_test = model.predict_classes(X_test)
+    elif hasattr(model,'predict'):
+        y_hat_train = model.predict(X_train)
+        y_hat_test = model.predict(X_test)
+    else:
+        raise Exception('model has neither "predict" nor "predict_classes" methods')
 
-    if y_test.ndim>1 or binary_classes==False:
+    if y_test.ndim>1 or y_hat_test.ndim>1 or binary_classes==False:
         if binary_classes==False: 
             pass
         else:
             binary_classes = False
             print(f"[!] y_test was >1 dim, setting binary_classes to False")
-        
+
         ## reduce dimensions of y_train and y_test
-        y_train = y_train.argmax(axis=1)
-        y_test = y_test.argmax(axis=1)
+        # y_train = y_train.argmax(axis=1)
+        # y_test = y_test.argmax(axis=1)
+        if y_test.ndim>1:            
+            y_test = y_test.argmax(axis=1)
+        if y_hat_test.ndim>1:
+            y_hat_test = y_hat_test.argmax(axis=1)
+        # for var in ['y_test', 'y_hat_test', 'y_train', 'y_hat_train']:
+        #     real_var = eval(var)
+        #     print('real_var shape:',real_var.shape)
+        #     if real_var.ndim>1:
+        #         ## reduce dimensions
+        #         cmd =  var+'= real_var.argmax(axis=1)'
+        #         # eval(cmd)
+        #         eval(var+'=') real_var.argymax(axis=1)
+        #         # exec(cmd)
+        #         cmd =f'print("argmax shape:",{var}.shape)' 
+        #         eval(cmd)
+        #         # exec(cmd)
+        
+        
+        
 
     print('---'*num_dashes)
     print('\tCLASSIFICATION REPORT:')
