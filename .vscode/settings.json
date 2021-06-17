@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "C:\\Users\\james\\Anaconda3\\envs\\learn-env\\python.exe",
+    "python.pythonPath": "/opt/anaconda3/envs/learn-env-new/bin/python",
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": true,
     "python.linting.pycodestyleEnabled": false,
