@@ -681,18 +681,23 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.csv',
         stock_df = pd.read_csv(fullfilename, names=headers,parse_dates=True)
 
         # Create datetime index
-        date_time_index = (stock_df['Date']+' '+stock_df['Time']).rename('date_time_index')
-        stock_df['date_time_index'] = pd.to_datetime(date_time_index)
+        # date_time_index = (stock_df['Date']+' '+stock_df['Time']).rename('date_time_index')
+        # stock_df['date_time_index'] = pd.to_datetime(date_time_index)
 
         # stock_df.set_index('date_time_index', inplace=True, drop=False)
         # stock_df.sort_index(inplace=True, ascending=True)
     
     elif 'csv' in ext: # USING THE PARTIAL PROCESSED (size reduced, datetime index)
         stock_df = pd.read_csv(fullfilename, parse_dates=True)
-        stock_df['date_time_index'] = pd.to_datetime( stock_df['date_time_index'])
+        # stock_df['date_time_index'] = pd.to_datetime( stock_df['date_time_index'])
+    elif 'gz' in ext:
+        stock_df = pd.read_csv(fullfilename,parse_dates=True,compression='gzip')
     else:
         raise Exception('file extension not csv or txt')
     
+    # Create datetime index
+    date_time_index = (stock_df['Date']+' '+stock_df['Time']).rename('date_time_index')
+    stock_df['date_time_index'] = pd.to_datetime(date_time_index)
     stock_df.set_index('date_time_index', inplace=True, drop=False)
 
     # Select only the days after start_index
