@@ -63,15 +63,16 @@ def download_stock_data(fpath='data/ive_minute_tick_bidask_API_2021.csv',
 def download_trump_tweets(fpath='data/trump_tweets_2021.csv',append_date=True,
                           verbose=True,return_data=True):
     """Downloads the most recent data from the trumptwittearchive v2.
-    https://drive.google.com/uc?export=download&id=1JZnhB0Nq_2RKtDb-IOnd0XxnD5c7x-nQ
-    
+    new url = "https://drive.google.com/file/d/1xRKHaP-QwACMydlDnyFPEaFdtskJuBa6/view?usp=sharing"
+
     Args:
         fpath (str): filepath for data that ends with .csv
         append_date (bool): Whether to save today's date as part of filename(Default=True)
         verbose (bool): Whether to print the file name (Default=True)
         return_data (bool): Whether to return the data as a df (Default=True)"""
 #     url = "https://www.thetrumparchive.com/latest-tweets"
-    url="https://drive.google.com/uc?export=download&id=1JZnhB0Nq_2RKtDb-IOnd0XxnD5c7x-nQ"
+    # url="https://drive.google.com/uc?export=download&id=1JZnhB0Nq_2RKtDb-IOnd0XxnD5c7x-nQ"
+    url="https://drive.google.com/uc?export=download&id=1xRKHaP-QwACMydlDnyFPEaFdtskJuBa6"
     response = requests.get(url)
     
     if append_date:
@@ -101,7 +102,7 @@ def download_trump_tweets(fpath='data/trump_tweets_2021.csv',append_date=True,
         
     if return_data:
 
-        return pd.read_csv(filepath,index_col=0,parse_dates=['date'])
+        return pd.read_csv(filepath,index_col='date',parse_dates=['date'])
 #tweets#,parse_dates=['created_at'])
 
 
