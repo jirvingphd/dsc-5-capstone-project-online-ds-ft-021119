@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from bsds.functions_combined_BEST import *
 import bsds.functions_sklearn as ml
+import bsds.data as data
+
 
 def display_side_by_side(*args):
     """Display all input dataframes side by side. Also accept captioned styler df object (df_in = df.style.set_caption('caption')

@@ -123,6 +123,8 @@ def evaluate_classification(model, X_test,y_test,normalize='true'):
     fig,ax = plt.subplots(figsize=(10,5),ncols=2)
     metrics.plot_confusion_matrix(model,X_test,y_test,normalize=normalize,
                                   cmap='Blues',ax=ax[0])
+    
+    
     metrics.plot_roc_curve(model,X_test,y_test,ax=ax[1])
     ax[1].plot([0,1],[0,1],ls=':')
     ax[1].grid()
