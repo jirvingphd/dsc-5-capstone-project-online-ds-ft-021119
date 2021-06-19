@@ -116,20 +116,79 @@ def fit_and_time_model(model, X_train,y_train,X_test,y_test,
     return model
 
 
-def evaluate_classification(model, X_test,y_test,normalize='true'):
-    """Plot Confusion Matrix and display classification report"""
-    get_report(model,X_test,y_test,as_df=False)
+# def evaluate_classification_old(model, X_test,y_test,normalize='true'):
+#     """Plot Confusion Matrix and display classification report"""
+#     get_report(model,X_test,y_test,as_df=False)
     
-    fig,ax = plt.subplots(figsize=(10,5),ncols=2)
-    metrics.plot_confusion_matrix(model,X_test,y_test,normalize=normalize,
-                                  cmap='Blues',ax=ax[0])
+#     fig,ax = plt.subplots(figsize=(10,5),ncols=2)
+#     metrics.plot_confusion_matrix(model,X_test,y_test,normalize=normalize,
+#                                   cmap='Blues',ax=ax[0])
     
     
-    metrics.plot_roc_curve(model,X_test,y_test,ax=ax[1])
-    ax[1].plot([0,1],[0,1],ls=':')
-    ax[1].grid()
-    fig.tight_layout()
+#     metrics.plot_roc_curve(model,X_test,y_test,ax=ax[1])
+#     ax[1].plot([0,1],[0,1],ls=':')
+#     ax[1].grid()
+#     fig.tight_layout()
+#     plt.show()
+
+
+def evaluate_classification(model, X_test,y_test,cmap='Greens',
+                            normalize='true',classes=None,figsize=(10,4),
+                            X_train = None, y_train = None,):
+    """Evaluates a scikit-learn binary classification model.
+
+    Args:
+        model (classifier): any sklearn classification model.
+        X_test (Frame or Array): X data
+        y_test (Series or Array): y data
+        cmap (str, optional): Colormap for confusion matrix. Defaults to 'Greens'.
+        normalize (str, optional): normalize argument for plot_confusion_matrix. 
+                                    Defaults to 'true'.
+        classes (list, optional): List of class names for display. Defaults to None.
+        figsize (tuple, optional): figure size Defaults to (8,4).
+        
+        X_train (Frame or Array, optional): If provided, compare model.score 
+                                for train and test. Defaults to None.
+        y_train (Series or Array, optional): If provided, compare model.score 
+                                for train and test. Defaults to None.
+    """
+    
+    ## Get Predictions and Classification Report
+    y_hat_test = model.predict(X_test)
+    print(metrics.classification_report(y_test, y_hat_test,target_names=classes))
+    
+    ## Plot Confusion Matrid and roc curve
+    fig,ax = plt.subplots(ncols=2, figsize=figsize)
+    metrics.plot_confusion_matrix(model, X_test,y_test,cmap=cmap, 
+                                  normalize=normalize,display_labels=classes,
+                                 ax=ax[0])
+    
+    ## if roc curve erorrs, delete second ax
+    try:
+        curve = metrics.plot_roc_curve(model,X_test,y_test,ax=ax[1])
+        curve.ax_.grid()
+        curve.ax_.plot([0,1],[0,1],ls=':')
+        fig.tight_layout()
+    except:
+        fig.delaxes(ax[1])
     plt.show()
+    
+    ## Add comparing Scores if X_train and y_train provided.
+    if (X_train is not None) & (y_train is not None):
+        print(f"Training Score = {model.score(X_train,y_train):.2f}")
+        print(f"Test Score = {model.score(X_test,y_test):.2f}")
+        
+        
+
+    
+def plot_importance(tree, X_train_df, top_n=20,figsize=(10,10)):
+    
+    df_importance = pd.Series(tree.feature_importances_,
+                              index=X_train_df.columns)
+    df_importance.sort_values(ascending=True).tail(top_n).plot(
+        kind='barh',figsize=figsize,title='Feature Importances',
+    ylabel='Feature',)
+    return df_importance
 
 
 

@@ -534,6 +534,7 @@ def get_day_window_size_from_freq(dataset, CBH=custom_BH_freq()):#, freq='CBH'):
     
 def  set_timeindex_freq(ive_df, col_to_fill=None, freq='CBH',fill_nulls = True, fill_with_val_or_method='method',fill_val= None, fill_method='ffill',
                         verbose=3): #set_tz=True,
+
     
     import pandas as pd
     import numpy as np
@@ -706,8 +707,11 @@ def load_raw_stock_data_from_txt(filename='IVE_bidask1min_08_23_2019.csv',
     
     ## Continue processing
     stock_df.sort_index(inplace=True, ascending=True)  
+    
+    
     # remove earlier data
-    stock_df = stock_df.loc[start_index:]
+    if start_index is not None:
+        stock_df = stock_df.loc[start_index:]
     
 
     
@@ -1039,10 +1043,11 @@ def make_date_range_slider(start_date,end_date,freq='D'):
 
 ##### FROM CAPSTONE PROJECT OUTLINE AND ANALYSIS
 
-def get_technical_indicators(dataset,make_price_from='BidClose'):
+def get_technical_indicators(dataset_,make_price_from='BidClose'):
     
     import pandas as pd
     import numpy as np
+    dataset =  dataset_.copy()
     dataset['price'] = dataset[make_price_from].copy()
     if dataset.index.freq == custom_BH_freq():
         days = get_day_window_size_from_freq(dataset)#,freq='CBH')
@@ -2196,22 +2201,22 @@ def def_cufflinks_solar_theme(as_layout=True, as_dict=False):
     # if as_layout and as_dict:
         # raise Exception('only 1 of as_layout, as_dict can be True')
 
-    theme_dict = {'annotations': {'arrowcolor': 'grey11', 'fontcolor': 'beige'},
+    theme_dict = {'annotations': {'arrowcolor': 'grey11', 'fontcolor': 'white'},
      'bargap': 0.01,
      'colorscale': 'original',
-     'layout': {'legend': {'bgcolor': 'black', 'font': {'color': 'beige'}},
+     'layout': {'legend': {'bgcolor': 'black', 'font': {'color': 'white'}},
                 'paper_bgcolor': 'black',
                 'plot_bgcolor': 'black',
-                'titlefont': {'color': 'beige'},
+                'titlefont': {'color': 'white'},
                 'xaxis': {'gridcolor': 'lightgray',
                           'showgrid': True,
                           'tickfont': {'color': 'darkgray'},
-                          'titlefont': {'color': 'beige'},
+                          'titlefont': {'color': 'white'},
                           'zerolinecolor': 'gray'},
                 'yaxis': {'gridcolor': 'lightgrey',
                           'showgrid': True,
                           'tickfont': {'color': 'darkgray'},
-                          'titlefont': {'color': 'beige'},
+                          'titlefont': {'color': 'white'},
                           'zerolinecolor': 'grey'}},
      'linewidth': 1.3}
 
