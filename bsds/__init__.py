@@ -4113,7 +4113,7 @@ class Clock(object):
         dfs = df_lap_times.style.hide_index().set_caption('Summary Table of Clocked Processes').set_properties(subset=['Start Time','Duration'],**{'width':'140px'})
         display(dfs.set_table_styles([dict(selector='table, th', props=[('text-align', 'center')])]))
 
-def list2df(list, index_col=None, set_caption=None, return_df=True,df_kwds=None,
+def list2df(list, index_col=None, set_caption=None, return_df=True,df_kwds={},
             caption=None): #, sort_values='index'):
     
     """ Quick turn an appened list with a header (row[0]) into a pretty dataframe.
