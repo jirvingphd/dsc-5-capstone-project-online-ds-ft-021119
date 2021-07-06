@@ -6,11 +6,11 @@ from IPython.display import display
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+
+## Importing bsds functions
 import sys
 sys.path.append("../")
-
-
-## IMPORT STANDARD PACKAGES
+from bsds.app_functions import search_for_tweets_prior_hour
 # from bsds.imports import *
 import bsds as bs
 
@@ -22,6 +22,8 @@ import pandas as pd
 
 # Import plotly and cufflinks for iplots
 import plotly
+import plotly.io as pio
+pio.templates.default = "plotly_dark"
 import plotly.graph_objs as go
 import plotly.offline as pyo 
 import cufflinks as cf
@@ -152,7 +154,7 @@ app.layout = html.Div(id='main-div',
     [Input('stock_price', 'hoverData'),
      Input('stock_price','clickData')])#'clickData')])
 def display_tweets_from_stocks(hoverData,clickData,twitter_df=twitter_df):
-    from temp_code import search_for_tweets_prior_hour
+    # from temp_code import search_for_tweets_prior_hour
     import pandas as pd
     # res=[]
     
