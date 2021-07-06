@@ -2499,7 +2499,9 @@ as_figure = True,show_fig=True,figsize=(900,400),iplot_kwargs=None): #,name='S&P
         fig.update_layout(
             title_text=title
         )
-
+        if x_col is None:
+            x_col = 'date_time_index'
+            # stock_df.reset_index(inplace=True)
         fig.add_trace(go.Scatter(x=stock_df[x_col], y=stock_df[y_col]))#, name=name)) #df.Date, y=df['AAPL.Low'], name="AAPL Low",
         #                          line_color='dimgray'))
         # Add range slider
@@ -2626,7 +2628,8 @@ def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21'
 
     from plotly.offline import init_notebook_mode, plot, iplot, iplot_mpl
     import bsds.functions_combined_BEST as ji
-
+    # if x_col is None:
+        # if df.index.name.contains('date')
     if theme=='solar':
         my_layout = def_cufflinks_solar_theme()
     else:
@@ -2636,6 +2639,7 @@ def plotly_technical_indicators(stock_df,plot_indicators=['price', 'ma7', 'ma21'
     # if len(train_price)>0:
     df=stock_df[plot_indicators].copy()
     df.dropna(inplace=True)
+    
     fig = ji.plotly_time_series(df,x_col=x_col,y_col=plot_indicators, show_fig=False, as_figure=True,figsize=figsize)
 
     # FIND THE PRICE TRACE AND CHANGE ITS PROPERTIES, PUT IT ON TOP

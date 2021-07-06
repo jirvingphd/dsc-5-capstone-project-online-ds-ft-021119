@@ -1,3 +1,4 @@
+import bsds.functions_combined_BEST as ji
 
 
 def search_for_tweets_with_word(twitter_df,word, display_n=10,from_column='content', ascending=False,
@@ -12,7 +13,6 @@ def search_for_tweets_with_word(twitter_df,word, display_n=10,from_column='conte
         - display the most-recent or oldest tweets using `ascending` parameter.
     - if return_index: return the datetimeindex of the tweets containing the word."""
     import pandas as pd
-    import functions_combined_BEST as ji
     from IPython.display import display
     import numpy as np
     
@@ -64,7 +64,7 @@ def search_for_tweets_by_date(twitter_df,date, display_n=10,from_column='content
         - display the most-recent or oldest tweets using `ascending` parameter.
     - if return_index: return the datetimeindex of the tweets containing the word."""
     import pandas as pd
-    import functions_combined_BEST as ji
+    # import functions_combined_BEST as ji
     from IPython.display import display
     import numpy as np
     ## Make list of cols starting with from_column and adding display_cols
@@ -132,7 +132,7 @@ def search_for_tweets_prior_hour(twitter_df,stock_hour, from_column='content', a
         - display the most-recent or oldest tweets using `ascending` parameter.
     - if return_index: return the datetimeindex of the tweets containing the word."""
     import pandas as pd
-    import functions_combined_BEST as ji
+    # import functions_combined_BEST as ji
     from IPython.display import display
     import numpy as np
     fmt = '%m/%d/%Y %T'

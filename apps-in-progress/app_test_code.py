@@ -6,11 +6,13 @@ from IPython.display import display
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+import sys
+sys.path.append("../")
 
 
 ## IMPORT STANDARD PACKAGES
-from bs_ds.imports import *
-import bs_ds as bs
+# from bsds.imports import *
+import bsds as bs
 
 ## Import custom capstone functions
 # from functions_combined_BEST import ihelp, ihelp_menu, reload
@@ -23,8 +25,8 @@ import plotly
 import plotly.graph_objs as go
 import plotly.offline as pyo 
 import cufflinks as cf
-# cf.go_offline()
-import functions_combined_BEST as ji
+cf.go_offline()
+import bsds.functions_combined_BEST as ji
 
 
 # Suppress warnings
@@ -36,10 +38,10 @@ dash.Dash(assets_ignore='z_external_stylesheet')
 
 dash.Dash(assets_ignore=['z_external_stylesheet','header.css']) #'typography.css'
 
-twitter_df = pd.read_csv('data/_twitter_df_with_stock_price.csv',index_col=0, parse_dates=True)
+twitter_df = pd.read_csv('../data/_twitter_df_with_stock_price.csv',index_col=0, parse_dates=True)
 
 ## Load in data
-stock_df_filename = 'data/_stock_df_with_technical_indicators.csv'
+stock_df_filename = '../data/_stock_df_with_technical_indicators.csv'
 stock_df = ji.load_processed_stock_data_plotly(stock_df_filename)
 
 
@@ -56,7 +58,7 @@ fig_price.update({'layout':{
 # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/solar.csv')
 
 ## Load in README
-with open('README.md','r') as f:
+with open('../README.md','r') as f:
     README = f.read()
     
 app = dash.Dash(__name__)
@@ -149,25 +151,24 @@ app.layout = html.Div(id='main-div',
     Output('display-stock-tweets', 'children'),
     [Input('stock_price', 'hoverData'),
      Input('stock_price','clickData')])#'clickData')])
-
 def display_tweets_from_stocks(hoverData,clickData,twitter_df=twitter_df):
     from temp_code import search_for_tweets_prior_hour
     import pandas as pd
-    res=[]
+    # res=[]
     
     if hoverData is not None:
         stock_hour = hoverData['points'][0]['x']
         stock_hour = pd.to_datetime(stock_hour)
         res_hover = search_for_tweets_prior_hour(twitter_df=twitter_df, stock_hour=stock_hour)
         if len(res_hover) == 0:
-            res_hover=f'### No Tweets found for {stock_hour}'
+            res_hover= "### No Tweets found"# for {stock_hour}"
                 
     if clickData is not None:
         stock_hour = clickData['points'][0]['x']
         stock_hour = pd.to_datetime(stock_hour)
         res_click = search_for_tweets_prior_hour(twitter_df=twitter_df, stock_hour=stock_hour)
         if len(res_click) == 0:
-            res_click=f'### No Tweets found for {stock_hour}'
+            res_click='### No Tweets found'# for {stock_hour}'
         
     if (hoverData is None):
         if clickData is not None:
@@ -216,4 +217,4 @@ def display_tweets_from_stocks(hoverData,clickData,twitter_df=twitter_df):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False,host='127.0.0.1')
